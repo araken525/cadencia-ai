@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState } from "react";
 
 // --- Types ---
 type CandidateObj = {
@@ -82,7 +82,6 @@ function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateUI[] {
 }
 
 // --- Helper: Enharmonic Mapping for Visualizer ---
-// データ上は区別するが、ピアノ表示用に鍵盤インデックス(0-11)へ変換
 const getKeyIndex = (note: string): number => {
   const baseMap: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
   const base = note.charAt(0);
@@ -91,7 +90,6 @@ const getKeyIndex = (note: string): number => {
   
   if (acc === "#") idx += 1;
   if (acc === "b") idx -= 1;
-  // Double accidentals or weird spellings (E#, Cb, etc.)
   if (note === "E#") idx = 5;
   if (note === "B#") idx = 0;
   if (note === "Fb") idx = 4;
@@ -104,7 +102,6 @@ const getKeyIndex = (note: string): number => {
 
 // ミニピアノ鍵盤 (Visualizer)
 const MiniPiano = ({ selected }: { selected: string[] }) => {
-  // 白鍵・黒鍵の定義（描画座標）
   const keys = [
     { idx: 0, type: "white", x: 0 },
     { idx: 1, type: "black", x: 10 },
@@ -119,8 +116,6 @@ const MiniPiano = ({ selected }: { selected: string[] }) => {
     { idx: 10, type: "black", x: 81.4 },
     { idx: 11, type: "white", x: 85.68 },
   ];
-
-  // 選択されたノートがどの鍵盤に該当するか判定
   const activeIndices = selected.map(getKeyIndex);
   const isActive = (keyIdx: number) => activeIndices.includes(keyIdx);
 
@@ -158,62 +153,71 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// Flick Key Component
+// Flick Key Component (Improved)
 const FlickKey = ({ 
   noteBase, 
   currentSelection, 
   onInput 
 }: { 
   noteBase: string, 
-  currentSelection: string | undefined, // 現在この音名で選択されている具体的な音 (例: "C#")
+  currentSelection: string | undefined, 
   onInput: (note: string) => void 
 }) => {
   const [startY, setStartY] = useState<number | null>(null);
   const [offsetY, setOffsetY] = useState(0);
-  const THRESHOLD = 15; // フリック判定距離
+  const THRESHOLD = 15;
 
-  // 現在のステータス表示用
   const isActive = !!currentSelection;
   const displayLabel = currentSelection || noteBase;
 
+  // 2) PointerCapture Fix & currentTarget
   const handlePointerDown = (e: React.PointerEvent) => {
-    e.preventDefault(); // スクロール防止
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    // 1) Scroll Prevention via e.preventDefault (Helper for touch-action CSS)
+    e.preventDefault();
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch (err) {
+      // Ignore errors on devices where pointer capture is not supported/needed
+    }
     setStartY(e.clientY);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (startY === null) return;
     const delta = e.clientY - startY;
-    // 視覚的なフィードバックのために移動量を制限
-    setOffsetY(Math.max(-30, Math.min(30, delta)));
+    setOffsetY(Math.max(-30, Math.min(30, delta))); // Visual feedback limit
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     if (startY === null) return;
     
-    // フリック判定
-    if (offsetY < -THRESHOLD) {
-      onInput(`${noteBase}#`); // Up Flick
-    } else if (offsetY > THRESHOLD) {
-      onInput(`${noteBase}b`); // Down Flick
+    // 3) Calculate delta directly from event for logic
+    const delta = e.clientY - startY;
+
+    if (delta < -THRESHOLD) {
+      onInput(`${noteBase}#`);
+    } else if (delta > THRESHOLD) {
+      onInput(`${noteBase}b`);
     } else {
-      onInput(noteBase); // Tap
+      onInput(noteBase);
     }
 
     setStartY(null);
     setOffsetY(0);
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch (err) {}
   };
 
-  // スタイル計算
   const isUp = offsetY < -10;
   const isDown = offsetY > 10;
 
   return (
     <div 
+      // 1) Added touch-none select-none overscroll-none
       className={`
-        relative h-14 rounded-lg shadow-[0_1px_0_rgba(0,0,0,0.3)] touch-none select-none
+        relative h-12 rounded-lg shadow-[0_1px_0_rgba(0,0,0,0.3)] touch-none select-none overscroll-none
         transition-colors duration-150 flex flex-col items-center justify-center overflow-hidden
         ${isActive 
           ? "bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-purple-200" 
@@ -222,12 +226,10 @@ const FlickKey = ({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp} // キャンセル時もリセット
+      onPointerCancel={handlePointerUp}
     >
-      {/* Visual Guide (Top) */}
       <div className={`absolute top-1 text-[8px] font-bold transition-opacity ${isUp ? "opacity-100 text-white scale-110" : "opacity-30"}`}>#</div>
       
-      {/* Main Label */}
       <span 
         className="text-xl font-bold transition-transform duration-75"
         style={{ transform: `translateY(${offsetY * 0.3}px)` }}
@@ -235,7 +237,6 @@ const FlickKey = ({
         {displayLabel}
       </span>
 
-      {/* Visual Guide (Bottom) */}
       <div className={`absolute bottom-1 text-[8px] font-bold transition-opacity ${isDown ? "opacity-100 text-white scale-110" : "opacity-30"}`}>b</div>
     </div>
   );
@@ -259,30 +260,21 @@ export default function CadenciaPage() {
 
   const canAnalyze = selected.length >= 3;
 
-  // --- Input Logic (Exclusive Selection per Note Name) ---
   const handleNoteInput = (inputNote: string) => {
-    const base = inputNote.charAt(0); // "C", "D"...
-    
-    // 既存のリストから、同じ音名を持つものを探す
+    const base = inputNote.charAt(0);
     const existingIndex = selected.findIndex(s => s.startsWith(base));
     const existingNote = selected[existingIndex];
-
     let nextSelected = [...selected];
 
     if (existingIndex !== -1) {
-      // 既に同じ音名が選択されている場合
       if (existingNote === inputNote) {
-        // 全く同じ音ならトグル（削除）
-        nextSelected.splice(existingIndex, 1);
+        nextSelected.splice(existingIndex, 1); // Toggle off
       } else {
-        // 違う変化記号なら上書き (例: C -> C#)
-        nextSelected[existingIndex] = inputNote;
+        nextSelected[existingIndex] = inputNote; // Overwrite
       }
     } else {
-      // 新規追加
-      nextSelected.push(inputNote);
+      nextSelected.push(inputNote); // Add
     }
-    
     setSelected(nextSelected);
   };
 
@@ -291,7 +283,6 @@ export default function CadenciaPage() {
     setInfoText(""); setQuestion(""); setAnswer(""); setLoading(false);
   };
 
-  // --- API Functions ---
   async function analyze() {
     if (!canAnalyze || loading) return;
     setLoading(true); setAnswer(""); setInfoText("");
@@ -590,21 +581,13 @@ export default function CadenciaPage() {
 
       </main>
 
-      {/* --- Bottom Controls (Flick Keyboard) --- */}
-      <div className={`fixed bottom-0 inset-x-0 z-50 bg-[#D1D5DB]/90 backdrop-blur-xl border-t border-[#bdc3c7] pt-2 pb-8 shadow-[0_-1px_0_rgba(0,0,0,0.1)]`}>
+      {/* --- Bottom Controls (Transparent & iOS Layout) --- */}
+      <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glass} border-t-0 rounded-t-[30px] pt-2 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]`}>
         <div className="max-w-md mx-auto px-1.5 flex">
           
           {/* Main Keypad (3x3 Grid for 7 notes + spacers) */}
           <div className="grid grid-cols-3 gap-1.5 flex-1 mr-1.5">
             {NOTE_KEYS.map((noteBase, i) => {
-              // レイアウト調整: C-Aは普通に並べる。Bは3行目左、残りは空きスペース
-              // Grid: 
-              // C D E
-              // F G A
-              // B - -
-              // スタイル調整: 最後の2つは空要素としてレンダリングしない、あるいは透明に
-              
-              // 選択されている音を探す
               const currentSelection = selected.find(s => s.startsWith(noteBase));
               
               return (
@@ -616,9 +599,13 @@ export default function CadenciaPage() {
                 />
               );
             })}
-            {/* Empty Spacers to fill the grid (if necessary, though CSS grid handles it) */}
-            <div className="pointer-events-none"></div>
-            <div className="pointer-events-none"></div>
+            
+            {/* Guide/Legend in the remaining 2 slots (Span 2) */}
+            <div className="col-span-2 relative h-12 rounded-lg border border-slate-200 bg-white/50 flex items-center justify-center gap-4 text-[9px] text-slate-400 font-medium select-none">
+               <div className="flex flex-col items-center"><span className="text-[8px] mb-0.5">#</span><span>↑</span></div>
+               <div className="flex flex-col items-center"><span className="text-[8px] mb-0.5">Nat</span><span>●</span></div>
+               <div className="flex flex-col items-center"><span className="text-[8px] mb-0.5">b</span><span>↓</span></div>
+            </div>
           </div>
 
           {/* Right Side Actions (Column) */}
@@ -626,7 +613,7 @@ export default function CadenciaPage() {
              {/* Delete/Reset (Top Right) */}
              <button 
                 onClick={reset}
-                className="h-14 rounded-lg bg-[#BCC0C5] active:bg-white text-slate-600 transition-colors flex items-center justify-center shadow-[0_1px_0_rgba(0,0,0,0.35)]"
+                className="h-14 rounded-lg bg-white border border-slate-200 text-slate-400 active:text-red-500 active:border-red-200 active:bg-red-50 transition-all flex items-center justify-center shadow-sm active:scale-95"
              >
                <IconTrash />
              </button>
@@ -639,8 +626,8 @@ export default function CadenciaPage() {
                 onClick={analyze}
                 disabled={!canAnalyze || loading}
                 className={`
-                  h-28 rounded-lg flex flex-col items-center justify-center shadow-[0_1px_0_rgba(0,0,0,0.35)] text-white transition-all active:brightness-90
-                  ${canAnalyze && !loading ? "bg-[#007AFF]" : "bg-[#BCC0C5] cursor-not-allowed"}
+                  h-28 rounded-lg flex flex-col items-center justify-center shadow-lg transition-all active:scale-95
+                  ${canAnalyze && !loading ? `${G.main} text-white shadow-indigo-300/50` : "bg-slate-100 text-slate-300 cursor-not-allowed"}
                 `}
              >
                 {loading ? <IconRefresh /> : <IconArrowRight />}
