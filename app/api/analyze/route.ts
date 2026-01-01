@@ -1,21 +1,18 @@
+// app/api/analyze/route.ts
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import {
+  normalizeAccidentals,
+  parseNote,
+  uniqBy,
+  intervalBetween,
+  transpose,
+  type IntervalSpec,
+} from "@/lib/theory/interval";
 
-/**
- * Cadencia AI analyze API
- * Input:  { selectedNotes: string[] }  e.g. ["C", "Eb", "G", "Bb"]
- * Output: { engineChord: string, candidates: CandidateObj[], analysis: string }
- *
- * ✅ engineChord / candidates はルールベースのみ（AIは関与しない）
- * ✅ analysis（考察文章）だけAIが生成
- */
-
-// -------------------- OpenAI --------------------
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 // -------------------- Types --------------------
 type CandidateObj = {
@@ -30,298 +27,168 @@ type CandidateObj = {
   reason?: string | string[];
 };
 
-// -------------------- Utils: Normalize --------------------
-function normalizeAccidentals(s: string) {
-  return (s ?? "")
-    .trim()
-    .replaceAll("♭", "b")
-    .replaceAll("♯", "#")
-    .replaceAll("𝄫", "bb")
-    .replaceAll("𝄪", "##")
-    .replaceAll("−", "-");
-}
-
-type ParsedNote = {
-  raw: string;      // e.g. "Cb"
-  letter: string;   // "C"
-  acc: string;      // "", "#", "b", "##", "bb"
-  pc: number;       // 0..11 pitch class
-};
-
-const LETTER_TO_PC: Record<string, number> = {
-  C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11,
-};
-
-function accToDelta(acc: string) {
-  if (acc === "") return 0;
-  if (acc === "#") return 1;
-  if (acc === "##") return 2;
-  if (acc === "b") return -1;
-  if (acc === "bb") return -2;
-  return 0;
-}
-
-function parseNote(noteInput: string): ParsedNote | null {
-  const raw = normalizeAccidentals(noteInput);
-  // Accept: C, C#, Cb, C##, Cbb
-  const m = raw.match(/^([A-Ga-g])([#b]{0,2})$/);
-  if (!m) return null;
-
-  const letter = m[1].toUpperCase();
-  const acc = m[2] ?? "";
-  const base = LETTER_TO_PC[letter];
-  if (base === undefined) return null;
-
-  const pc = (base + accToDelta(acc) + 12) % 12;
-  return { raw: `${letter}${acc}`, letter, acc, pc };
-}
-
-function uniqBy<T>(arr: T[], keyFn: (x: T) => string) {
-  const seen = new Set<string>();
-  const out: T[] = [];
-  for (const x of arr) {
-    const k = keyFn(x);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push(x);
-  }
-  return out;
-}
-
-// -------------------- Chord Templates --------------------
+// -------------------- Templates (文字間隔ベース) --------------------
+// 例: メジャートライアド = M3 + P5
+//     ドミナント7 = M3 + P5 + m7
 type Template = {
-  name: string;          // e.g. "maj7"
-  intervals: number[];   // semitones from root
+  name: string;         // 付加するサフィックス（"", "m", "7" ...）
+  tones: IntervalSpec[]; // root から見た構成音（root 自身は含めない）
   tags?: string[];
 };
 
 const TEMPLATES: Template[] = [
-  { name: "",       intervals: [0, 4, 7],            tags: ["triad", "major"] },
-  { name: "m",      intervals: [0, 3, 7],            tags: ["triad", "minor"] },
-  { name: "dim",    intervals: [0, 3, 6],            tags: ["triad", "diminished"] },
-  { name: "aug",    intervals: [0, 4, 8],            tags: ["triad", "augmented"] },
+  { name: "",      tones: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }], tags: ["triad","major"] },
+  { name: "m",     tones: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }], tags: ["triad","minor"] },
+  { name: "dim",   tones: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }], tags: ["triad","diminished"] },
+  { name: "aug",   tones: [{ number: 3, quality: "M" }, { number: 5, quality: "A" }], tags: ["triad","augmented"] },
 
-  { name: "7",      intervals: [0, 4, 7, 10],        tags: ["seventh", "dominant7"] },
-  { name: "maj7",   intervals: [0, 4, 7, 11],        tags: ["seventh", "major7"] },
-  { name: "m7",     intervals: [0, 3, 7, 10],        tags: ["seventh", "minor7"] },
-  { name: "mMaj7",  intervals: [0, 3, 7, 11],        tags: ["seventh", "minorMajor7"] },
-  { name: "dim7",   intervals: [0, 3, 6, 9],         tags: ["seventh", "diminished7"] },
-  { name: "m7b5",   intervals: [0, 3, 6, 10],        tags: ["seventh", "halfDiminished"] },
+  { name: "7",     tones: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 7, quality: "m" }], tags: ["seventh","dominant7"] },
+  { name: "maj7",  tones: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 7, quality: "M" }], tags: ["seventh","major7"] },
+  { name: "m7",    tones: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 7, quality: "m" }], tags: ["seventh","minor7"] },
+  { name: "mMaj7", tones: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 7, quality: "M" }], tags: ["seventh","minorMajor7"] },
+  { name: "dim7",  tones: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }, { number: 7, quality: "d" }], tags: ["seventh","diminished7"] },
+  { name: "m7b5",  tones: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }, { number: 7, quality: "m" }], tags: ["seventh","halfDiminished"] },
 
-  { name: "6",      intervals: [0, 4, 7, 9],         tags: ["sixth"] },
-  { name: "m6",     intervals: [0, 3, 7, 9],         tags: ["sixth"] },
+  { name: "6",     tones: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 6, quality: "M" }], tags: ["sixth"] },
+  { name: "m6",    tones: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 6, quality: "M" }], tags: ["sixth"] },
 ];
 
-// fallback naming (only used when input spelling doesn't provide a hint)
-const PC_TO_NAME_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-const PC_TO_NAME_FLAT  = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
-
-function preferFlat(input: ParsedNote[]) {
-  return input.some(n => n.acc.includes("b"));
+function token(spec: IntervalSpec) {
+  return `${spec.quality}${spec.number}`;
 }
 
-// ✅ ここがCb/B#/E#みたいな「綴り」を尊重するポイント
-// inputで出てきたpcに対して、ユーザーのraw綴りを優先表示する
-function buildPreferredSpellingMap(input: ParsedNote[]) {
-  const map = new Map<number, string>();
-  for (const n of input) {
-    if (!map.has(n.pc)) map.set(n.pc, n.raw);
-  }
-  return map;
-}
-
-function pcToName(pc: number, useFlat: boolean, preferred?: Map<number, string>) {
-  const p = preferred?.get(pc);
-  if (p) return p; // 例: pc=11 でも "Cb" を返せる
-  return useFlat ? PC_TO_NAME_FLAT[pc] : PC_TO_NAME_SHARP[pc];
-}
-
-function scoreMatch(inputPcs: Set<number>, chordPcs: Set<number>) {
+function scoreByTokens(inputTokens: Set<string>, tplTokens: Set<string>) {
+  // 「一致」を強く評価、欠損も強く減点、余剰は軽く減点
   let common = 0;
-  for (const x of chordPcs) if (inputPcs.has(x)) common += 1;
+  for (const t of tplTokens) if (inputTokens.has(t)) common += 1;
 
-  const missing = [...inputPcs].filter(x => !chordPcs.has(x)).length;
-  const extra   = [...chordPcs].filter(x => !inputPcs.has(x)).length;
+  let missing = 0;
+  for (const t of tplTokens) if (!inputTokens.has(t)) missing += 1;
 
-  // feel-good tuning
-  return common * 30 - missing * 40 - extra * 15;
+  let extra = 0;
+  for (const t of inputTokens) if (!tplTokens.has(t)) extra += 1;
+
+  return common * 50 - missing * 60 - extra * 15;
 }
 
-function buildCandidate(
-  rootPc: number,
-  tpl: Template,
-  inputPcs: Set<number>,
-  useFlat: boolean,
-  bassPc: number,
-  preferred: Map<number, string>
-): CandidateObj {
-  const chordPcs = new Set<number>(tpl.intervals.map(i => (rootPc + i) % 12));
+function buildCandidate(params: {
+  rootRaw: string;
+  bassRaw: string;
+  inputRaw: string[];
+  tpl: Template;
+}): CandidateObj {
+  const { rootRaw, bassRaw, inputRaw, tpl } = params;
 
-  const chordTones = [...chordPcs].map(pc => pcToName(pc, useFlat, preferred));
-  const extraTones = [...inputPcs]
-    .filter(pc => !chordPcs.has(pc))
-    .map(pc => pcToName(pc, useFlat, preferred));
+  // 入力音を「root からの音程トークン」に変換（root自身は 1P として扱ってもよいが、テンプレは root を含めない）
+  const tokens: string[] = [];
+  const tokenToNote: Record<string, string[]> = {};
 
-  const tensions = extraTones.map(t => `add(${t})`);
+  for (const n of inputRaw) {
+    if (n === rootRaw) continue;
+    const iv = intervalBetween(rootRaw, n);
+    if (!iv) continue;
+    const tk = iv.label; // 例: "m7"
+    tokens.push(tk);
+    tokenToNote[tk] = tokenToNote[tk] ? [...tokenToNote[tk], n] : [n];
+  }
 
-  const base = pcToName(bassPc, useFlat, preferred);
-  const root = pcToName(rootPc, useFlat, preferred);
-  const chord = `${root}${tpl.name}${bassPc !== rootPc ? `/${base}` : ""}`;
+  const inputTokens = new Set(tokens);
+  const tplTokens = new Set(tpl.tones.map(token));
+  const score = scoreByTokens(inputTokens, tplTokens);
 
-  const score = scoreMatch(inputPcs, chordPcs);
+  // chord tones（テンプレ通りの“表記”で生成）
+  const chordTones = [rootRaw, ...tpl.tones.map((s) => transpose(rootRaw, s)).filter(Boolean) as string[]];
+
+  // extra tones（テンプレ外の入力音）
+  const expectedNotes = new Set(chordTones);
+  const extraTones = inputRaw.filter(n => !expectedNotes.has(n));
+
+  const base = bassRaw;
+  const chord = `${rootRaw}${tpl.name}${bassRaw !== rootRaw ? `/${bassRaw}` : ""}`;
 
   const reasonLines: string[] = [];
-  reasonLines.push(`Root候補: ${root}`);
-  reasonLines.push(`Chord tones: ${chordTones.join(", ")}`);
-  if (extraTones.length) reasonLines.push(`Extra tones: ${extraTones.join(", ")}`);
+  reasonLines.push(`Root(表記): ${rootRaw}`);
+  reasonLines.push(`テンプレ: ${tpl.name || "(maj)"}`);
+  reasonLines.push(`一致トークン: ${[...tplTokens].filter(t => inputTokens.has(t)).join(", ") || "なし"}`);
+  if (extraTones.length) reasonLines.push(`余剰音: ${extraTones.join(", ")}`);
 
   return {
     chord,
     base,
-    root,
+    root: rootRaw,
     score,
-    has7: tpl.intervals.includes(10) || tpl.intervals.includes(11),
-    tensions,
+    has7: tpl.tones.some(t => t.number === 7),
+    tensions: extraTones.map(t => `add(${t})`),
     chordTones,
     extraTones,
     reason: reasonLines,
   };
 }
 
-// -------------------- AI (analysis text) --------------------
+// -------------------- AI analysis (文章だけ) --------------------
 function safeJson(v: any) {
   try { return JSON.stringify(v, null, 2); } catch { return String(v); }
 }
 
-async function buildAiAnalysis(params: {
+async function buildAiAnalysis(args: {
   selectedRaw: string[];
   engineChord: string;
   candidates: CandidateObj[];
 }) {
-  // fallback (APIキー未設定でもUIが壊れない)
   if (!process.env.OPENAI_API_KEY) {
     return [
-      "（AI未接続のため、簡易ログを表示しています）",
-      `入力: ${params.selectedRaw.join(", ")}`,
-      `判定: ${params.engineChord}`,
+      "（AI未接続）",
+      `入力: ${args.selectedRaw.join(", ")}`,
+      `判定: ${args.engineChord}`,
       "",
       "OPENAI_API_KEY を設定すると、ここにAIの考察が表示されます。",
     ].join("\n");
   }
 
   const SYSTEM = `
-あなたは「古典和声（機能和声）」を専門とする音楽理論家です。
-あなたの役割は【説明・考察の文章を書くことだけ】です。
-コード名の判定・再解釈・修正は一切行ってはいけません。
+あなたは古典和声（機能和声）を専門とする音楽理論家です。
+音程・度数は必ず「音名の文字間隔（C–D–E–F–G–A–B）」で扱い、
+半音数・実音高・ピッチクラスを基準に説明してはいけません。
+あなたの役割は【説明だけ】です。コード名の判定は行いません。
+入力された音名表記を最優先し、存在しない前提や一般論を勝手に作らない。
 
-【音程の数え方：最重要ルール】
-音程（度数・増減）は必ず「音名の文字間隔（C–D–E–F–G–A–B）」で数える。
-半音数、実音高、ピッチクラス、鍵盤位置、MIDI番号、12平均律の同音扱いを根拠にしてはいけない。
-
-【手順：必ずこの順で計算し、飛ばさない】
-入力は必ず「根音X」→「対象音Y」の順で扱う。
-
-(1) まず音名の文字だけを見る（♯/♭/𝄪/𝄫は一旦無視）
-    例：X= D、Y= G# なら文字は D と G
-
-(2) 文字間隔を数えて「◯度」を確定する（度数は必ず 1 から数える）
-    文字を順に並べて数える：D(1)–E(2)–F(3)–G(4)
-    → この時点で「4度」と確定
-    ※「増4度（または減5度）」のように、度数を二択にしてはいけない。
-      度数は文字間隔で一意に決まる。
-
-(3) 次に増減を決める（ここでも半音数を使わない）
-    増減は「その表記が示す音名関係（♯/♭/𝄪/𝄫）」として説明する。
-    例：D→G は完全4度、D→G# は「4度のGを#した表記」なので増4度。
-    ※この段階でも「実音では同じ」などの逃げは不可。
-
-(4) 最終出力は必ず「度数＋増減」をセットで書く
-    OK例：増4度 / 短3度 / 長6度 / 完全5度 / 減7度
-    NG例：トライトーン / #11っぽい / 半音で6つ離れてる / だいたい減5度
-
-【禁止事項（嘘防止）】
-- 「増4度 ≒ 減5度」のように、文字間隔の違う音程名を“同じ”として扱うのは禁止。
-- 「FbはEと同じ高さ」など、実音高の一致を根拠に説明してはいけない（誤解ポイントとしての言及のみ可）。
-- 情報不足の箇所は推測で埋めず、「前後文脈が無いので確定できない」と明言する。
-
-【出力チェック（自分で検算）】
-文章を出す前に必ず確認：
-- すべての音程表現が「文字間隔で度数が一意」になっているか
-- “または”で別の度数名を併記していないか
-- 半音・ピッチクラス・実音高の根拠が混ざっていないか
-
-【最重要原則（最優先）】
-- 音程名（完全・長・短・増・減◯度）は、
-  入力された音名同士の「文字間隔」を明示的に確認できる場合にのみ使用する。
-- 確認できない場合、音程名を使ってはならない。
-- 「不協和」「緊張感」などの評価語は、
-  具体的な音程名・構造説明を伴わない限り使用禁止。
-- 音程名（完全・長・短・増・減◯度）は、
-  音名の文字間隔から一意に決まるもののみ使用し、
-  AIが独自に命名・言い換え・解釈してはならない。
-- 音程名（長3度・完全5度・減5度など）は、
-  入力された音名同士の文字間隔から機械的に決まるものだけを使用し、
-  推測・言い換え・機能的解釈で新たに命名してはいけない。
-- 音程・度数（3度・4度・5度・7度など）は、必ず「音名の文字間隔（C–D–E–F–G–A–B）」で定義する。
-- 半音数（ピッチクラス）による説明を主にしてはいけない。
-- 例：
-  - C → E = 長3度
-  - C → Fb = 減4度
-  - C → B = 長7度
-- Fb を「Eと同じ高さ」「長3度相当」「減5度的」などと言い換えてはならない。
-- 異名同音であっても、表記が異なれば和声的意味は異なる。
-
-【異名同音の扱い】
-- Cb は B と「同じ音高」だが、「同じ和声的意味」とは書かない。
-- 表記そのものが和声的意図を持つ前提で説明する。
-- 実音が同じであることに触れる場合は、「誤解ポイント」として補足的にのみ言及する。
-
-【調性・機能について】
-- 調性は断定しない。「可能性」「仮説」として2〜3個まで述べる。
-- ローマ数字は必ず調性仮説とセットで書く。
-- 前後関係が無い以上、断言口調は禁止。
-
-【文章スタイル】
-- 日本語で、簡潔・正確・誠実に。
-- 想像・ジャズ的語彙・ブルース的解釈を勝手に持ち込まない。
-- 分からないことは「分からない」と書いてよい。
-
-【禁止事項】
-- 半音数だけで機能を決めること
-- 「〜っぽい」「ジャズでは〜」など文脈外の飛躍
-- 入力に含まれない音を前提にした説明
+【最重要ルール（嘘防止）】
+- engineChord の表記を変更しない（言い換え・再判定しない）。
+- 異名同音は同一視しない（Cb を B と断言しない）。
+- 調性は断定しない（可能性は2〜3個まで）。
+- 不明は「情報不足」と言い切る（推測で埋めない）。
 `.trim();
 
-  const top = params.candidates.slice(0, 5).map(c => ({
+  const top = args.candidates.slice(0, 5).map(c => ({
     chord: c.chord,
-    score: c.score,
     chordTones: c.chordTones,
     extraTones: c.extraTones,
-    base: c.base,
-    root: c.root,
+    reason: c.reason,
+    score: c.score,
   }));
 
   const USER = `
-【入力（表記はそのまま）】
-${params.selectedRaw.join(", ")}
+【入力（表記そのまま）】
+${args.selectedRaw.join(", ")}
 
-【エンジン判定（この表記を尊重して説明）】
-${params.engineChord}
+【engineChord（変更禁止）】
+${args.engineChord}
 
-【候補上位（参考。判定の変更には使わない）】
+【候補上位（参考。説明にだけ使う）】
 ${safeJson(top)}
 
-【お願い】次の順で説明して：
-1) ひとことで（1行）
-2) こう聞こえる理由（構成音 / 3度・5度・7度の役割）
-3) あり得る調性仮説（2〜3）
-4) 誤解しがちな点（特に Cb などの表記が意味を持つケース）
-5) 次に分かると強い情報（前後の進行や主旋律）
+【出力フォーマット（この順）】
+A. ひとことで（1〜2行）
+B. 主解釈（engineChord / 機能 / 調性仮説つきローマ数字）
+C. 準解釈（同上）
+D. 別解釈（同上、無ければ省略）
+E. 非和声音の見立て（どの音がどの種類っぽいか）
+F. 次に分かること（前後が分かると何が確定するか）
 `.trim();
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4.1-mini",
-    temperature: 0.25,
+    temperature: 0.1,
     messages: [
       { role: "system", content: SYSTEM },
       { role: "user", content: USER },
@@ -331,15 +198,14 @@ ${safeJson(top)}
   return completion.choices[0]?.message?.content?.trim() || "（AIの応答が空でした）";
 }
 
-// -------------------- Main Analyze --------------------
+// -------------------- Main --------------------
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null);
     const selectedNotes: string[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
 
-    const normalizedRaw = selectedNotes.map(normalizeAccidentals).filter(Boolean);
-
-    const parsed = normalizedRaw.map(parseNote).filter(Boolean) as ParsedNote[];
+    const normalized = selectedNotes.map(normalizeAccidentals).filter(Boolean);
+    const parsed = normalized.map(parseNote).filter(Boolean);
 
     if (parsed.length < 3) {
       return NextResponse.json(
@@ -348,57 +214,44 @@ export async function POST(req: Request) {
       );
     }
 
-    // spelling単位で重複排除（CbはCbのまま残る）
-    const uniqParsed = uniqBy(parsed, n => n.raw);
+    // ✅ 表記単位で重複排除（Cb は Cb のまま）
+    const uniq = uniqBy(parsed, (n) => n!.raw).map(n => n!.raw);
 
-    const preferred = buildPreferredSpellingMap(uniqParsed);
+    // UI仕様: 最初に選ばれた音をベース扱い（あなたの選択順を守る）
+    const bassRaw = uniq[0];
 
-    const inputPcs = new Set<number>(uniqParsed.map(n => n.pc));
-
-    // NOTE: UIの順序保証がないので「最初の要素」をベース扱い（必要なら後で改善）
-    const bassPc = uniqParsed[0].pc;
-
-    const useFlat = preferFlat(uniqParsed);
-
-    const rootCandidates = [...new Set<number>(uniqParsed.map(n => n.pc))];
+    // Root候補: 入力の「表記」すべて（Cb も root候補になり得る）
+    const roots = [...uniq];
 
     const candidates: CandidateObj[] = [];
-    for (const rootPc of rootCandidates) {
+    for (const rootRaw of roots) {
       for (const tpl of TEMPLATES) {
-        candidates.push(buildCandidate(rootPc, tpl, inputPcs, useFlat, bassPc, preferred));
+        candidates.push(buildCandidate({ rootRaw, bassRaw, inputRaw: uniq, tpl }));
       }
     }
 
     candidates.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-
-    const top = candidates[0];
-    const engineChord = top?.chord ?? "判定不能";
-
     const outCandidates = candidates.slice(0, 10);
+    const engineChord = outCandidates[0]?.chord ?? "判定不能";
 
-    // ✅ analysisだけAI
-    let analysisText = "";
+    // ✅ AIは「考察文」だけ生成（判定には関与しない）
+    let analysis = "";
     try {
-      analysisText = await buildAiAnalysis({
-        selectedRaw: uniqParsed.map(n => n.raw),
-        engineChord,
-        candidates: outCandidates,
-      });
-    } catch (e: any) {
-      const fallback = [
-        "（AI考察の生成に失敗したため、簡易ログを表示しています）",
-        `入力: ${uniqParsed.map(n => n.raw).join(", ")}`,
+      analysis = await buildAiAnalysis({ selectedRaw: uniq, engineChord, candidates: outCandidates });
+    } catch {
+      analysis = [
+        "（AI考察の生成に失敗）",
+        `入力: ${uniq.join(", ")}`,
         `最有力: ${engineChord}`,
-        ...(top?.reason ? (Array.isArray(top.reason) ? top.reason : [top.reason]) : []),
-      ];
-      analysisText = fallback.join("\n");
+      ].join("\n");
     }
 
     return NextResponse.json({
       engineChord,
       candidates: outCandidates,
-      analysis: analysisText,
+      analysis,
     });
+
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
   }
