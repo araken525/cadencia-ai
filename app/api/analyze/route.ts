@@ -27,7 +27,7 @@ function normalizeAccidentals(s: string) {
     .replaceAll("♯", "#")
     .replaceAll("𝄫", "bb")
     .replaceAll("𝄪", "##")
-    .replaceAll("−", "-"); // just in case
+    .replaceAll("−", "-");
 }
 
 type ParsedNote = {
@@ -62,7 +62,6 @@ function parseNote(noteInput: string): ParsedNote | null {
   if (base === undefined) return null;
 
   const pc = (base + accToDelta(acc) + 12) % 12;
-
   return { raw: `${letter}${acc}`, letter, acc, pc };
 }
 
@@ -80,9 +79,9 @@ function uniqBy<T>(arr: T[], keyFn: (x: T) => string) {
 
 // -------------------- Chord Templates --------------------
 type Template = {
-  name: string;          // e.g. "maj7"
-  intervals: number[];   // in semitones from root
-  tags?: string[];       // for UI/analysis
+  name: string;
+  intervals: number[];
+  tags?: string[];
 };
 
 const TEMPLATES: Template[] = [
@@ -98,7 +97,6 @@ const TEMPLATES: Template[] = [
   { name: "dim7",   intervals: [0, 3, 6, 9],         tags: ["seventh", "diminished7"] },
   { name: "m7b5",   intervals: [0, 3, 6, 10],        tags: ["seventh", "halfDiminished"] },
 
-  // 6th chords (optional but useful)
   { name: "6",      intervals: [0, 4, 7, 9],         tags: ["sixth"] },
   { name: "m6",     intervals: [0, 3, 7, 9],         tags: ["sixth"] },
 ];
@@ -106,7 +104,6 @@ const TEMPLATES: Template[] = [
 const PC_TO_NAME_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 const PC_TO_NAME_FLAT  = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
 
-// prefer spelling based on user's input
 function preferFlat(input: ParsedNote[]) {
   return input.some(n => n.acc.includes("b"));
 }
@@ -115,14 +112,41 @@ function pcToName(pc: number, useFlat: boolean) {
   return useFlat ? PC_TO_NAME_FLAT[pc] : PC_TO_NAME_SHARP[pc];
 }
 
+// ★ここが今回の肝：入力にある綴りを優先して pc を名前化する
+function buildPcNamePicker(input: ParsedNote[]) {
+  const map = new Map<number, string[]>();
+  for (const n of input) {
+    const arr = map.get(n.pc) ?? [];
+    arr.push(n.raw);
+    map.set(n.pc, arr);
+  }
+
+  return (pc: number, useFlat: boolean) => {
+    const arr = map.get(pc);
+    if (arr && arr.length) {
+      // flat優先モードなら “b” を含む表記を優先（Cb / Db / Bb などを守る）
+      if (useFlat) {
+        const flatLike = arr.find(x => x.includes("b"));
+        if (flatLike) return flatLike;
+      }
+      // sharp優先モードなら “#” を含む表記を優先
+      if (!useFlat) {
+        const sharpLike = arr.find(x => x.includes("#"));
+        if (sharpLike) return sharpLike;
+      }
+      // それでも無ければ、入力にあった最初の表記を採用
+      return arr[0];
+    }
+    // 入力に無い pc は従来通り
+    return pcToName(pc, useFlat);
+  };
+}
+
 function scoreMatch(target: Set<number>, candidate: Set<number>) {
-  // simple scoring: reward common tones, penalize missing/extras
   let common = 0;
   for (const x of candidate) if (target.has(x)) common += 1;
   const missing = [...target].filter(x => !candidate.has(x)).length;
   const extra   = [...candidate].filter(x => !target.has(x)).length;
-
-  // weights tuned for "feel good" ranking
   return common * 30 - missing * 40 - extra * 15;
 }
 
@@ -131,19 +155,20 @@ function buildCandidate(
   tpl: Template,
   inputPcs: Set<number>,
   useFlat: boolean,
-  bassPc: number
+  bassPc: number,
+  pickName: (pc: number, useFlat: boolean) => string
 ): CandidateObj {
   const chordPcs = new Set<number>(tpl.intervals.map(i => (rootPc + i) % 12));
 
-  const chordTones = [...chordPcs].map(pc => pcToName(pc, useFlat));
+  const chordTones = [...chordPcs].map(pc => pickName(pc, useFlat));
   const extraTones = [...inputPcs]
     .filter(pc => !chordPcs.has(pc))
-    .map(pc => pcToName(pc, useFlat));
+    .map(pc => pickName(pc, useFlat));
 
-  const tensions = extraTones.map(t => `add(${t})`); // light-touch
+  const tensions = extraTones.map(t => `add(${t})`);
 
-  const base = pcToName(bassPc, useFlat);
-  const root = pcToName(rootPc, useFlat);
+  const base = pickName(bassPc, useFlat);
+  const root = pickName(rootPc, useFlat);
 
   const chord = `${root}${tpl.name}${bassPc !== rootPc ? `/${base}` : ""}`;
 
@@ -184,26 +209,25 @@ export async function POST(req: Request) {
       );
     }
 
-    // Unique by exact spelling (so C# and Db can co-exist if you ever allow)
+    // Unique by exact spelling (C# と Db を区別)
     const uniqParsed = uniqBy(parsed, n => n.raw);
 
     const inputPcs = new Set<number>(uniqParsed.map(n => n.pc));
-    const bassPc = uniqParsed[0].pc; // your UI has no order guarantee; but keep "first chosen" as bass
-
+    const bassPc = uniqParsed[0].pc; // UIの順序が保証されないならここは今後改善余地あり
     const useFlat = preferFlat(uniqParsed);
 
-    // Root candidates: every input note's pitch class as possible root
-    const rootCandidates = [...new Set<number>(uniqParsed.map(n => n.pc))];
+    // ★pc→名前決定（入力綴り優先）
+    const pickName = buildPcNamePicker(uniqParsed);
 
+    const rootCandidates = [...new Set<number>(uniqParsed.map(n => n.pc))];
     const candidates: CandidateObj[] = [];
 
     for (const rootPc of rootCandidates) {
       for (const tpl of TEMPLATES) {
-        candidates.push(buildCandidate(rootPc, tpl, inputPcs, useFlat, bassPc));
+        candidates.push(buildCandidate(rootPc, tpl, inputPcs, useFlat, bassPc, pickName));
       }
     }
 
-    // Sort by score desc
     candidates.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
 
     const top = candidates[0];
@@ -220,12 +244,9 @@ export async function POST(req: Request) {
       analysisLines.push(`※ 追加音があるため、テンション/経過音の可能性があります。`);
     }
 
-    // Return top N (UIで候補表示するので10くらい)
-    const outCandidates = candidates.slice(0, 10);
-
     return NextResponse.json({
       engineChord,
-      candidates: outCandidates,
+      candidates: candidates.slice(0, 10),
       analysis: analysisLines.join("\n"),
     });
   } catch (e: any) {
