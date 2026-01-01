@@ -6,8 +6,10 @@ import {
   normalizeAccidentals,
   parseNote,
   intervalBetween,
+  transpose,
   uniqBy,
   type IntervalSpec,
+  type ParsedNote,
 } from "@/lib/theory/interval";
 
 // -------------------- OpenAI (optional) --------------------
@@ -30,8 +32,8 @@ type CandidateObj = {
 };
 
 type Template = {
-  name: string;                 // "", "m", "7", ...
-  intervals: IntervalSpec[];    // 文字間隔ベース
+  name: string;
+  intervals: IntervalSpec[]; // 文字間隔ベース
   tags?: string[];
 };
 
@@ -43,20 +45,24 @@ const TEMPLATES: Template[] = [
   { name: "aug", intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "A" }], tags: ["triad", "augmented"] },
 
   // sevenths
-  { name: "7",    intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 7, quality: "m" }], tags: ["seventh"] },
-  { name: "maj7", intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 7, quality: "M" }], tags: ["seventh"] },
-  { name: "m7",   intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 7, quality: "m" }], tags: ["seventh"] },
-  { name: "mMaj7",intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 7, quality: "M" }], tags: ["seventh"] },
-  { name: "m7b5", intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }, { number: 7, quality: "m" }], tags: ["seventh"] },
-  { name: "dim7", intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }, { number: 7, quality: "d" }], tags: ["seventh"] },
+  { name: "7",     intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 7, quality: "m" }], tags: ["seventh"] },
+  { name: "maj7",  intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 7, quality: "M" }], tags: ["seventh"] },
+  { name: "m7",    intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 7, quality: "m" }], tags: ["seventh"] },
+  { name: "mMaj7", intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 7, quality: "M" }], tags: ["seventh"] },
+  { name: "m7b5",  intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }, { number: 7, quality: "m" }], tags: ["seventh"] },
+  { name: "dim7",  intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }, { number: 7, quality: "d" }], tags: ["seventh"] },
 
-  // sixths (optional)
-  { name: "6",   intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 6, quality: "M" }], tags: ["sixth"] },
-  { name: "m6",  intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 6, quality: "M" }], tags: ["sixth"] },
+  // sixths
+  { name: "6",  intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 6, quality: "M" }], tags: ["sixth"] },
+  { name: "m6", intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 6, quality: "M" }], tags: ["sixth"] },
 ];
 
 function safeJson(v: any) {
   try { return JSON.stringify(v, null, 2); } catch { return String(v); }
+}
+
+function isParsedNote(n: ParsedNote | null): n is ParsedNote {
+  return n !== null;
 }
 
 // engineChord の「根音表記」を抜く（例: "Cb7/Fb" -> "Cb"）
@@ -67,23 +73,7 @@ function extractRootFromChordName(chord: string): string | null {
   return `${m[1]}${m[2] ?? ""}`.trim();
 }
 
-// root + template intervals から chord tones（表記）を生成（文字間隔主軸）
 function chordTonesFrom(rootRaw: string, tpl: Template): string[] {
-  const tones: string[] = [rootRaw];
-  for (const spec of tpl.intervals) {
-    // interval.ts の transpose を使いたいが、export してない場合もあるので
-    // ここでは intervalBetween を逆算するより、transpose を export 推奨。
-    // もし transpose が export 済みなら差し替えてください。
-    // ↓暫定: interval.ts に transpose がある前提で dynamic import
-  }
-  return tones;
-}
-
-// transpose が export されている前提で、ここで読む
-async function chordTonesFromWithTranspose(rootRaw: string, tpl: Template): Promise<string[]> {
-  const mod = await import("@/lib/theory/interval");
-  const transpose: (rootRaw: string, spec: IntervalSpec) => string | null = mod.transpose;
-
   const tones: string[] = [rootRaw];
   for (const spec of tpl.intervals) {
     const t = transpose(rootRaw, spec);
@@ -99,7 +89,7 @@ function scoreBySpelling(inputSet: Set<string>, chordTones: string[]) {
   const missing = chordTones.filter(t => !inputSet.has(t)).length;
   const extra = [...inputSet].filter(n => !chordTones.includes(n)).length;
 
-  // 厳密表記一致を強く優遇（ここが “文字の感覚” を守る中核）
+  // “表記一致” を最優先
   return common * 35 - missing * 60 - extra * 12;
 }
 
@@ -109,7 +99,7 @@ async function buildCandidate(params: {
   inputSet: Set<string>;
   bassRaw: string;
 }): Promise<CandidateObj> {
-  const chordTones = await chordTonesFromWithTranspose(params.rootRaw, params.tpl);
+  const chordTones = chordTonesFrom(params.rootRaw, params.tpl);
 
   const extraTones = [...params.inputSet].filter(n => !chordTones.includes(n));
   const tensions = extraTones.map(t => `add(${t})`);
@@ -140,14 +130,13 @@ async function buildCandidate(params: {
   };
 }
 
-// AIの「考察文章」生成（判定はしない／表記優先）
+// AIの「考察文章」生成（判定しない／表記優先）
 async function buildAiAnalysis(params: {
   selectedRaw: string[];
   engineChord: string;
   candidates: CandidateObj[];
   bassRaw: string;
 }) {
-  // OpenAIなしでも動作
   if (!openai) {
     return [
       "（AI未接続）",
@@ -158,7 +147,6 @@ async function buildAiAnalysis(params: {
     ].join("\n");
   }
 
-  // engineChord の根音を“表記”で抜いて、各音との音程ラベルを作る（文字間隔主軸）
   const root = extractRootFromChordName(params.engineChord);
   const intervalMap =
     root
@@ -236,7 +224,7 @@ export async function POST(req: Request) {
 
     const normalizedRaw = selectedNotes.map(normalizeAccidentals).filter(Boolean);
 
-    const parsed = normalizedRaw.map(parseNote).filter(Boolean);
+    const parsed = normalizedRaw.map(parseNote).filter(isParsedNote);
     if (parsed.length < 3) {
       return NextResponse.json(
         { engineChord: "判定不能", candidates: [], analysis: "音が3つ以上必要です" },
@@ -244,16 +232,13 @@ export async function POST(req: Request) {
       );
     }
 
-    // spelling（表記）でユニーク化（CbはCbのまま）
     const uniqParsed = uniqBy(parsed, (n) => n.raw);
     const selectedRaw = uniqParsed.map(n => n.raw);
 
-    // ベース：UIの「選択順先頭」をできるだけ尊重（uniq前の先頭）
     const bassRaw = parseNote(normalizedRaw[0])?.raw ?? selectedRaw[0];
-
     const inputSet = new Set<string>(selectedRaw);
 
-    // root候補：入力された表記をそのまま root 候補にする（pc起点にしない）
+    // root候補：入力表記そのまま
     const rootCandidates = selectedRaw;
 
     const candidates: CandidateObj[] = [];
@@ -269,7 +254,6 @@ export async function POST(req: Request) {
     const top = outCandidates[0];
     const engineChord = top?.chord ?? "判定不能";
 
-    // AI考察（失敗してもfallback）
     let analysisText = "";
     try {
       analysisText = await buildAiAnalysis({
@@ -278,7 +262,7 @@ export async function POST(req: Request) {
         candidates: outCandidates,
         bassRaw,
       });
-    } catch (e: any) {
+    } catch {
       analysisText = [
         "（AI考察の生成に失敗。簡易ログ）",
         `入力: ${selectedRaw.join(", ")}`,

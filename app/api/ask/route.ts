@@ -1,11 +1,15 @@
 export const runtime = "nodejs";
 
 import OpenAI from "openai";
-import { normalizeAccidentals, intervalBetween } from "@/lib/theory/interval";
+import {
+  normalizeAccidentals,
+  intervalBetween,
+} from "@/lib/theory/interval";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+const openai =
+  process.env.OPENAI_API_KEY
+    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    : null;
 
 type ReqBody = {
   selectedNotes?: string[];
@@ -42,6 +46,9 @@ export async function POST(req: Request) {
     }
     if (!question) {
       return new Response("質問が空です。", { status: 400 });
+    }
+    if (!openai) {
+      return new Response("OPENAI_API_KEY が未設定です。", { status: 500 });
     }
 
     const root = extractRootFromChordName(engineChord);
