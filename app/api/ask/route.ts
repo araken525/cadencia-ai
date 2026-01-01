@@ -1,15 +1,11 @@
 export const runtime = "nodejs";
 
 import OpenAI from "openai";
-import {
-  normalizeAccidentals,
-  intervalBetween,
-} from "@/lib/theory/interval";
+import { normalizeAccidentals, intervalBetween } from "@/lib/theory/interval";
 
-const openai =
-  process.env.OPENAI_API_KEY
-    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-    : null;
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+});
 
 type ReqBody = {
   selectedNotes?: string[];
@@ -41,20 +37,19 @@ export async function POST(req: Request) {
     if (selectedNotes.length < 3) {
       return new Response("3音以上選んでください。", { status: 400 });
     }
-    if (!engineChord || engineChord === "---") {
+    if (!engineChord || engineChord === "---" || engineChord === "判定不能") {
       return new Response("まず判定してください。", { status: 400 });
     }
     if (!question) {
       return new Response("質問が空です。", { status: 400 });
     }
-    if (!openai) {
-      return new Response("OPENAI_API_KEY が未設定です。", { status: 500 });
-    }
 
     const root = extractRootFromChordName(engineChord);
     const intervalMap =
       root
-        ? selectedNotes.map(n => `${root}→${n}: ${intervalBetween(root, n)?.label ?? "（算出不可）"}`).join("\n")
+        ? selectedNotes
+            .map(n => `${root}→${n}: ${intervalBetween(root, n)?.label ?? "（算出不可）"}`)
+            .join("\n")
         : "（engineChordから根音表記を取得できませんでした）";
 
     const SYSTEM = `
@@ -69,7 +64,7 @@ export async function POST(req: Request) {
 - 「一般論」「別の可能性」を勝手に新規追加しない（必要なら“情報不足”と言い切る）。
 - 調性（キー）は断定しない。可能性を2〜3個まで。
 - 異名同音は同一視しない（ただし誤解ポイントとして触れるのは可）。
-- 前後が無い前提なので断言を避け、仮説として述べる。
+- 前後の進行が無い前提なので断言を避け、仮説として述べる。
 `.trim();
 
     const USER = `
