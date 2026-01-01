@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 
 // --- Types ---
 type CandidateObj = {
@@ -36,7 +36,7 @@ type CandidateUI = {
   confidenceLevel: number; 
 };
 
-// --- Helper ---
+// --- Helper: Response Normalization ---
 function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateUI[] {
   const arr = (input ?? []).filter(Boolean);
   return arr.map((c, idx) => {
@@ -81,35 +81,59 @@ function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateUI[] {
   });
 }
 
+// --- Helper: Enharmonic Mapping for Visualizer ---
+// データ上は区別するが、ピアノ表示用に鍵盤インデックス(0-11)へ変換
+const getKeyIndex = (note: string): number => {
+  const baseMap: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const base = note.charAt(0);
+  const acc = note.slice(1);
+  let idx = baseMap[base] ?? 0;
+  
+  if (acc === "#") idx += 1;
+  if (acc === "b") idx -= 1;
+  // Double accidentals or weird spellings (E#, Cb, etc.)
+  if (note === "E#") idx = 5;
+  if (note === "B#") idx = 0;
+  if (note === "Fb") idx = 4;
+  if (note === "Cb") idx = 11;
+
+  return (idx + 12) % 12;
+};
+
 // --- Components ---
 
+// ミニピアノ鍵盤 (Visualizer)
 const MiniPiano = ({ selected }: { selected: string[] }) => {
+  // 白鍵・黒鍵の定義（描画座標）
   const keys = [
-    { n: ["C"], type: "white", x: 0 },
-    { n: ["C#", "Db"], type: "black", x: 10 },
-    { n: ["D"], type: "white", x: 14.28 },
-    { n: ["D#", "Eb"], type: "black", x: 24.28 },
-    { n: ["E"], type: "white", x: 28.56 },
-    { n: ["F"], type: "white", x: 42.84 },
-    { n: ["F#", "Gb"], type: "black", x: 52.84 },
-    { n: ["G"], type: "white", x: 57.12 },
-    { n: ["G#", "Ab"], type: "black", x: 67.12 },
-    { n: ["A"], type: "white", x: 71.4 },
-    { n: ["A#", "Bb"], type: "black", x: 81.4 },
-    { n: ["B"], type: "white", x: 85.68 },
+    { idx: 0, type: "white", x: 0 },
+    { idx: 1, type: "black", x: 10 },
+    { idx: 2, type: "white", x: 14.28 },
+    { idx: 3, type: "black", x: 24.28 },
+    { idx: 4, type: "white", x: 28.56 },
+    { idx: 5, type: "white", x: 42.84 },
+    { idx: 6, type: "black", x: 52.84 },
+    { idx: 7, type: "white", x: 57.12 },
+    { idx: 8, type: "black", x: 67.12 },
+    { idx: 9, type: "white", x: 71.4 },
+    { idx: 10, type: "black", x: 81.4 },
+    { idx: 11, type: "white", x: 85.68 },
   ];
-  const isActive = (names: string[]) => selected.some(s => names.includes(s));
+
+  // 選択されたノートがどの鍵盤に該当するか判定
+  const activeIndices = selected.map(getKeyIndex);
+  const isActive = (keyIdx: number) => activeIndices.includes(keyIdx);
 
   return (
     <div className="h-16 w-full max-w-[240px] mx-auto relative mt-2 mb-4 select-none pointer-events-none">
        <svg viewBox="0 0 100 60" className="w-full h-full drop-shadow-md">
-         {keys.filter(k => k.type === "white").map((k, i) => (
-           <rect key={i} x={k.x} y="0" width="14.28" height="60" rx="2" ry="2"
-             className={`transition-all duration-300 ${isActive(k.n) ? "fill-[url(#activeKeyGradient)] stroke-indigo-300 stroke-[0.5]" : "fill-white stroke-slate-200 stroke-[0.5]"}`} />
+         {keys.filter(k => k.type === "white").map((k) => (
+           <rect key={k.idx} x={k.x} y="0" width="14.28" height="60" rx="2" ry="2"
+             className={`transition-all duration-300 ${isActive(k.idx) ? "fill-[url(#activeKeyGradient)] stroke-indigo-300 stroke-[0.5]" : "fill-white stroke-slate-200 stroke-[0.5]"}`} />
          ))}
-         {keys.filter(k => k.type === "black").map((k, i) => (
-           <rect key={i} x={k.x} y="0" width="8" height="38" rx="1" ry="1"
-             className={`transition-all duration-300 ${isActive(k.n) ? "fill-[url(#activeKeyGradient)] stroke-indigo-300 stroke-[0.5]" : "fill-slate-800 stroke-slate-900 stroke-[0.5]"}`} />
+         {keys.filter(k => k.type === "black").map((k) => (
+           <rect key={k.idx} x={k.x} y="0" width="8" height="38" rx="1" ry="1"
+             className={`transition-all duration-300 ${isActive(k.idx) ? "fill-[url(#activeKeyGradient)] stroke-indigo-300 stroke-[0.5]" : "fill-slate-800 stroke-slate-900 stroke-[0.5]"}`} />
          ))}
          <defs>
            <linearGradient id="activeKeyGradient" x1="0" x2="0" y1="0" y2="1">
@@ -122,6 +146,7 @@ const MiniPiano = ({ selected }: { selected: string[] }) => {
   );
 };
 
+// Feedback Link
 const FeedbackLink = ({ className, children }: { className?: string, children: React.ReactNode }) => (
   <a 
     href="https://x.com/araken525_toho?s=21" 
@@ -133,17 +158,95 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
+// Flick Key Component
+const FlickKey = ({ 
+  noteBase, 
+  currentSelection, 
+  onInput 
+}: { 
+  noteBase: string, 
+  currentSelection: string | undefined, // 現在この音名で選択されている具体的な音 (例: "C#")
+  onInput: (note: string) => void 
+}) => {
+  const [startY, setStartY] = useState<number | null>(null);
+  const [offsetY, setOffsetY] = useState(0);
+  const THRESHOLD = 15; // フリック判定距離
+
+  // 現在のステータス表示用
+  const isActive = !!currentSelection;
+  const displayLabel = currentSelection || noteBase;
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault(); // スクロール防止
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    setStartY(e.clientY);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (startY === null) return;
+    const delta = e.clientY - startY;
+    // 視覚的なフィードバックのために移動量を制限
+    setOffsetY(Math.max(-30, Math.min(30, delta)));
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (startY === null) return;
+    
+    // フリック判定
+    if (offsetY < -THRESHOLD) {
+      onInput(`${noteBase}#`); // Up Flick
+    } else if (offsetY > THRESHOLD) {
+      onInput(`${noteBase}b`); // Down Flick
+    } else {
+      onInput(noteBase); // Tap
+    }
+
+    setStartY(null);
+    setOffsetY(0);
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+  };
+
+  // スタイル計算
+  const isUp = offsetY < -10;
+  const isDown = offsetY > 10;
+
+  return (
+    <div 
+      className={`
+        relative h-14 rounded-lg shadow-[0_1px_0_rgba(0,0,0,0.3)] touch-none select-none
+        transition-colors duration-150 flex flex-col items-center justify-center overflow-hidden
+        ${isActive 
+          ? "bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-purple-200" 
+          : "bg-white text-slate-700 active:bg-slate-100"}
+      `}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp} // キャンセル時もリセット
+    >
+      {/* Visual Guide (Top) */}
+      <div className={`absolute top-1 text-[8px] font-bold transition-opacity ${isUp ? "opacity-100 text-white scale-110" : "opacity-30"}`}>#</div>
+      
+      {/* Main Label */}
+      <span 
+        className="text-xl font-bold transition-transform duration-75"
+        style={{ transform: `translateY(${offsetY * 0.3}px)` }}
+      >
+        {displayLabel}
+      </span>
+
+      {/* Visual Guide (Bottom) */}
+      <div className={`absolute bottom-1 text-[8px] font-bold transition-opacity ${isDown ? "opacity-100 text-white scale-110" : "opacity-30"}`}>b</div>
+    </div>
+  );
+};
+
 export default function CadenciaPage() {
   const resultRef = useRef<HTMLDivElement>(null);
   const [showGuide, setShowGuide] = useState(true);
 
-  // 音名ボタン定義 (12音)
-  const NOTE_BUTTONS = useMemo(() => [
-    { id: 0, d: "C", a: "C" }, { id: 1, d: "C#", a: "Db" }, { id: 2, d: "D", a: "D" },
-    { id: 3, d: "D#", a: "Eb" }, { id: 4, d: "E", a: "E" }, { id: 5, d: "F", a: "F" },
-    { id: 6, d: "F#", a: "Gb" }, { id: 7, d: "G", a: "G" }, { id: 8, d: "G#", a: "Ab" },
-    { id: 9, d: "A", a: "A" }, { id: 10, d: "A#", a: "Bb" }, { id: 11, d: "B", a: "B" },
-  ], []);
+  // フリック用キー定義 (7音)
+  const NOTE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
 
   const [selected, setSelected] = useState<string[]>([]);
   const [engineChord, setEngineChord] = useState<string>("---");
@@ -156,12 +259,31 @@ export default function CadenciaPage() {
 
   const canAnalyze = selected.length >= 3;
 
-  const toggle = (n: { d: string; a: string }) => {
-    const idx = selected.findIndex((x) => x === n.d || x === n.a);
-    if (idx === -1) { setSelected([...selected, n.d]); return; }
-    const cur = selected[idx];
-    if (n.d !== n.a && cur === n.d) { const next = [...selected]; next[idx] = n.a; setSelected(next); return; }
-    setSelected(selected.filter((_, i) => i !== idx));
+  // --- Input Logic (Exclusive Selection per Note Name) ---
+  const handleNoteInput = (inputNote: string) => {
+    const base = inputNote.charAt(0); // "C", "D"...
+    
+    // 既存のリストから、同じ音名を持つものを探す
+    const existingIndex = selected.findIndex(s => s.startsWith(base));
+    const existingNote = selected[existingIndex];
+
+    let nextSelected = [...selected];
+
+    if (existingIndex !== -1) {
+      // 既に同じ音名が選択されている場合
+      if (existingNote === inputNote) {
+        // 全く同じ音ならトグル（削除）
+        nextSelected.splice(existingIndex, 1);
+      } else {
+        // 違う変化記号なら上書き (例: C -> C#)
+        nextSelected[existingIndex] = inputNote;
+      }
+    } else {
+      // 新規追加
+      nextSelected.push(inputNote);
+    }
+    
+    setSelected(nextSelected);
   };
 
   const reset = () => {
@@ -209,7 +331,7 @@ export default function CadenciaPage() {
   const IconSparkles = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
   const IconSend = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
   const IconRefresh = () => <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>;
-  const IconTrash = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
+  const IconTrash = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
   const IconX = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
   const IconBrain = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>;
   const IconCheck = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>;
@@ -284,7 +406,7 @@ export default function CadenciaPage() {
           </p>
         </section>
 
-        {/* ② Intro Card */}
+        {/* ② Intro / Guide Card */}
         {showGuide && (
           <section className="relative rounded-3xl p-0.5 animate-in fade-in slide-in-from-top-4 duration-500 bg-gradient-to-br from-indigo-200 via-purple-200 to-fuchsia-200 shadow-xl shadow-indigo-100">
             <div className="bg-white/95 backdrop-blur-xl rounded-[22px] p-6 relative overflow-hidden">
@@ -305,7 +427,7 @@ export default function CadenciaPage() {
                     <div className="w-9 h-9 rounded-xl bg-fuchsia-50 border border-fuchsia-100 text-fuchsia-500 flex items-center justify-center flex-shrink-0 shadow-sm"><span className="text-xs font-serif italic font-bold">A#</span></div>
                     <div>
                       <h3 className="text-xs font-bold text-fuchsia-600">異名同音の区別</h3>
-                      <p className="text-[11px] text-slate-500 leading-snug mt-1">A#とBbを区別し、文脈に合った正しい和声解釈が可能です。</p>
+                      <p className="text-[11px] text-slate-500 leading-snug mt-1">A#とBbを区別し、正しい和声解釈を導き出します。</p>
                     </div>
                  </div>
                  <div className="flex gap-3 items-start">
@@ -468,55 +590,57 @@ export default function CadenciaPage() {
 
       </main>
 
-      {/* --- Bottom Controls (Transparent & iOS Layout) --- */}
-      <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glass} border-t-0 rounded-t-[30px] pt-4 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]`}>
-        <div className="max-w-md mx-auto px-4 flex">
+      {/* --- Bottom Controls (Flick Keyboard) --- */}
+      <div className={`fixed bottom-0 inset-x-0 z-50 bg-[#D1D5DB]/90 backdrop-blur-xl border-t border-[#bdc3c7] pt-2 pb-8 shadow-[0_-1px_0_rgba(0,0,0,0.1)]`}>
+        <div className="max-w-md mx-auto px-1.5 flex">
           
-          {/* Main Keypad (3x4 Grid) */}
-          <div className="grid grid-cols-3 gap-2 flex-1 mr-2">
-            {NOTE_BUTTONS.map((n) => {
-              const active = selected.find((x) => x === n.d || x === n.a);
+          {/* Main Keypad (3x3 Grid for 7 notes + spacers) */}
+          <div className="grid grid-cols-3 gap-1.5 flex-1 mr-1.5">
+            {NOTE_KEYS.map((noteBase, i) => {
+              // レイアウト調整: C-Aは普通に並べる。Bは3行目左、残りは空きスペース
+              // Grid: 
+              // C D E
+              // F G A
+              // B - -
+              // スタイル調整: 最後の2つは空要素としてレンダリングしない、あるいは透明に
+              
+              // 選択されている音を探す
+              const currentSelection = selected.find(s => s.startsWith(noteBase));
+              
               return (
-                <button
-                  key={n.id}
-                  onClick={() => toggle(n)}
-                  className={`
-                    h-12 rounded-xl font-bold text-xl transition-all duration-150 relative backdrop-blur-sm active:scale-95
-                    ${active
-                      ? `${G.main} text-white shadow-md shadow-purple-200`
-                      : "bg-white border border-slate-100 text-slate-600 active:bg-indigo-50"
-                    }
-                  `}
-                >
-                  {active || n.d}
-                  {active && n.d !== n.a && (
-                    <span className="absolute top-1 right-1 w-3 h-3 bg-white/20 rounded-full flex items-center justify-center text-[8px] text-white">↻</span>
-                  )}
-                </button>
+                <FlickKey 
+                  key={noteBase}
+                  noteBase={noteBase}
+                  currentSelection={currentSelection}
+                  onInput={handleNoteInput}
+                />
               );
             })}
+            {/* Empty Spacers to fill the grid (if necessary, though CSS grid handles it) */}
+            <div className="pointer-events-none"></div>
+            <div className="pointer-events-none"></div>
           </div>
 
           {/* Right Side Actions (Column) */}
-          <div className="flex flex-col w-[25%] gap-2">
+          <div className="flex flex-col w-[25%] gap-1.5">
              {/* Delete/Reset (Top Right) */}
              <button 
                 onClick={reset}
-                className="h-12 rounded-xl bg-white border border-slate-200 text-slate-400 active:text-red-500 active:border-red-200 active:bg-red-50 transition-all flex items-center justify-center shadow-sm active:scale-95"
+                className="h-14 rounded-lg bg-[#BCC0C5] active:bg-white text-slate-600 transition-colors flex items-center justify-center shadow-[0_1px_0_rgba(0,0,0,0.35)]"
              >
                <IconTrash />
              </button>
              
-             {/* Spacer (Fill space) */}
+             {/* Spacer */}
              <div className="flex-1"></div>
 
-             {/* Enter/Analyze (Bottom Right - Tall) */}
+             {/* Enter/Analyze (Bottom Right) */}
              <button 
                 onClick={analyze}
                 disabled={!canAnalyze || loading}
                 className={`
-                  h-24 rounded-xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95
-                  ${canAnalyze && !loading ? `${G.main} text-white shadow-indigo-300/50` : "bg-slate-100 text-slate-300 cursor-not-allowed"}
+                  h-28 rounded-lg flex flex-col items-center justify-center shadow-[0_1px_0_rgba(0,0,0,0.35)] text-white transition-all active:brightness-90
+                  ${canAnalyze && !loading ? "bg-[#007AFF]" : "bg-[#BCC0C5] cursor-not-allowed"}
                 `}
              >
                 {loading ? <IconRefresh /> : <IconArrowRight />}
