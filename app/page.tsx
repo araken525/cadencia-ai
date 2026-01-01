@@ -36,7 +36,7 @@ type CandidateUI = {
   confidenceLevel: number; 
 };
 
-// --- Helper: Response Normalization ---
+// --- Helper ---
 function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateUI[] {
   const arr = (input ?? []).filter(Boolean);
   return arr.map((c, idx) => {
@@ -81,26 +81,23 @@ function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateUI[] {
   });
 }
 
-// --- Helper: Enharmonic Mapping for Visualizer ---
+// --- Helper: Visualizer Mapping ---
 const getKeyIndex = (note: string): number => {
   const baseMap: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
   const base = note.charAt(0);
   const acc = note.slice(1);
   let idx = baseMap[base] ?? 0;
-  
   if (acc === "#") idx += 1;
   if (acc === "b") idx -= 1;
   if (note === "E#") idx = 5;
   if (note === "B#") idx = 0;
   if (note === "Fb") idx = 4;
   if (note === "Cb") idx = 11;
-
   return (idx + 12) % 12;
 };
 
 // --- Components ---
 
-// ミニピアノ鍵盤 (Visualizer)
 const MiniPiano = ({ selected }: { selected: string[] }) => {
   const keys = [
     { idx: 0, type: "white", x: 0 },
@@ -141,7 +138,6 @@ const MiniPiano = ({ selected }: { selected: string[] }) => {
   );
 };
 
-// Feedback Link
 const FeedbackLink = ({ className, children }: { className?: string, children: React.ReactNode }) => (
   <a 
     href="https://x.com/araken525_toho?s=21" 
@@ -153,7 +149,7 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// Flick Key Component (Improved)
+// --- Flick Key Component (Transparent Design) ---
 const FlickKey = ({ 
   noteBase, 
   currentSelection, 
@@ -170,44 +166,29 @@ const FlickKey = ({
   const isActive = !!currentSelection;
   const displayLabel = currentSelection || noteBase;
 
-  // 2) PointerCapture Fix & currentTarget
   const handlePointerDown = (e: React.PointerEvent) => {
-    // 1) Scroll Prevention via e.preventDefault (Helper for touch-action CSS)
     e.preventDefault();
-    try {
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch (err) {
-      // Ignore errors on devices where pointer capture is not supported/needed
-    }
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch {}
     setStartY(e.clientY);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (startY === null) return;
     const delta = e.clientY - startY;
-    setOffsetY(Math.max(-30, Math.min(30, delta))); // Visual feedback limit
+    setOffsetY(Math.max(-30, Math.min(30, delta)));
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     if (startY === null) return;
-    
-    // 3) Calculate delta directly from event for logic
     const delta = e.clientY - startY;
 
-    if (delta < -THRESHOLD) {
-      onInput(`${noteBase}#`);
-    } else if (delta > THRESHOLD) {
-      onInput(`${noteBase}b`);
-    } else {
-      onInput(noteBase);
-    }
+    if (delta < -THRESHOLD) onInput(`${noteBase}#`);
+    else if (delta > THRESHOLD) onInput(`${noteBase}b`);
+    else onInput(noteBase);
 
     setStartY(null);
     setOffsetY(0);
-    
-    try {
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch (err) {}
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
   };
 
   const isUp = offsetY < -10;
@@ -215,29 +196,27 @@ const FlickKey = ({
 
   return (
     <div 
-      // 1) Added touch-none select-none overscroll-none
       className={`
-        relative h-12 rounded-lg shadow-[0_1px_0_rgba(0,0,0,0.3)] touch-none select-none overscroll-none
-        transition-colors duration-150 flex flex-col items-center justify-center overflow-hidden
+        relative h-14 rounded-2xl touch-none select-none overscroll-none
+        transition-all duration-200 flex flex-col items-center justify-center overflow-hidden
+        border border-white/40 shadow-sm backdrop-blur-md
         ${isActive 
-          ? "bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-purple-200" 
-          : "bg-white text-slate-700 active:bg-slate-100"}
+          ? "bg-gradient-to-br from-indigo-500/90 to-purple-500/90 text-white shadow-indigo-200 scale-[1.02]" 
+          : "bg-white/60 text-slate-700 active:bg-white/80 active:scale-95"}
       `}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      <div className={`absolute top-1 text-[8px] font-bold transition-opacity ${isUp ? "opacity-100 text-white scale-110" : "opacity-30"}`}>#</div>
-      
+      <div className={`absolute top-1.5 text-[8px] font-bold transition-all ${isUp ? "opacity-100 text-white scale-110 -translate-y-0.5" : "opacity-30"}`}>#</div>
       <span 
-        className="text-xl font-bold transition-transform duration-75"
-        style={{ transform: `translateY(${offsetY * 0.3}px)` }}
+        className="text-xl font-bold transition-transform duration-100"
+        style={{ transform: `translateY(${offsetY * 0.4}px)` }}
       >
         {displayLabel}
       </span>
-
-      <div className={`absolute bottom-1 text-[8px] font-bold transition-opacity ${isDown ? "opacity-100 text-white scale-110" : "opacity-30"}`}>b</div>
+      <div className={`absolute bottom-1.5 text-[8px] font-bold transition-all ${isDown ? "opacity-100 text-white scale-110 translate-y-0.5" : "opacity-30"}`}>b</div>
     </div>
   );
 };
@@ -246,7 +225,7 @@ export default function CadenciaPage() {
   const resultRef = useRef<HTMLDivElement>(null);
   const [showGuide, setShowGuide] = useState(true);
 
-  // フリック用キー定義 (7音)
+  // フリック用キー (7音)
   const NOTE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
 
   const [selected, setSelected] = useState<string[]>([]);
@@ -268,12 +247,12 @@ export default function CadenciaPage() {
 
     if (existingIndex !== -1) {
       if (existingNote === inputNote) {
-        nextSelected.splice(existingIndex, 1); // Toggle off
+        nextSelected.splice(existingIndex, 1);
       } else {
-        nextSelected[existingIndex] = inputNote; // Overwrite
+        nextSelected[existingIndex] = inputNote;
       }
     } else {
-      nextSelected.push(inputNote); // Add
+      nextSelected.push(inputNote);
     }
     setSelected(nextSelected);
   };
@@ -581,15 +560,14 @@ export default function CadenciaPage() {
 
       </main>
 
-      {/* --- Bottom Controls (Transparent & iOS Layout) --- */}
-      <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glass} border-t-0 rounded-t-[30px] pt-2 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]`}>
-        <div className="max-w-md mx-auto px-1.5 flex">
+      {/* --- Bottom Controls (Updated Layout & Transparent) --- */}
+      <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glass} border-t-0 rounded-t-[30px] pt-4 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]`}>
+        <div className="max-w-md mx-auto px-4 flex">
           
-          {/* Main Keypad (3x3 Grid for 7 notes + spacers) */}
-          <div className="grid grid-cols-3 gap-1.5 flex-1 mr-1.5">
-            {NOTE_KEYS.map((noteBase, i) => {
+          {/* Main Keypad (7 Note Keys) */}
+          <div className="grid grid-cols-3 gap-2 flex-1 mr-2">
+            {NOTE_KEYS.map((noteBase) => {
               const currentSelection = selected.find(s => s.startsWith(noteBase));
-              
               return (
                 <FlickKey 
                   key={noteBase}
@@ -600,20 +578,22 @@ export default function CadenciaPage() {
               );
             })}
             
-            {/* Guide/Legend in the remaining 2 slots (Span 2) */}
-            <div className="col-span-2 relative h-12 rounded-lg border border-slate-200 bg-white/50 flex items-center justify-center gap-4 text-[9px] text-slate-400 font-medium select-none">
-               <div className="flex flex-col items-center"><span className="text-[8px] mb-0.5">#</span><span>↑</span></div>
-               <div className="flex flex-col items-center"><span className="text-[8px] mb-0.5">Nat</span><span>●</span></div>
-               <div className="flex flex-col items-center"><span className="text-[8px] mb-0.5">b</span><span>↓</span></div>
+            {/* Guide (Legend) in the remaining 2 slots */}
+            <div className="col-span-2 relative h-14 rounded-2xl border border-white/40 bg-white/40 backdrop-blur-md flex items-center justify-center gap-3 text-[9px] text-slate-400 font-medium select-none shadow-sm">
+               <div className="flex flex-col items-center"><span className="text-[8px] font-bold text-indigo-400">#</span><span>↑</span></div>
+               <div className="w-[1px] h-6 bg-slate-300/50"></div>
+               <div className="flex flex-col items-center"><span className="text-[8px] font-bold text-slate-500">Nat</span><span>●</span></div>
+               <div className="w-[1px] h-6 bg-slate-300/50"></div>
+               <div className="flex flex-col items-center"><span className="text-[8px] font-bold text-purple-400">b</span><span>↓</span></div>
             </div>
           </div>
 
-          {/* Right Side Actions (Column) */}
-          <div className="flex flex-col w-[25%] gap-1.5">
-             {/* Delete/Reset (Top Right) */}
+          {/* Right Side Actions */}
+          <div className="flex flex-col w-[25%] gap-2">
+             {/* Delete/Reset */}
              <button 
                 onClick={reset}
-                className="h-14 rounded-lg bg-white border border-slate-200 text-slate-400 active:text-red-500 active:border-red-200 active:bg-red-50 transition-all flex items-center justify-center shadow-sm active:scale-95"
+                className="h-14 rounded-2xl bg-white/60 border border-white/60 text-slate-400 active:text-red-500 active:border-red-200 active:bg-red-50 transition-all flex items-center justify-center shadow-sm active:scale-95"
              >
                <IconTrash />
              </button>
@@ -621,12 +601,12 @@ export default function CadenciaPage() {
              {/* Spacer */}
              <div className="flex-1"></div>
 
-             {/* Enter/Analyze (Bottom Right) */}
+             {/* Enter/Analyze */}
              <button 
                 onClick={analyze}
                 disabled={!canAnalyze || loading}
                 className={`
-                  h-28 rounded-lg flex flex-col items-center justify-center shadow-lg transition-all active:scale-95
+                  h-28 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20
                   ${canAnalyze && !loading ? `${G.main} text-white shadow-indigo-300/50` : "bg-slate-100 text-slate-300 cursor-not-allowed"}
                 `}
              >
