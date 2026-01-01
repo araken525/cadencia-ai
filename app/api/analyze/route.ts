@@ -5,30 +5,22 @@ import OpenAI from "openai";
 import {
   normalizeAccidentals,
   parseNote,
-  intervalBetween,
   uniqBy,
   transpose,
-  type ParsedNote,
+  intervalBetween,
   type IntervalSpec,
 } from "@/lib/theory/interval";
 
-/* =========================================================
- * OpenAI（考察用・判定には一切関与しない）
- * ======================================================= */
+// ==================== OpenAI（任意） ====================
 const openai =
   process.env.OPENAI_API_KEY
     ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     : null;
 
-/* =========================================================
- * Types
- * ======================================================= */
+// ==================== Types ====================
 type CandidateObj = {
   chord: string;
-  root: string;
-  base: string;
   score: number;
-  has7: boolean;
   chordTones: string[];
   extraTones: string[];
   reason: string[];
@@ -37,145 +29,107 @@ type CandidateObj = {
 type Template = {
   name: string;
   intervals: IntervalSpec[];
+  requiresThird: boolean; // ← 重要：3度必須か
 };
 
-/* =========================================================
- * Chord templates（文字間隔ベース）
- * ======================================================= */
+// ==================== Templates ====================
 const TEMPLATES: Template[] = [
-  { name: "",    intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }] },
-  { name: "m",   intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }] },
-  { name: "dim", intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }] },
-  { name: "aug", intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "A" }] },
+  { name: "",    intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }], requiresThird: true },
+  { name: "m",   intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }], requiresThird: true },
+  { name: "dim", intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }], requiresThird: true },
+  { name: "aug", intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "A" }], requiresThird: true },
 
-  { name: "7",    intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 7, quality: "m" }] },
-  { name: "maj7", intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 7, quality: "M" }] },
-  { name: "m7",   intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 7, quality: "m" }] },
-  { name: "mMaj7",intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 7, quality: "M" }] },
-  { name: "m7b5", intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }, { number: 7, quality: "m" }] },
-  { name: "dim7", intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }, { number: 7, quality: "d" }] },
+  { name: "7",    intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 7, quality: "m" }], requiresThird: true },
+  { name: "maj7", intervals: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 7, quality: "M" }], requiresThird: true },
+  { name: "m7",   intervals: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 7, quality: "m" }], requiresThird: true },
 ];
 
-/* =========================================================
- * Helpers
- * ======================================================= */
-function safeJson(v: any) {
-  try { return JSON.stringify(v, null, 2); } catch { return String(v); }
-}
-
-function extractRootFromChord(chord: string): string | null {
-  const m = chord.match(/^([A-G])((?:bb|b|##|#)?)/);
-  if (!m) return null;
-  return `${m[1]}${m[2] ?? ""}`;
-}
-
-function scoreBySpelling(input: Set<string>, chordTones: string[]) {
+// ==================== Utils ====================
+function scoreBySpelling(input: Set<string>, tones: string[]) {
   let common = 0;
-  for (const t of chordTones) if (input.has(t)) common++;
+  for (const t of tones) if (input.has(t)) common++;
 
-  const missing = chordTones.filter(t => !input.has(t)).length;
-  const extra   = [...input].filter(t => !chordTones.includes(t)).length;
+  const missing = tones.filter(t => !input.has(t)).length;
+  const extra = [...input].filter(n => !tones.includes(n)).length;
 
-  return common * 40 - missing * 60 - extra * 12;
+  return common * 40 - missing * 80 - extra * 15;
 }
 
-/* =========================================================
- * Candidate builder（判定ロジック本体・AI不使用）
- * ======================================================= */
-async function buildCandidate(params: {
-  rootRaw: string;
-  bassRaw: string;
-  tpl: Template;
-  inputSet: Set<string>;
-}): Promise<CandidateObj> {
-  const chordTones = [params.rootRaw];
-  for (const spec of params.tpl.intervals) {
-    const t = transpose(params.rootRaw, spec);
-    if (t) chordTones.push(t);
+// ==================== Candidate Builder ====================
+async function buildCandidate(
+  root: string,
+  tpl: Template,
+  inputSet: Set<string>
+): Promise<CandidateObj | null> {
+
+  const chordTones = [root, ...tpl.intervals.map(i => transpose(root, i)!).filter(Boolean)];
+
+  // 3度が必須なのに存在しない → 不成立
+  if (tpl.requiresThird) {
+    const hasThird = chordTones.some(t => {
+      const itv = intervalBetween(root, t);
+      return itv?.number === 3;
+    });
+    if (!hasThird) return null;
   }
 
-  const extraTones = [...params.inputSet].filter(n => !chordTones.includes(n));
-  const score = scoreBySpelling(params.inputSet, chordTones);
-
-  const chord =
-    params.bassRaw !== params.rootRaw
-      ? `${params.rootRaw}${params.tpl.name}/${params.bassRaw}`
-      : `${params.rootRaw}${params.tpl.name}`;
+  const extraTones = [...inputSet].filter(n => !chordTones.includes(n));
+  const score = scoreBySpelling(inputSet, chordTones);
 
   return {
-    chord,
-    root: params.rootRaw,
-    base: params.bassRaw,
+    chord: `${root}${tpl.name}`,
     score,
-    has7: params.tpl.intervals.some(i => i.number === 7),
     chordTones,
     extraTones,
     reason: [
-      `root=${params.rootRaw}`,
-      `tones=${chordTones.join(", ")}`,
-      ...(extraTones.length ? [`extra=${extraTones.join(", ")}`] : []),
+      `Root表記: ${root}`,
+      `構成音(表記): ${chordTones.join(", ")}`,
+      extraTones.length ? `余剰音: ${extraTones.join(", ")}` : "余剰音なし",
     ],
   };
 }
 
-/* =========================================================
- * AI analysis（説明専用）
- * ======================================================= */
-async function buildAiAnalysis(params: {
-  selectedRaw: string[];
-  engineChord: string;
-  candidates: CandidateObj[];
-  bassRaw: string;
-}) {
+// ==================== AI考察 ====================
+async function buildAiAnalysis(
+  selectedRaw: string[],
+  engineChord: string,
+  candidates: CandidateObj[]
+) {
   if (!openai) {
     return [
       "（AI未接続）",
-      `入力: ${params.selectedRaw.join(", ")}`,
-      `判定: ${params.engineChord}`,
+      `入力音: ${selectedRaw.join(", ")}`,
+      `判定: ${engineChord}`,
     ].join("\n");
   }
 
-  const root = extractRootFromChord(params.engineChord);
-  const intervalLines =
-    root
-      ? params.selectedRaw.map(n => {
-          const itv = intervalBetween(root, n);
-          return `${root}→${n}: ${itv ? itv.label : "算出不可"}`;
-        }).join("\n")
-      : "root抽出不可";
+  const root = engineChord !== "特定不可"
+    ? engineChord.match(/^([A-G](?:bb|b|##|#)?)/)?.[1] ?? null
+    : null;
+
+  const intervalMap = root
+    ? selectedRaw.map(n => `${root}→${n}: ${intervalBetween(root, n)?.label ?? "不明"}`).join("\n")
+    : "根音を特定できないため算出不可";
 
   const SYSTEM = `
-あなたは古典和声（機能和声）を専門とする音楽理論家です。
-音程・度数は必ず「音名の文字間隔」で扱い、
-半音数・実音高・ピッチクラスを基準に説明してはいけません。
-
-【厳守】
-- engineChord を変更・言い換え・再判定しない
-- 入力表記を最優先（CbはCb、FbはFb）
-- 推測で埋めず、不明なら「情報不足」と言う
-- 調性は2〜3個の仮説まで
+あなたは古典和声（機能和声）の専門家です。
+音程は必ず「音名の文字間隔」で説明してください。
+半音数・実音高・ピッチクラスは禁止です。
+コードの再判定は禁止。説明のみ行ってください。
 `.trim();
 
   const USER = `
-【入力】
-${params.selectedRaw.join(", ")}
+【入力音（表記そのまま）】
+${selectedRaw.join(", ")}
 
-【engineChord】
-${params.engineChord}
+【判定結果】
+${engineChord}
 
-【音程（文字間隔）】
-${intervalLines}
+【音程関係】
+${intervalMap}
 
-【候補（参考・再判定禁止）】
-${safeJson(params.candidates.slice(0, 3))}
-
-【出力】
-1) ひとことで
-2) 構成音の整理（文字間隔）
-3) 機能仮説
-4) 調性仮説
-5) 誤解ポイント
-6) 次に必要な情報
+【注意】
+3度が存在しない場合は「居場所が定まらない」と明確に述べてください。
 `.trim();
 
   const res = await openai.chat.completions.create({
@@ -187,69 +141,56 @@ ${safeJson(params.candidates.slice(0, 3))}
     ],
   });
 
-  return res.choices[0]?.message?.content?.trim() ?? "";
+  return res.choices[0]?.message?.content ?? "";
 }
 
-/* =========================================================
- * Route
- * ======================================================= */
+// ==================== Route ====================
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => null);
-    const selectedNotes: string[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
+    const body = await req.json();
+    const rawNotes = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
 
-    const normalized = selectedNotes.map(normalizeAccidentals).filter(Boolean);
-
-    // ★ ここが重要：型ガードで null を完全排除
-    const parsed: ParsedNote[] = normalized
-      .map(parseNote)
-      .filter((n): n is ParsedNote => n !== null);
+    const normalized = rawNotes.map(normalizeAccidentals);
+    const parsed = normalized.map(parseNote).filter((n): n is NonNullable<typeof n> => n !== null);
 
     if (parsed.length < 3) {
-      return NextResponse.json(
-        { engineChord: "判定不能", candidates: [], analysis: "音が3つ以上必要です" },
-        { status: 200 }
-      );
+      return NextResponse.json({
+        engineChord: "特定不可",
+        candidates: [],
+        analysis: "音が3つ以上必要です。",
+      });
     }
 
-    const uniqParsed = uniqBy(parsed, n => n.raw);
-    const selectedRaw = uniqParsed.map(n => n.raw);
-
-    const bassRaw = parseNote(normalized[0])?.raw ?? selectedRaw[0];
+    const uniq = uniqBy(parsed, n => n.raw);
+    const selectedRaw = uniq.map(n => n.raw);
     const inputSet = new Set(selectedRaw);
 
     const candidates: CandidateObj[] = [];
-    for (const rootRaw of selectedRaw) {
+    for (const root of selectedRaw) {
       for (const tpl of TEMPLATES) {
-        candidates.push(await buildCandidate({
-          rootRaw,
-          bassRaw,
-          tpl,
-          inputSet,
-        }));
+        const c = await buildCandidate(root, tpl, inputSet);
+        if (c) candidates.push(c);
       }
     }
 
     candidates.sort((a, b) => b.score - a.score);
-    const outCandidates = candidates.slice(0, 10);
-    const engineChord = outCandidates[0]?.chord ?? "判定不能";
 
-    const analysis = await buildAiAnalysis({
+    const top = candidates[0];
+    const engineChord = top && top.score > 0 ? top.chord : "特定不可";
+
+    const analysis = await buildAiAnalysis(
       selectedRaw,
       engineChord,
-      candidates: outCandidates,
-      bassRaw,
-    });
+      candidates.slice(0, 5)
+    );
 
     return NextResponse.json({
       engineChord,
-      candidates: outCandidates,
+      candidates: candidates.slice(0, 10),
       analysis,
     });
+
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message ?? "Unknown error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e.message ?? "Unknown error" }, { status: 500 });
   }
 }
