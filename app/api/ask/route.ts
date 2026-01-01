@@ -10,7 +10,7 @@ type ReqBody = {
   selectedNotes?: string[];
   analysis?: any;     // /api/analyze のレスポンス丸ごとでもOK
   engineChord?: string;
-  question?: string; // 空なら「自動解説」でもOK
+  question?: string;
 };
 
 function safeJson(v: any) {
@@ -39,53 +39,52 @@ export async function POST(req: Request) {
       return new Response("3音以上選んでください。", { status: 400 });
     }
 
+    // fallback (APIキー無しでも壊れない)
+    if (!process.env.OPENAI_API_KEY) {
+      const msg = [
+        "（AI未接続）",
+        `入力: ${selectedNotes.join(", ")}`,
+        `判定: ${engineChord || "（未指定）"}`,
+        "",
+        "OPENAI_API_KEY を設定すると質問にAIが答えます。",
+      ].join("\n");
+      return new Response(msg, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+    }
+
     const SYSTEM = `
 あなたは「古典和声（機能和声）」の先生です。
 あなたの役割は【説明だけ】です。コード名の判定は行いません。
 
-【絶対ルール】
-1) 調性（キー）は断定しない。「可能性」を2〜3個まで。
-2) 候補の序列：主解釈 / 準解釈 / 別解釈（最大3つ）
-3) 異名同音は同一視しない。A# と Bb は別。入力表記を尊重する（Cbも同様）。
-4) 非和声音（経過音・刺繍音・倚音・掛留など）の可能性を必ず検討する。
-5) 文章は日本語で、親しみやすく、でも嘘は言わない。
-6) 前後の進行が無い前提なので断言を避け「仮説」として述べる。
-7) ローマ数字は調性仮説とセットで（例：『調性がFなら V7』）。
+【最重要ルール（嘘防止）】
+- engineChord の表記を変更しない（言い換え・再判定しない）。
+- 調性（キー）は断定しない。「可能性」を2〜3個まで。
+- 異名同音は同一視しない。A# と Bb、Cb と B を同じと断言しない（ただし誤解ポイントとして触れるのは可）。
+- 前後の進行が無い前提なので断言を避け「仮説」として述べる。
+- 不明な点は「情報不足」と言い切ってよい（推測で埋めない）。
 
 【出力フォーマット（この順）】
 A. ひとことで（1〜2行）
-B. 主解釈（和音名 / 機能 / 調性仮説つき和音記号）
+B. 主解釈（engineChord / 機能 / 調性仮説つきローマ数字）
 C. 準解釈（同上）
 D. 別解釈（同上、無ければ省略）
-E. 非和声音の見立て（どの音が、どの種類っぽいか）
+E. 非和声音の見立て（どの音がどの種類っぽいか）
 F. 次に分かること（前後が分かると何が確定するか）
 `.trim();
 
-    const userPrompt = question
-      ? `
+    const userPrompt = `
 【入力（表記はそのまま尊重）】
 選択音: ${selectedNotes.join(", ")}
-エンジン表示: ${engineChord || "（未指定）"}
+engineChord: ${engineChord || "（未指定）"}
 
-【解析データ（参考）】
+【解析データ（参考。判定は変えない）】
 ${safeJson(analysis)}
 
 【質問】
-${question}
+${question || "（質問なし：自動解説してください）"}
 
 【依頼】
-質問に答えつつ、必要なら A〜F も簡潔に補ってください。
-`.trim()
-      : `
-【入力（表記はそのまま尊重）】
-選択音: ${selectedNotes.join(", ")}
-エンジン表示: ${engineChord || "（未指定）"}
-
-【解析データ（参考）】
-${safeJson(analysis)}
-
-【依頼】
-A〜F で「自動解説」を出してください。
+質問に答えつつ、A〜F で説明してください。
+特に異名同音（Cb等）について、必要なら誤解ポイントとして触れてください。
 `.trim();
 
     const completion = await openai.chat.completions.create({

@@ -5,11 +5,11 @@ import OpenAI from "openai";
 
 /**
  * Cadencia AI analyze API
- * Input: { selectedNotes: string[] }  e.g. ["C", "Eb", "G", "Bb"]
+ * Input:  { selectedNotes: string[] }  e.g. ["C", "Eb", "G", "Bb"]
  * Output: { engineChord: string, candidates: CandidateObj[], analysis: string }
  *
- * ✅ ここで「ルールベース判定（候補生成）」をしつつ
- * ✅ AIに考察文（analysis）を書かせて返す
+ * ✅ engineChord / candidates はルールベースのみ（AIは関与しない）
+ * ✅ analysis（考察文章）だけAIが生成
  */
 
 // -------------------- OpenAI --------------------
@@ -91,7 +91,7 @@ function uniqBy<T>(arr: T[], keyFn: (x: T) => string) {
 // -------------------- Chord Templates --------------------
 type Template = {
   name: string;          // e.g. "maj7"
-  intervals: number[];   // in semitones from root
+  intervals: number[];   // semitones from root
   tags?: string[];
 };
 
@@ -112,23 +112,38 @@ const TEMPLATES: Template[] = [
   { name: "m6",     intervals: [0, 3, 7, 9],         tags: ["sixth"] },
 ];
 
+// fallback naming (only used when input spelling doesn't provide a hint)
 const PC_TO_NAME_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 const PC_TO_NAME_FLAT  = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
 
-// prefer flat-ish spelling if user typed any "b"
 function preferFlat(input: ParsedNote[]) {
   return input.some(n => n.acc.includes("b"));
 }
 
-function pcToName(pc: number, useFlat: boolean) {
+// ✅ ここがCb/B#/E#みたいな「綴り」を尊重するポイント
+// inputで出てきたpcに対して、ユーザーのraw綴りを優先表示する
+function buildPreferredSpellingMap(input: ParsedNote[]) {
+  const map = new Map<number, string>();
+  for (const n of input) {
+    if (!map.has(n.pc)) map.set(n.pc, n.raw);
+  }
+  return map;
+}
+
+function pcToName(pc: number, useFlat: boolean, preferred?: Map<number, string>) {
+  const p = preferred?.get(pc);
+  if (p) return p; // 例: pc=11 でも "Cb" を返せる
   return useFlat ? PC_TO_NAME_FLAT[pc] : PC_TO_NAME_SHARP[pc];
 }
 
-function scoreMatch(target: Set<number>, candidate: Set<number>) {
+function scoreMatch(inputPcs: Set<number>, chordPcs: Set<number>) {
   let common = 0;
-  for (const x of candidate) if (target.has(x)) common += 1;
-  const missing = [...target].filter(x => !candidate.has(x)).length;
-  const extra   = [...candidate].filter(x => !target.has(x)).length;
+  for (const x of chordPcs) if (inputPcs.has(x)) common += 1;
+
+  const missing = [...inputPcs].filter(x => !chordPcs.has(x)).length;
+  const extra   = [...chordPcs].filter(x => !inputPcs.has(x)).length;
+
+  // feel-good tuning
   return common * 30 - missing * 40 - extra * 15;
 }
 
@@ -137,19 +152,20 @@ function buildCandidate(
   tpl: Template,
   inputPcs: Set<number>,
   useFlat: boolean,
-  bassPc: number
+  bassPc: number,
+  preferred: Map<number, string>
 ): CandidateObj {
   const chordPcs = new Set<number>(tpl.intervals.map(i => (rootPc + i) % 12));
 
-  const chordTones = [...chordPcs].map(pc => pcToName(pc, useFlat));
+  const chordTones = [...chordPcs].map(pc => pcToName(pc, useFlat, preferred));
   const extraTones = [...inputPcs]
     .filter(pc => !chordPcs.has(pc))
-    .map(pc => pcToName(pc, useFlat));
+    .map(pc => pcToName(pc, useFlat, preferred));
 
   const tensions = extraTones.map(t => `add(${t})`);
 
-  const base = pcToName(bassPc, useFlat);
-  const root = pcToName(rootPc, useFlat);
+  const base = pcToName(bassPc, useFlat, preferred);
+  const root = pcToName(rootPc, useFlat, preferred);
   const chord = `${root}${tpl.name}${bassPc !== rootPc ? `/${base}` : ""}`;
 
   const score = scoreMatch(inputPcs, chordPcs);
@@ -182,7 +198,7 @@ async function buildAiAnalysis(params: {
   engineChord: string;
   candidates: CandidateObj[];
 }) {
-  // OpenAI未設定でもアプリ自体は動かしたいので fallback も用意
+  // fallback (APIキー未設定でもUIが壊れない)
   if (!process.env.OPENAI_API_KEY) {
     return [
       "（AI未接続のため、簡易ログを表示しています）",
@@ -196,11 +212,13 @@ async function buildAiAnalysis(params: {
   const SYSTEM = `
 あなたは音楽理論の先生です。役割は「説明（考察文章）」だけです。
 【ルール】
-- 異名同音は同一視しない。入力表記を尊重する（Cb は B と“同じ音”と書かない）。
-- ただし、ピッチクラス上の一致が誤解の原因になる場合は「誤解ポイント」として言及してよい。
+- 和音名の判定をしない（engineChordの言い換え・変更もしない）。
+- 異名同音は同一視しない。入力表記を尊重する（Cb は B と同じと断定しない）。
+- ただし“ピッチ上は同じに聞こえるため誤解されやすい”は誤解ポイントとして述べてよい。
 - 調性は断定しない。可能性を2〜3個まで。
-- 文章は日本語で、短く読みやすく。箇条書きOK。
-- 出力は“ユーザー向けの自然な文章”だけ（JSONなどは出さない）。
+- 前後関係がない前提なので断言を避ける。
+- 出力は日本語。短く読みやすく。
+- 出力はユーザー向け文章のみ（JSONやコードは出さない）。
 `.trim();
 
   const top = params.candidates.slice(0, 5).map(c => ({
@@ -216,14 +234,13 @@ async function buildAiAnalysis(params: {
 【入力（表記はそのまま）】
 ${params.selectedRaw.join(", ")}
 
-【エンジン判定】
+【エンジン判定（この表記を尊重して説明）】
 ${params.engineChord}
 
-【候補上位（参考）】
+【候補上位（参考。判定の変更には使わない）】
 ${safeJson(top)}
 
-【お願い】
-この和音を「機能和声/古典和声」の観点で、次の順で説明して：
+【お願い】次の順で説明して：
 1) ひとことで（1行）
 2) こう聞こえる理由（構成音 / 3度・5度・7度の役割）
 3) あり得る調性仮説（2〜3）
@@ -251,9 +268,7 @@ export async function POST(req: Request) {
 
     const normalizedRaw = selectedNotes.map(normalizeAccidentals).filter(Boolean);
 
-    const parsed = normalizedRaw
-      .map(parseNote)
-      .filter(Boolean) as ParsedNote[];
+    const parsed = normalizedRaw.map(parseNote).filter(Boolean) as ParsedNote[];
 
     if (parsed.length < 3) {
       return NextResponse.json(
@@ -262,20 +277,24 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ spelling単位で重複排除（CbはCbのまま生きる）
+    // spelling単位で重複排除（CbはCbのまま残る）
     const uniqParsed = uniqBy(parsed, n => n.raw);
 
+    const preferred = buildPreferredSpellingMap(uniqParsed);
+
     const inputPcs = new Set<number>(uniqParsed.map(n => n.pc));
-    const bassPc = uniqParsed[0].pc; // 最初に選ばれたものをベース扱い
+
+    // NOTE: UIの順序保証がないので「最初の要素」をベース扱い（必要なら後で改善）
+    const bassPc = uniqParsed[0].pc;
+
     const useFlat = preferFlat(uniqParsed);
 
-    // Root candidates: every input note's pitch class as possible root
     const rootCandidates = [...new Set<number>(uniqParsed.map(n => n.pc))];
 
     const candidates: CandidateObj[] = [];
     for (const rootPc of rootCandidates) {
       for (const tpl of TEMPLATES) {
-        candidates.push(buildCandidate(rootPc, tpl, inputPcs, useFlat, bassPc));
+        candidates.push(buildCandidate(rootPc, tpl, inputPcs, useFlat, bassPc, preferred));
       }
     }
 
@@ -284,10 +303,9 @@ export async function POST(req: Request) {
     const top = candidates[0];
     const engineChord = top?.chord ?? "判定不能";
 
-    // UI用は上位10件
     const outCandidates = candidates.slice(0, 10);
 
-    // ✅ ここが本題：AIに「analysis文章」を書かせる
+    // ✅ analysisだけAI
     let analysisText = "";
     try {
       analysisText = await buildAiAnalysis({
@@ -296,7 +314,6 @@ export async function POST(req: Request) {
         candidates: outCandidates,
       });
     } catch (e: any) {
-      // AI失敗時のフォールバック（最低限は返す）
       const fallback = [
         "（AI考察の生成に失敗したため、簡易ログを表示しています）",
         `入力: ${uniqParsed.map(n => n.raw).join(", ")}`,
@@ -312,9 +329,6 @@ export async function POST(req: Request) {
       analysis: analysisText,
     });
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message ?? "Unknown error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
   }
 }
