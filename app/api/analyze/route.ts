@@ -1,10 +1,21 @@
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
+import OpenAI from "openai";
 
 /**
  * Cadencia AI analyze API
  * Input: { selectedNotes: string[] }  e.g. ["C", "Eb", "G", "Bb"]
  * Output: { engineChord: string, candidates: CandidateObj[], analysis: string }
+ *
+ * ✅ ここで「ルールベース判定（候補生成）」をしつつ
+ * ✅ AIに考察文（analysis）を書かせて返す
  */
+
+// -------------------- OpenAI --------------------
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+});
 
 // -------------------- Types --------------------
 type CandidateObj = {
@@ -79,8 +90,8 @@ function uniqBy<T>(arr: T[], keyFn: (x: T) => string) {
 
 // -------------------- Chord Templates --------------------
 type Template = {
-  name: string;
-  intervals: number[];
+  name: string;          // e.g. "maj7"
+  intervals: number[];   // in semitones from root
   tags?: string[];
 };
 
@@ -104,42 +115,13 @@ const TEMPLATES: Template[] = [
 const PC_TO_NAME_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 const PC_TO_NAME_FLAT  = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
 
+// prefer flat-ish spelling if user typed any "b"
 function preferFlat(input: ParsedNote[]) {
   return input.some(n => n.acc.includes("b"));
 }
 
 function pcToName(pc: number, useFlat: boolean) {
   return useFlat ? PC_TO_NAME_FLAT[pc] : PC_TO_NAME_SHARP[pc];
-}
-
-// ★ここが今回の肝：入力にある綴りを優先して pc を名前化する
-function buildPcNamePicker(input: ParsedNote[]) {
-  const map = new Map<number, string[]>();
-  for (const n of input) {
-    const arr = map.get(n.pc) ?? [];
-    arr.push(n.raw);
-    map.set(n.pc, arr);
-  }
-
-  return (pc: number, useFlat: boolean) => {
-    const arr = map.get(pc);
-    if (arr && arr.length) {
-      // flat優先モードなら “b” を含む表記を優先（Cb / Db / Bb などを守る）
-      if (useFlat) {
-        const flatLike = arr.find(x => x.includes("b"));
-        if (flatLike) return flatLike;
-      }
-      // sharp優先モードなら “#” を含む表記を優先
-      if (!useFlat) {
-        const sharpLike = arr.find(x => x.includes("#"));
-        if (sharpLike) return sharpLike;
-      }
-      // それでも無ければ、入力にあった最初の表記を採用
-      return arr[0];
-    }
-    // 入力に無い pc は従来通り
-    return pcToName(pc, useFlat);
-  };
 }
 
 function scoreMatch(target: Set<number>, candidate: Set<number>) {
@@ -155,21 +137,19 @@ function buildCandidate(
   tpl: Template,
   inputPcs: Set<number>,
   useFlat: boolean,
-  bassPc: number,
-  pickName: (pc: number, useFlat: boolean) => string
+  bassPc: number
 ): CandidateObj {
   const chordPcs = new Set<number>(tpl.intervals.map(i => (rootPc + i) % 12));
 
-  const chordTones = [...chordPcs].map(pc => pickName(pc, useFlat));
+  const chordTones = [...chordPcs].map(pc => pcToName(pc, useFlat));
   const extraTones = [...inputPcs]
     .filter(pc => !chordPcs.has(pc))
-    .map(pc => pickName(pc, useFlat));
+    .map(pc => pcToName(pc, useFlat));
 
   const tensions = extraTones.map(t => `add(${t})`);
 
-  const base = pickName(bassPc, useFlat);
-  const root = pickName(rootPc, useFlat);
-
+  const base = pcToName(bassPc, useFlat);
+  const root = pcToName(rootPc, useFlat);
   const chord = `${root}${tpl.name}${bassPc !== rootPc ? `/${base}` : ""}`;
 
   const score = scoreMatch(inputPcs, chordPcs);
@@ -192,13 +172,86 @@ function buildCandidate(
   };
 }
 
+// -------------------- AI (analysis text) --------------------
+function safeJson(v: any) {
+  try { return JSON.stringify(v, null, 2); } catch { return String(v); }
+}
+
+async function buildAiAnalysis(params: {
+  selectedRaw: string[];
+  engineChord: string;
+  candidates: CandidateObj[];
+}) {
+  // OpenAI未設定でもアプリ自体は動かしたいので fallback も用意
+  if (!process.env.OPENAI_API_KEY) {
+    return [
+      "（AI未接続のため、簡易ログを表示しています）",
+      `入力: ${params.selectedRaw.join(", ")}`,
+      `判定: ${params.engineChord}`,
+      "",
+      "OPENAI_API_KEY を設定すると、ここにAIの考察が表示されます。",
+    ].join("\n");
+  }
+
+  const SYSTEM = `
+あなたは音楽理論の先生です。役割は「説明（考察文章）」だけです。
+【ルール】
+- 異名同音は同一視しない。入力表記を尊重する（Cb は B と“同じ音”と書かない）。
+- ただし、ピッチクラス上の一致が誤解の原因になる場合は「誤解ポイント」として言及してよい。
+- 調性は断定しない。可能性を2〜3個まで。
+- 文章は日本語で、短く読みやすく。箇条書きOK。
+- 出力は“ユーザー向けの自然な文章”だけ（JSONなどは出さない）。
+`.trim();
+
+  const top = params.candidates.slice(0, 5).map(c => ({
+    chord: c.chord,
+    score: c.score,
+    chordTones: c.chordTones,
+    extraTones: c.extraTones,
+    base: c.base,
+    root: c.root,
+  }));
+
+  const USER = `
+【入力（表記はそのまま）】
+${params.selectedRaw.join(", ")}
+
+【エンジン判定】
+${params.engineChord}
+
+【候補上位（参考）】
+${safeJson(top)}
+
+【お願い】
+この和音を「機能和声/古典和声」の観点で、次の順で説明して：
+1) ひとことで（1行）
+2) こう聞こえる理由（構成音 / 3度・5度・7度の役割）
+3) あり得る調性仮説（2〜3）
+4) 誤解しがちな点（特に Cb などの表記が意味を持つケース）
+5) 次に分かると強い情報（前後の進行や主旋律）
+`.trim();
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0.25,
+    messages: [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: USER },
+    ],
+  });
+
+  return completion.choices[0]?.message?.content?.trim() || "（AIの応答が空でした）";
+}
+
 // -------------------- Main Analyze --------------------
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null);
     const selectedNotes: string[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
 
-    const parsed = selectedNotes
+    const normalizedRaw = selectedNotes.map(normalizeAccidentals).filter(Boolean);
+
+    const parsed = normalizedRaw
       .map(parseNote)
       .filter(Boolean) as ParsedNote[];
 
@@ -209,22 +262,20 @@ export async function POST(req: Request) {
       );
     }
 
-    // Unique by exact spelling (C# と Db を区別)
+    // ✅ spelling単位で重複排除（CbはCbのまま生きる）
     const uniqParsed = uniqBy(parsed, n => n.raw);
 
     const inputPcs = new Set<number>(uniqParsed.map(n => n.pc));
-    const bassPc = uniqParsed[0].pc; // UIの順序が保証されないならここは今後改善余地あり
+    const bassPc = uniqParsed[0].pc; // 最初に選ばれたものをベース扱い
     const useFlat = preferFlat(uniqParsed);
 
-    // ★pc→名前決定（入力綴り優先）
-    const pickName = buildPcNamePicker(uniqParsed);
-
+    // Root candidates: every input note's pitch class as possible root
     const rootCandidates = [...new Set<number>(uniqParsed.map(n => n.pc))];
-    const candidates: CandidateObj[] = [];
 
+    const candidates: CandidateObj[] = [];
     for (const rootPc of rootCandidates) {
       for (const tpl of TEMPLATES) {
-        candidates.push(buildCandidate(rootPc, tpl, inputPcs, useFlat, bassPc, pickName));
+        candidates.push(buildCandidate(rootPc, tpl, inputPcs, useFlat, bassPc));
       }
     }
 
@@ -233,21 +284,32 @@ export async function POST(req: Request) {
     const top = candidates[0];
     const engineChord = top?.chord ?? "判定不能";
 
-    const analysisLines: string[] = [];
-    analysisLines.push(`入力: ${uniqParsed.map(n => n.raw).join(", ")}`);
-    analysisLines.push(`最有力: ${engineChord}`);
-    if (top?.reason) {
-      const r = Array.isArray(top.reason) ? top.reason : [top.reason];
-      analysisLines.push(...r);
-    }
-    if (top?.extraTones?.length) {
-      analysisLines.push(`※ 追加音があるため、テンション/経過音の可能性があります。`);
+    // UI用は上位10件
+    const outCandidates = candidates.slice(0, 10);
+
+    // ✅ ここが本題：AIに「analysis文章」を書かせる
+    let analysisText = "";
+    try {
+      analysisText = await buildAiAnalysis({
+        selectedRaw: uniqParsed.map(n => n.raw),
+        engineChord,
+        candidates: outCandidates,
+      });
+    } catch (e: any) {
+      // AI失敗時のフォールバック（最低限は返す）
+      const fallback = [
+        "（AI考察の生成に失敗したため、簡易ログを表示しています）",
+        `入力: ${uniqParsed.map(n => n.raw).join(", ")}`,
+        `最有力: ${engineChord}`,
+        ...(top?.reason ? (Array.isArray(top.reason) ? top.reason : [top.reason]) : []),
+      ];
+      analysisText = fallback.join("\n");
     }
 
     return NextResponse.json({
       engineChord,
-      candidates: candidates.slice(0, 10),
-      analysis: analysisLines.join("\n"),
+      candidates: outCandidates,
+      analysis: analysisText,
     });
   } catch (e: any) {
     return NextResponse.json(
