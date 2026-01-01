@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 
 import OpenAI from "openai";
+import { normalizeAccidentals, intervalBetween } from "@/lib/theory/interval";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -8,7 +9,7 @@ const openai = new OpenAI({
 
 type ReqBody = {
   selectedNotes?: string[];
-  analysis?: any;     // /api/analyze のレスポンス丸ごとでもOK
+  analysis?: any;
   engineChord?: string;
   question?: string;
 };
@@ -17,13 +18,11 @@ function safeJson(v: any) {
   try { return JSON.stringify(v, null, 2); } catch { return String(v); }
 }
 
-function normalizeAccidentals(s: string) {
-  return (s ?? "")
-    .trim()
-    .replaceAll("♭", "b")
-    .replaceAll("♯", "#")
-    .replaceAll("𝄫", "bb")
-    .replaceAll("𝄪", "##");
+function extractRootFromChordName(chord: string): string | null {
+  const s = (chord ?? "").trim();
+  const m = s.match(/^([A-G])((?:bb|b|##|#)?)/);
+  if (!m) return null;
+  return `${m[1]}${m[2] ?? ""}`.trim();
 }
 
 export async function POST(req: Request) {
@@ -38,112 +37,63 @@ export async function POST(req: Request) {
     if (selectedNotes.length < 3) {
       return new Response("3音以上選んでください。", { status: 400 });
     }
-
-    // fallback (APIキー無しでも壊れない)
-    if (!process.env.OPENAI_API_KEY) {
-      const msg = [
-        "（AI未接続）",
-        `入力: ${selectedNotes.join(", ")}`,
-        `判定: ${engineChord || "（未指定）"}`,
-        "",
-        "OPENAI_API_KEY を設定すると質問にAIが答えます。",
-      ].join("\n");
-      return new Response(msg, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+    if (!engineChord || engineChord === "---") {
+      return new Response("まず判定してください。", { status: 400 });
     }
+    if (!question) {
+      return new Response("質問が空です。", { status: 400 });
+    }
+
+    const root = extractRootFromChordName(engineChord);
+    const intervalMap =
+      root
+        ? selectedNotes.map(n => `${root}→${n}: ${intervalBetween(root, n)?.label ?? "（算出不可）"}`).join("\n")
+        : "（engineChordから根音表記を取得できませんでした）";
 
     const SYSTEM = `
 あなたは古典和声（機能和声）を専門とする音楽理論家です。
 音程・度数は必ず「音名の文字間隔（C–D–E–F–G–A–B）」で扱い、
 半音数・実音高・ピッチクラスを基準に説明してはいけません。
 あなたの役割は【説明だけ】です。コード名の判定は行いません。
-質問に答える際も、入力された音名表記を最優先し、
-「一般論」「別の可能性」を新しく作ってはいけません。
-
-【音程の数え方：最重要ルール】
-音程（度数・増減）は必ず「音名の文字間隔（C–D–E–F–G–A–B）」で数える。
-半音数、実音高、ピッチクラス、鍵盤位置、MIDI番号、12平均律の同音扱いを根拠にしてはいけない。
-
-【手順：必ずこの順で計算し、飛ばさない】
-入力は必ず「根音X」→「対象音Y」の順で扱う。
-
-(1) まず音名の文字だけを見る（♯/♭/𝄪/𝄫は一旦無視）
-    例：X= D、Y= G# なら文字は D と G
-
-(2) 文字間隔を数えて「◯度」を確定する（度数は必ず 1 から数える）
-    文字を順に並べて数える：D(1)–E(2)–F(3)–G(4)
-    → この時点で「4度」と確定
-    ※「増4度（または減5度）」のように、度数を二択にしてはいけない。
-      度数は文字間隔で一意に決まる。
-
-(3) 次に増減を決める（ここでも半音数を使わない）
-    増減は「その表記が示す音名関係（♯/♭/𝄪/𝄫）」として説明する。
-    例：D→G は完全4度、D→G# は「4度のGを#した表記」なので増4度。
-    ※この段階でも「実音では同じ」などの逃げは不可。
-
-(4) 最終出力は必ず「度数＋増減」をセットで書く
-    OK例：増4度 / 短3度 / 長6度 / 完全5度 / 減7度
-    NG例：トライトーン / #11っぽい / 半音で6つ離れてる / だいたい減5度
-
-【禁止事項（嘘防止）】
-- 「増4度 ≒ 減5度」のように、文字間隔の違う音程名を“同じ”として扱うのは禁止。
-- 「FbはEと同じ高さ」など、実音高の一致を根拠に説明してはいけない（誤解ポイントとしての言及のみ可）。
-- 情報不足の箇所は推測で埋めず、「前後文脈が無いので確定できない」と明言する。
-
-【出力チェック（自分で検算）】
-文章を出す前に必ず確認：
-- すべての音程表現が「文字間隔で度数が一意」になっているか
-- “または”で別の度数名を併記していないか
-- 半音・ピッチクラス・実音高の根拠が混ざっていないか
 
 【最重要ルール（嘘防止）】
-- 音程名（完全・長・短・増・減◯度）は、
-  入力された音名同士の「文字間隔」を明示的に確認できる場合にのみ使用する。
-  - 「不協和」「緊張感」などの評価語は、
-  具体的な音程名・構造説明を伴わない限り使用禁止。
-- 確認できない場合、音程名を使ってはならない。
-- 音程名（完全・長・短・増・減◯度）は、
-  音名の文字間隔から一意に決まるもののみ使用し、
-  AIが独自に命名・言い換え・解釈してはならない。
-- 音程名（長3度・完全5度・減5度など）は、
-  入力された音名同士の文字間隔から機械的に決まるものだけを使用し、
-  推測・言い換え・機能的解釈で新たに命名してはいけない。
 - engineChord の表記を変更しない（言い換え・再判定しない）。
-- 調性（キー）は断定しない。「可能性」を2〜3個まで。
-- 異名同音は同一視しない。A# と Bb、Cb と B を同じと断言しない（ただし誤解ポイントとして触れるのは可）。
-- 前後の進行が無い前提なので断言を避け「仮説」として述べる。
-- 不明な点は「情報不足」と言い切ってよい（推測で埋めない）。
-
-【出力フォーマット（この順）】
-A. ひとことで（1〜2行）
-B. 主解釈（engineChord / 機能 / 調性仮説つきローマ数字）
-C. 準解釈（同上）
-D. 別解釈（同上、無ければ省略）
-E. 非和声音の見立て（どの音がどの種類っぽいか）
-F. 次に分かること（前後が分かると何が確定するか）
+- 入力された音名表記を最優先する（CbはCb、FbはFb）。
+- 「一般論」「別の可能性」を勝手に新規追加しない（必要なら“情報不足”と言い切る）。
+- 調性（キー）は断定しない。可能性を2〜3個まで。
+- 異名同音は同一視しない（ただし誤解ポイントとして触れるのは可）。
+- 前後が無い前提なので断言を避け、仮説として述べる。
 `.trim();
 
-    const userPrompt = `
-【入力（表記はそのまま尊重）】
+    const USER = `
+【入力（表記そのまま）】
 選択音: ${selectedNotes.join(", ")}
-engineChord: ${engineChord || "（未指定）"}
 
-【解析データ（参考。判定は変えない）】
+【engineChord（絶対に変更しない）】
+${engineChord}
+
+【参考：engineChord根音→各音の音程ラベル（文字間隔）】
+${intervalMap}
+
+【参考：analyzeの解析データ（再判定は禁止）】
 ${safeJson(analysis)}
 
 【質問】
-${question || "（質問なし：自動解説してください）"}
+${question}
 
-【依頼】
-質問に答えつつ、A〜F で説明してください。
-特に異名同音（Cb等）について、必要なら誤解ポイントとして触れてください。
+【出力フォーマット】
+A. ひとことで（1〜2行）
+B. 質問への回答（根拠は入力表記と音程ラベルに限定）
+C. 不明点（情報不足なら明確に）
+D. 次に分かると強い情報（前後/旋律）
 `.trim();
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
-      temperature: 0.2,
+      temperature: 0.15,
       messages: [
         { role: "system", content: SYSTEM },
-        { role: "user", content: userPrompt },
+        { role: "user", content: USER },
       ],
     });
 
