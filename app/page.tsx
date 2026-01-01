@@ -83,7 +83,6 @@ function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateUI[] {
 
 // --- Components ---
 
-// ミニピアノ鍵盤 (Visualizer)
 const MiniPiano = ({ selected }: { selected: string[] }) => {
   const keys = [
     { n: ["C"], type: "white", x: 0 },
@@ -123,7 +122,6 @@ const MiniPiano = ({ selected }: { selected: string[] }) => {
   );
 };
 
-// Feedback Link Component
 const FeedbackLink = ({ className, children }: { className?: string, children: React.ReactNode }) => (
   <a 
     href="https://x.com/araken525_toho?s=21" 
@@ -139,7 +137,7 @@ export default function CadenciaPage() {
   const resultRef = useRef<HTMLDivElement>(null);
   const [showGuide, setShowGuide] = useState(true);
 
-  // 音名ボタン定義（12個）
+  // 音名ボタン定義 (12音)
   const NOTE_BUTTONS = useMemo(() => [
     { id: 0, d: "C", a: "C" }, { id: 1, d: "C#", a: "Db" }, { id: 2, d: "D", a: "D" },
     { id: 3, d: "D#", a: "Eb" }, { id: 4, d: "E", a: "E" }, { id: 5, d: "F", a: "F" },
@@ -210,8 +208,8 @@ export default function CadenciaPage() {
   // --- Icons ---
   const IconSparkles = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
   const IconSend = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
-  const IconRefresh = () => <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>;
-  const IconTrash = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
+  const IconRefresh = () => <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>;
+  const IconTrash = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
   const IconX = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
   const IconBrain = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>;
   const IconCheck = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>;
@@ -270,7 +268,7 @@ export default function CadenciaPage() {
 
       <main className="pt-24 px-5 max-w-md mx-auto space-y-8 relative z-10">
         
-        {/* ① Hero Section: 固定キャッチコピー */}
+        {/* ① Hero Section */}
         <section className="text-center space-y-2">
           <div className="inline-block relative">
              <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold text-indigo-400/80 tracking-[0.2em] whitespace-nowrap">
@@ -286,24 +284,15 @@ export default function CadenciaPage() {
           </p>
         </section>
 
-        {/* ② Intro / Guide Card */}
+        {/* ② Intro Card */}
         {showGuide && (
           <section className="relative rounded-3xl p-0.5 animate-in fade-in slide-in-from-top-4 duration-500 bg-gradient-to-br from-indigo-200 via-purple-200 to-fuchsia-200 shadow-xl shadow-indigo-100">
             <div className="bg-white/95 backdrop-blur-xl rounded-[22px] p-6 relative overflow-hidden">
-              <button 
-                onClick={() => setShowGuide(false)}
-                className="absolute top-3 right-3 text-slate-300 active:text-slate-500 active:bg-slate-100 p-2 rounded-full transition-colors"
-              >
-                <IconX />
-              </button>
-
-              <div className="mb-6">
-                <h2 className="text-sm font-black text-slate-800 flex items-center gap-2 mb-1">
-                  <span className="text-lg">🎓</span> はじめての方へ
-                </h2>
-                <p className="text-[11px] text-slate-400 font-bold">Cadencia AI が選ばれる3つの理由</p>
-              </div>
-
+              <button onClick={() => setShowGuide(false)} className="absolute top-3 right-3 text-slate-300 active:text-slate-500 active:bg-slate-100 p-2 rounded-full transition-colors"><IconX /></button>
+              
+              <h2 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2"><span className="text-lg">🎓</span> はじめての方へ</h2>
+              <p className="text-[11px] text-slate-400 font-bold mb-4">Cadencia AI が選ばれる3つの理由</p>
+              
               <div className="grid gap-4 mb-6">
                  <div className="flex gap-3 items-start">
                     <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-500 flex items-center justify-center flex-shrink-0 shadow-sm"><IconCheck /></div>
@@ -316,14 +305,14 @@ export default function CadenciaPage() {
                     <div className="w-9 h-9 rounded-xl bg-fuchsia-50 border border-fuchsia-100 text-fuchsia-500 flex items-center justify-center flex-shrink-0 shadow-sm"><span className="text-xs font-serif italic font-bold">A#</span></div>
                     <div>
                       <h3 className="text-xs font-bold text-fuchsia-600">異名同音の区別</h3>
-                      <p className="text-[11px] text-slate-500 leading-snug mt-1">A#とBbを区別し、正しい和声解釈を導き出します。</p>
+                      <p className="text-[11px] text-slate-500 leading-snug mt-1">A#とBbを区別し、文脈に合った正しい和声解釈が可能です。</p>
                     </div>
                  </div>
                  <div className="flex gap-3 items-start">
                     <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 text-purple-500 flex items-center justify-center flex-shrink-0 shadow-sm"><IconBrain /></div>
                     <div>
                       <h3 className="text-xs font-bold text-purple-600">比較と深掘り</h3>
-                      <p className="text-[11px] text-slate-500 leading-snug mt-1">別解釈と比較したり、チャットで質問できます。</p>
+                      <p className="text-[11px] text-slate-500 leading-snug mt-1">別候補と比較し、AIチャットで深掘りできます。</p>
                     </div>
                  </div>
               </div>
@@ -479,13 +468,12 @@ export default function CadenciaPage() {
 
       </main>
 
-      {/* --- Bottom Controls (iOS Keyboard Style with Right Side Actions) --- */}
-      {/* Background color mimics iOS keyboard gray area */}
-      <div className={`fixed bottom-0 inset-x-0 z-50 bg-[#D1D5DB]/90 backdrop-blur-xl border-t border-[#bdc3c7] pt-2 pb-8 shadow-[0_-1px_0_rgba(0,0,0,0.1)]`}>
-        <div className="max-w-md mx-auto px-1.5 flex">
+      {/* --- Bottom Controls (Transparent & iOS Layout) --- */}
+      <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glass} border-t-0 rounded-t-[30px] pt-4 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]`}>
+        <div className="max-w-md mx-auto px-4 flex">
           
-          {/* Main Keypad (Left Side 3x4) */}
-          <div className="grid grid-cols-3 gap-1.5 flex-1 mr-1.5">
+          {/* Main Keypad (3x4 Grid) */}
+          <div className="grid grid-cols-3 gap-2 flex-1 mr-2">
             {NOTE_BUTTONS.map((n) => {
               const active = selected.find((x) => x === n.d || x === n.a);
               return (
@@ -493,49 +481,46 @@ export default function CadenciaPage() {
                   key={n.id}
                   onClick={() => toggle(n)}
                   className={`
-                    h-12 rounded-[5px] font-normal text-xl transition-all duration-100 relative
-                    shadow-[0_1px_0_rgba(0,0,0,0.35)]
+                    h-12 rounded-xl font-bold text-xl transition-all duration-150 relative backdrop-blur-sm active:scale-95
                     ${active
-                      ? `${G.main} text-white`
-                      : "bg-white text-black active:bg-[#E5E5E5]"
+                      ? `${G.main} text-white shadow-md shadow-purple-200`
+                      : "bg-white border border-slate-100 text-slate-600 active:bg-indigo-50"
                     }
                   `}
                 >
                   {active || n.d}
                   {active && n.d !== n.a && (
-                    <span className="absolute top-1 right-1 opacity-60 text-[8px]">↻</span>
+                    <span className="absolute top-1 right-1 w-3 h-3 bg-white/20 rounded-full flex items-center justify-center text-[8px] text-white">↻</span>
                   )}
                 </button>
               );
             })}
           </div>
 
-          {/* Side Action Buttons (Right Side Column) */}
-          <div className="flex flex-col gap-1.5 w-1/4">
-             {/* Delete/Reset Button (Top Right) */}
+          {/* Right Side Actions (Column) */}
+          <div className="flex flex-col w-[25%] gap-2">
+             {/* Delete/Reset (Top Right) */}
              <button 
                 onClick={reset}
-                className="h-12 rounded-[5px] bg-[#BCC0C5] active:bg-white text-slate-600 transition-colors flex items-center justify-center shadow-[0_1px_0_rgba(0,0,0,0.35)]"
+                className="h-12 rounded-xl bg-white border border-slate-200 text-slate-400 active:text-red-500 active:border-red-200 active:bg-red-50 transition-all flex items-center justify-center shadow-sm active:scale-95"
              >
                <IconTrash />
              </button>
              
-             {/* Spacer / Placeholder (Middle) - Optional decorative or future use */}
-             <div className="h-12 rounded-[5px] bg-transparent flex items-center justify-center"></div>
-             
-             {/* Spacer 2 (Middle) - To align with 4 rows */}
-             <div className="h-12 rounded-[5px] bg-transparent flex items-center justify-center"></div>
+             {/* Spacer (Fill space) */}
+             <div className="flex-1"></div>
 
-             {/* Enter/Analyze Button (Bottom Right) - Blue Action Style */}
+             {/* Enter/Analyze (Bottom Right - Tall) */}
              <button 
                 onClick={analyze}
                 disabled={!canAnalyze || loading}
                 className={`
-                  h-12 rounded-[5px] flex items-center justify-center shadow-[0_1px_0_rgba(0,0,0,0.35)] text-white transition-all active:brightness-90
-                  ${canAnalyze && !loading ? "bg-[#007AFF]" : "bg-[#BCC0C5] cursor-not-allowed"}
+                  h-24 rounded-xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95
+                  ${canAnalyze && !loading ? `${G.main} text-white shadow-indigo-300/50` : "bg-slate-100 text-slate-300 cursor-not-allowed"}
                 `}
              >
                 {loading ? <IconRefresh /> : <IconArrowRight />}
+                <span className="text-[10px] font-bold mt-1">判定</span>
              </button>
           </div>
 
