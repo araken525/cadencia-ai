@@ -1,13 +1,12 @@
-export const runtime = "nodejs";
+import { NextResponse } from "next/server";
 
-import OpenAI from "openai";
+/**
+ * Cadencia AI analyze API
+ * Input: { selectedNotes: string[] }  e.g. ["C", "Eb", "G", "Bb"]
+ * Output: { engineChord: string, candidates: CandidateObj[], analysis: string }
+ */
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-
-type ReqBody = {
-  selectedNotes?: string[]; // 例: ["C","E","G","A#"] ※表記のまま
-};
-
+// -------------------- Types --------------------
 type CandidateObj = {
   chord: string;
   base?: string;
@@ -20,378 +19,218 @@ type CandidateObj = {
   reason?: string | string[];
 };
 
-type ResBody = {
-  engineChord: string;
-  candidates: CandidateObj[]; // UIで別解釈に使える
-  reason?: string;           // デバッグ用（従来）
-  analysis?: string;         // ✅ AI文章
-};
+// -------------------- Utils: Normalize --------------------
+function normalizeAccidentals(s: string) {
+  return (s ?? "")
+    .trim()
+    .replaceAll("♭", "b")
+    .replaceAll("♯", "#")
+    .replaceAll("𝄫", "bb")
+    .replaceAll("𝄪", "##")
+    .replaceAll("−", "-"); // just in case
+}
 
-/** ========= 音名パース（表記を保持） ========= */
 type ParsedNote = {
-  raw: string;
-  letter: "A" | "B" | "C" | "D" | "E" | "F" | "G";
-  acc: number; // #=+1, b=-1
-  pc: number;  // pitch class 0..11
+  raw: string;      // e.g. "Cb"
+  letter: string;   // "C"
+  acc: string;      // "", "#", "b", "##", "bb"
+  pc: number;       // 0..11 pitch class
 };
 
-const LETTER_TO_PC: Record<ParsedNote["letter"], number> = {
+const LETTER_TO_PC: Record<string, number> = {
   C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11,
 };
 
-function parseNote(raw: string): ParsedNote | null {
-  const s = (raw ?? "").trim();
-  const m = s.match(/^([A-Ga-g])([#b]{0,2})$/);
+function accToDelta(acc: string) {
+  if (acc === "") return 0;
+  if (acc === "#") return 1;
+  if (acc === "##") return 2;
+  if (acc === "b") return -1;
+  if (acc === "bb") return -2;
+  return 0;
+}
+
+function parseNote(noteInput: string): ParsedNote | null {
+  const raw = normalizeAccidentals(noteInput);
+  // Accept: C, C#, Cb, C##, Cbb
+  const m = raw.match(/^([A-Ga-g])([#b]{0,2})$/);
   if (!m) return null;
 
-  const letter = m[1].toUpperCase() as ParsedNote["letter"];
-  const accStr = m[2] ?? "";
-  let acc = 0;
-  for (const ch of accStr) acc += ch === "#" ? 1 : -1;
-
+  const letter = m[1].toUpperCase();
+  const acc = m[2] ?? "";
   const base = LETTER_TO_PC[letter];
-  const pc = (base + acc + 1200) % 12;
+  if (base === undefined) return null;
 
-  return { raw: s, letter, acc, pc };
+  const pc = (base + accToDelta(acc) + 12) % 12;
+
+  return { raw: `${letter}${acc}`, letter, acc, pc };
 }
 
-/** ========= “音名間隔（文字）優先” の度数・質 ========= */
-type IntervalQuality = "P" | "M" | "m" | "A" | "d";
-
-type SpelledInterval = {
-  number: 1 | 2 | 3 | 4 | 5 | 6 | 7;
-  quality: IntervalQuality;
-  semitones: number; // 0..11
-  label: string; // 例: "m7" / "A6" / "P5"
-};
-
-const MAJOR_SCALE_SEMITONES: Record<number, number> = {
-  1: 0, 2: 2, 3: 4, 4: 5, 5: 7, 6: 9, 7: 11,
-};
-
-const LETTER_INDEX: Record<ParsedNote["letter"], number> = {
-  C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6,
-};
-
-function mod(n: number, m: number) {
-  return ((n % m) + m) % m;
+function uniqBy<T>(arr: T[], keyFn: (x: T) => string) {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const x of arr) {
+    const k = keyFn(x);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(x);
+  }
+  return out;
 }
 
-function spelledInterval(root: ParsedNote, note: ParsedNote): SpelledInterval {
-  const diatonic = mod(LETTER_INDEX[note.letter] - LETTER_INDEX[root.letter], 7);
-  const number = (diatonic + 1) as 1 | 2 | 3 | 4 | 5 | 6 | 7;
-
-  const semitones = mod(note.pc - root.pc, 12);
-
-  const base = MAJOR_SCALE_SEMITONES[number];
-  const diff = mod(semitones - base, 12);
-  const signed = diff <= 6 ? diff : diff - 12; // 例: 11 -> -1
-
-  const isPerfectClass = number === 1 || number === 4 || number === 5;
-  let quality: IntervalQuality = "P";
-
-  if (isPerfectClass) {
-    if (signed === 0) quality = "P";
-    else if (signed === 1) quality = "A";
-    else if (signed === -1) quality = "d";
-    else if (signed >= 2) quality = "A";
-    else quality = "d";
-  } else {
-    if (signed === 0) quality = "M";
-    else if (signed === -1) quality = "m";
-    else if (signed === 1) quality = "A";
-    else if (signed === -2) quality = "d";
-    else if (signed >= 2) quality = "A";
-    else quality = "d";
-  }
-
-  const label = `${quality}${number}`;
-  return { number, quality, semitones, label };
-}
-
-/** ========= テンション（9/11/13）表記 ========= */
-function tensionToken(iv: SpelledInterval): string | null {
-  if (iv.number === 2) {
-    if (iv.quality === "M") return "9";
-    if (iv.quality === "m") return "b9";
-    if (iv.quality === "A") return "#9";
-    if (iv.quality === "d") return "bb9";
-  }
-  if (iv.number === 4) {
-    if (iv.quality === "P") return "11";
-    if (iv.quality === "A") return "#11";
-    if (iv.quality === "d") return "b11";
-  }
-  if (iv.number === 6) {
-    if (iv.quality === "M") return "13";
-    if (iv.quality === "m") return "b13";
-    if (iv.quality === "A") return "#13";
-    if (iv.quality === "d") return "bb13";
-  }
-  return null;
-}
-
-/** triad: add9... / 7th: 7(9,#11,13) */
-function addTensionsToSymbol(baseSymbol: string, has7: boolean, ivs: SpelledInterval[]): { symbol: string; tensions: string[] } {
-  const tokens = ivs.map(tensionToken).filter(Boolean) as string[];
-  const uniq = Array.from(new Set(tokens));
-
-  const order = (t: string) => {
-    const n = t.replace(/^[b#]+/, "");
-    const base = parseInt(n, 10);
-    const sharpness = t.startsWith("bb") ? -2 : t.startsWith("b") ? -1 : t.startsWith("#") ? 1 : 0;
-    return base * 10 + (sharpness + 1);
-  };
-  uniq.sort((a, b) => order(a) - order(b));
-
-  if (uniq.length === 0) return { symbol: baseSymbol, tensions: [] };
-
-  if (!has7) {
-    return { symbol: baseSymbol + uniq.map((t) => `add${t}`).join(""), tensions: uniq };
-  }
-  return { symbol: `${baseSymbol}(${uniq.join(",")})`, tensions: uniq };
-}
-
-/** ========= コードテンプレ（骨格） ========= */
+// -------------------- Chord Templates --------------------
 type Template = {
-  suffix: string;
-  required: Array<{ number: SpelledInterval["number"]; quality: IntervalQuality }>;
-  has7: boolean;
+  name: string;          // e.g. "maj7"
+  intervals: number[];   // in semitones from root
+  tags?: string[];       // for UI/analysis
 };
 
 const TEMPLATES: Template[] = [
-  { suffix: "",    has7: false, required: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }] },
-  { suffix: "m",   has7: false, required: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }] },
-  { suffix: "dim", has7: false, required: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }] },
-  { suffix: "aug", has7: false, required: [{ number: 3, quality: "M" }, { number: 5, quality: "A" }] },
-  { suffix: "sus4",has7: false, required: [{ number: 4, quality: "P" }, { number: 5, quality: "P" }] },
-  { suffix: "sus2",has7: false, required: [{ number: 2, quality: "M" }, { number: 5, quality: "P" }] },
+  { name: "",       intervals: [0, 4, 7],            tags: ["triad", "major"] },
+  { name: "m",      intervals: [0, 3, 7],            tags: ["triad", "minor"] },
+  { name: "dim",    intervals: [0, 3, 6],            tags: ["triad", "diminished"] },
+  { name: "aug",    intervals: [0, 4, 8],            tags: ["triad", "augmented"] },
 
-  { suffix: "7",    has7: true, required: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 7, quality: "m" }] },
-  { suffix: "maj7", has7: true, required: [{ number: 3, quality: "M" }, { number: 5, quality: "P" }, { number: 7, quality: "M" }] },
-  { suffix: "m7",   has7: true, required: [{ number: 3, quality: "m" }, { number: 5, quality: "P" }, { number: 7, quality: "m" }] },
-  { suffix: "m7b5", has7: true, required: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }, { number: 7, quality: "m" }] },
-  { suffix: "dim7", has7: true, required: [{ number: 3, quality: "m" }, { number: 5, quality: "d" }, { number: 7, quality: "d" }] },
+  { name: "7",      intervals: [0, 4, 7, 10],        tags: ["seventh", "dominant7"] },
+  { name: "maj7",   intervals: [0, 4, 7, 11],        tags: ["seventh", "major7"] },
+  { name: "m7",     intervals: [0, 3, 7, 10],        tags: ["seventh", "minor7"] },
+  { name: "mMaj7",  intervals: [0, 3, 7, 11],        tags: ["seventh", "minorMajor7"] },
+  { name: "dim7",   intervals: [0, 3, 6, 9],         tags: ["seventh", "diminished7"] },
+  { name: "m7b5",   intervals: [0, 3, 6, 10],        tags: ["seventh", "halfDiminished"] },
+
+  // 6th chords (optional but useful)
+  { name: "6",      intervals: [0, 4, 7, 9],         tags: ["sixth"] },
+  { name: "m6",     intervals: [0, 3, 7, 9],         tags: ["sixth"] },
 ];
 
-type Match = {
-  chord: string;
-  base: string;
-  score: number;
-  root: string;
-  has7: boolean;
-  tensions: string[];
-  chordTones: string[];
-  extraTones: string[];
-  reason: string[];
-};
+const PC_TO_NAME_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const PC_TO_NAME_FLAT  = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
 
-function buildChordSymbol(rootRaw: string, suffix: string) {
-  return `${rootRaw}${suffix}`;
+// prefer spelling based on user's input
+function preferFlat(input: ParsedNote[]) {
+  return input.some(n => n.acc.includes("b"));
 }
 
-function matchTemplates(root: ParsedNote, notes: ParsedNote[]): Match[] {
-  const ivs = notes
-    .filter((n) => n.raw !== root.raw)
-    .map((n) => spelledInterval(root, n));
-
-  const byNumber = new Map<number, IntervalQuality[]>();
-  for (const iv of ivs) {
-    const arr = byNumber.get(iv.number) ?? [];
-    arr.push(iv.quality);
-    byNumber.set(iv.number, arr);
-  }
-
-  const matches: Match[] = [];
-
-  for (const tpl of TEMPLATES) {
-    // 必須条件
-    const missing: string[] = [];
-    for (const req of tpl.required) {
-      const qs = byNumber.get(req.number) ?? [];
-      if (!qs.includes(req.quality)) missing.push(`${req.quality}${req.number}`);
-    }
-    if (missing.length > 0) continue;
-
-    // 余分音（テンション 2/4/6 は減点しない）
-    const requiredCount = tpl.required.length;
-    const extraNonTension = ivs.filter((iv) => {
-      const isRequired = tpl.required.some((r) => r.number === iv.number && r.quality === iv.quality);
-      const isTension = iv.number === 2 || iv.number === 4 || iv.number === 6;
-      return !isRequired && !isTension;
-    }).length;
-
-    const score = requiredCount * 10 - extraNonTension * 2;
-
-    const base = buildChordSymbol(root.raw, tpl.suffix);
-    const t = addTensionsToSymbol(base, tpl.has7, ivs);
-
-    // chordTones / extraTones をそれっぽく作る（UI用）
-    const chordTones: string[] = [];
-    const extraTones: string[] = [];
-    const requiredKeys = new Set(tpl.required.map((r) => `${r.quality}${r.number}`));
-    for (const iv of ivs) {
-      const key = `${iv.quality}${iv.number}`;
-      const rawNote = notes.find((nn) => nn.pc === mod(root.pc + iv.semitones, 12) && nn.letter === notes.find(x=>x.raw===nn.raw)?.letter)?.raw;
-      // rawNote を厳密には取りにくいので、notes側のrawを使う：rootとの比較で並べる
-      // ここは「表示用」なので、厳密な音名対応は selected から引く
-    }
-
-    // 表記保持のため：入力順から拾う
-    const selectedRaw = notes.map((n) => n.raw);
-    // chord tones = root + テンプレ必須に該当する音（入力の中から）
-    const chordToneSet = new Set<string>([root.raw]);
-    for (const n of notes) {
-      if (n.raw === root.raw) continue;
-      const iv = spelledInterval(root, n);
-      if (requiredKeys.has(`${iv.quality}${iv.number}`)) chordToneSet.add(n.raw);
-    }
-    for (const n of selectedRaw) (chordToneSet.has(n) ? chordTones : extraTones).push(n);
-
-    const reason: string[] = [];
-    reason.push(`root=${root.raw}`);
-    reason.push(`base=${base}`);
-    if (t.symbol !== base) reason.push(`tensions=${t.tensions.join(",")}`);
-    if (extraNonTension > 0) reason.push(`extraNonTension=${extraNonTension}`);
-
-    matches.push({
-      chord: t.symbol,
-      base,
-      score,
-      root: root.raw,
-      has7: tpl.has7,
-      tensions: t.tensions,
-      chordTones,
-      extraTones,
-      reason,
-    });
-  }
-
-  return matches;
+function pcToName(pc: number, useFlat: boolean) {
+  return useFlat ? PC_TO_NAME_FLAT[pc] : PC_TO_NAME_SHARP[pc];
 }
 
-/** ========= AI 解説（安全に：和音名は確定済み） ========= */
-async function buildAiAnalysis(args: {
-  selectedNotes: string[];
-  engineChord: string;
-  topCandidates: CandidateObj[];
-  debugReason?: string;
-}) {
-  const { selectedNotes, engineChord, topCandidates, debugReason } = args;
+function scoreMatch(target: Set<number>, candidate: Set<number>) {
+  // simple scoring: reward common tones, penalize missing/extras
+  let common = 0;
+  for (const x of candidate) if (target.has(x)) common += 1;
+  const missing = [...target].filter(x => !candidate.has(x)).length;
+  const extra   = [...candidate].filter(x => !target.has(x)).length;
 
-  const SYSTEM = `
-You are a classical harmony tutor. Output MUST be Japanese.
-Never rename chords. Never invent a new chord label.
-Treat enharmonic equivalents as DIFFERENT spellings (A# ≠ Bb). Do not unify.
-Explain using: 調性/機能/転回/導音/非和声音/変位/経過音/掛留/倚音 など、古典和声寄りの語彙を優先。
-Keep it friendly, short, and concrete.
-Structure:
-- まず結論（1行）
-- 根音仮定と骨格（3度/5度/7度）
-- もし9/11/13等があれば「上声部の付加（非和声音の可能性も含む）」として触れる
-- 「別解釈」1つだけ紹介（候補から）
-`;
-
-  const USER = `
-選択音（表記そのまま）:
-${selectedNotes.join(", ")}
-
-確定したコード表示（エンジン確定）:
-${engineChord}
-
-候補（上位）:
-${topCandidates.map((c) => `- ${c.chord}${c.root ? ` (root=${c.root})` : ""}${typeof c.score === "number" ? ` score=${c.score}` : ""}`).join("\n")}
-
-デバッグ理由（あれば）:
-${debugReason ?? ""}
-`;
-
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4.1-mini",
-    temperature: 0.3,
-    messages: [
-      { role: "system", content: SYSTEM.trim() },
-      { role: "user", content: USER.trim() },
-    ],
-  });
-
-  return completion.choices[0]?.message?.content?.trim() ?? "";
+  // weights tuned for "feel good" ranking
+  return common * 30 - missing * 40 - extra * 15;
 }
 
+function buildCandidate(
+  rootPc: number,
+  tpl: Template,
+  inputPcs: Set<number>,
+  useFlat: boolean,
+  bassPc: number
+): CandidateObj {
+  const chordPcs = new Set<number>(tpl.intervals.map(i => (rootPc + i) % 12));
+
+  const chordTones = [...chordPcs].map(pc => pcToName(pc, useFlat));
+  const extraTones = [...inputPcs]
+    .filter(pc => !chordPcs.has(pc))
+    .map(pc => pcToName(pc, useFlat));
+
+  const tensions = extraTones.map(t => `add(${t})`); // light-touch
+
+  const base = pcToName(bassPc, useFlat);
+  const root = pcToName(rootPc, useFlat);
+
+  const chord = `${root}${tpl.name}${bassPc !== rootPc ? `/${base}` : ""}`;
+
+  const score = scoreMatch(inputPcs, chordPcs);
+
+  const reasonLines: string[] = [];
+  reasonLines.push(`Root候補: ${root}`);
+  reasonLines.push(`Chord tones: ${chordTones.join(", ")}`);
+  if (extraTones.length) reasonLines.push(`Extra tones: ${extraTones.join(", ")}`);
+
+  return {
+    chord,
+    base,
+    root,
+    score,
+    has7: tpl.intervals.includes(10) || tpl.intervals.includes(11),
+    tensions,
+    chordTones,
+    extraTones,
+    reason: reasonLines,
+  };
+}
+
+// -------------------- Main Analyze --------------------
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as ReqBody;
-    const selectedRaw = (body.selectedNotes ?? []).map((s) => (s ?? "").trim()).filter(Boolean);
+    const body = await req.json().catch(() => null);
+    const selectedNotes: string[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
 
-    const uniq = Array.from(new Set(selectedRaw));
-    const parsed = uniq.map(parseNote).filter(Boolean) as ParsedNote[];
+    const parsed = selectedNotes
+      .map(parseNote)
+      .filter(Boolean) as ParsedNote[];
 
     if (parsed.length < 3) {
-      const res: ResBody = {
-        engineChord: "---",
-        candidates: [],
-        reason: "3音以上選んでください",
-        analysis: "",
-      };
-      return Response.json(res, { status: 200 });
+      return NextResponse.json(
+        { engineChord: "判定不能", candidates: [], analysis: "音が3つ以上必要です" },
+        { status: 200 }
+      );
     }
 
-    // ロジック判定（AIは関与しない）
-    const all: Match[] = [];
-    for (const root of parsed) all.push(...matchTemplates(root, parsed));
-    all.sort((a, b) => b.score - a.score);
+    // Unique by exact spelling (so C# and Db can co-exist if you ever allow)
+    const uniqParsed = uniqBy(parsed, n => n.raw);
 
-    if (all.length === 0) {
-      const res: ResBody = {
-        engineChord: "（該当なし）",
-        candidates: [],
-        reason: "異名同音を同一視しない条件で、三和音/7th骨格に一致する候補がありません。",
-        analysis: "一致する骨格が見つかりませんでした。転回/省略/非和声音を疑うとヒントが増えます。",
-      };
-      return Response.json(res, { status: 200 });
+    const inputPcs = new Set<number>(uniqParsed.map(n => n.pc));
+    const bassPc = uniqParsed[0].pc; // your UI has no order guarantee; but keep "first chosen" as bass
+
+    const useFlat = preferFlat(uniqParsed);
+
+    // Root candidates: every input note's pitch class as possible root
+    const rootCandidates = [...new Set<number>(uniqParsed.map(n => n.pc))];
+
+    const candidates: CandidateObj[] = [];
+
+    for (const rootPc of rootCandidates) {
+      for (const tpl of TEMPLATES) {
+        candidates.push(buildCandidate(rootPc, tpl, inputPcs, useFlat, bassPc));
+      }
     }
 
-    const top5 = all.slice(0, 5);
+    // Sort by score desc
+    candidates.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
 
-    const candidatesObj: CandidateObj[] = top5.map((m) => ({
-      chord: m.chord,
-      base: m.base,
-      score: m.score,
-      root: m.root,
-      has7: m.has7,
-      tensions: m.tensions,
-      chordTones: m.chordTones,
-      extraTones: m.extraTones,
-      reason: m.reason,
-    }));
+    const top = candidates[0];
+    const engineChord = top?.chord ?? "判定不能";
 
-    const engineChord = top5[0].chord;
-    const reason = top5[0].reason.join(" | ");
+    const analysisLines: string[] = [];
+    analysisLines.push(`入力: ${uniqParsed.map(n => n.raw).join(", ")}`);
+    analysisLines.push(`最有力: ${engineChord}`);
+    if (top?.reason) {
+      const r = Array.isArray(top.reason) ? top.reason : [top.reason];
+      analysisLines.push(...r);
+    }
+    if (top?.extraTones?.length) {
+      analysisLines.push(`※ 追加音があるため、テンション/経過音の可能性があります。`);
+    }
 
-    // ✅ 解説だけAI生成
-    const analysis = await buildAiAnalysis({
-      selectedNotes: uniq,
+    // Return top N (UIで候補表示するので10くらい)
+    const outCandidates = candidates.slice(0, 10);
+
+    return NextResponse.json({
       engineChord,
-      topCandidates: candidatesObj,
-      debugReason: reason,
+      candidates: outCandidates,
+      analysis: analysisLines.join("\n"),
     });
-
-    const res: ResBody = {
-      engineChord,
-      candidates: candidatesObj,
-      reason,   // デバッグ用
-      analysis, // UIの「判定メモ」に出る
-    };
-
-    return Response.json(res, { status: 200 });
   } catch (e: any) {
-    return Response.json(
-      {
-        engineChord: "判定失敗",
-        candidates: [],
-        reason: e?.message ?? String(e),
-        analysis: "",
-      },
+    return NextResponse.json(
+      { error: e?.message ?? "Unknown error" },
       { status: 500 }
     );
   }
