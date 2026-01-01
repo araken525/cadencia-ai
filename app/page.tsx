@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 
 // --- Types ---
 type CandidateObj = {
@@ -41,43 +41,31 @@ function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateUI[] {
   const arr = (input ?? []).filter(Boolean);
   return arr.map((c, idx) => {
     let conf = 0;
+    // Mock confidence logic
     if (idx === 0) conf = 95;
     else if (idx === 1) conf = 70;
     else if (idx === 2) conf = 45;
     else conf = 20;
 
-    if (typeof c === "string") {
-      return {
-        id: `s:${c}:${idx}`,
-        chord: c,
-        tensions: [],
-        chordTones: [],
-        extraTones: [],
-        reasonLines: [],
-        confidenceLevel: conf,
-      };
-    }
+    const calculatedConf = conf - (idx * 5); // Index penalty
 
-    const chord = c.chord ?? "—";
-    const reasonLines =
-      typeof c.reason === "string"
-        ? [c.reason]
-        : Array.isArray(c.reason)
-        ? c.reason
-        : [];
-
-    return {
-      id: `o:${chord}:${c.root ?? ""}:${c.score ?? ""}:${idx}`,
+    const chord = typeof c === "string" ? c : (c.chord ?? "—");
+    
+    // Create base object
+    const baseObj = {
+      id: typeof c === "string" ? `s:${c}:${idx}` : `o:${chord}:${idx}`,
       chord,
-      root: c.root,
-      score: c.score,
-      tensions: (c.tensions ?? []).filter(Boolean),
-      chordTones: (c.chordTones ?? []).filter(Boolean),
-      extraTones: (c.extraTones ?? []).filter(Boolean),
-      reasonLines,
-      base: c.base,
-      confidenceLevel: conf - (idx * 5),
+      root: typeof c === "string" ? undefined : c.root,
+      score: typeof c === "string" ? undefined : c.score,
+      tensions: typeof c === "string" ? [] : (c.tensions ?? []).filter(Boolean),
+      chordTones: typeof c === "string" ? [] : (c.chordTones ?? []).filter(Boolean),
+      extraTones: typeof c === "string" ? [] : (c.extraTones ?? []).filter(Boolean),
+      reasonLines: typeof c === "string" ? [] : (Array.isArray(c.reason) ? c.reason : [c.reason || ""]),
+      base: typeof c === "string" ? undefined : c.base,
+      confidenceLevel: Math.max(0, calculatedConf), // Prevent negative visual
     };
+
+    return baseObj;
   });
 }
 
@@ -149,7 +137,7 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// --- Flick Key Component (Transparent Design) ---
+// --- Flick Key Component ---
 const FlickKey = ({ 
   noteBase, 
   currentSelection, 
@@ -236,6 +224,9 @@ export default function CadenciaPage() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [isThinking, setIsThinking] = useState(false);
+  
+  // 新しい音が追加された瞬間のエフェクト用フラグ
+  const [justUpdated, setJustUpdated] = useState(false);
 
   const canAnalyze = selected.length >= 3;
 
@@ -254,7 +245,14 @@ export default function CadenciaPage() {
     } else {
       nextSelected.push(inputNote);
     }
-    setSelected(nextSelected);
+    
+    // 値が変わったときだけ更新
+    if (JSON.stringify(nextSelected) !== JSON.stringify(selected)) {
+      setSelected(nextSelected);
+      // エフェクト発火
+      setJustUpdated(true);
+      setTimeout(() => setJustUpdated(false), 300);
+    }
   };
 
   const reset = () => {
@@ -433,8 +431,11 @@ export default function CadenciaPage() {
           </section>
         )}
 
-        {/* ③ Main Result */}
-        <section ref={resultRef} className={`${G.glass} rounded-3xl p-8 text-center relative overflow-hidden`}>
+        {/* ③ Main Result (Pulse Effect Added) */}
+        <section 
+          ref={resultRef} 
+          className={`${G.glass} rounded-3xl p-8 text-center relative overflow-hidden transition-all duration-300 ${justUpdated ? "shadow-[0_0_40px_rgba(167,139,250,0.4)] scale-[1.01]" : ""}`}
+        >
           <div className="relative z-10">
             <div className="flex items-center justify-center gap-2 mb-4">
               <span className="text-lg">🎹</span>
@@ -449,7 +450,7 @@ export default function CadenciaPage() {
                  <span className="text-xs text-slate-400 bg-slate-100/50 px-3 py-1 rounded-full animate-pulse">👇 下のボタンで音を選択</span>
                ) : (
                  sortedSelected.map((note) => (
-                   <span key={note} className="px-3 py-1.5 bg-white border border-indigo-100 shadow-sm rounded-lg text-xs font-bold text-indigo-600 animate-in zoom-in duration-200">
+                   <span key={note} className="px-3 py-1.5 bg-white border border-indigo-100 shadow-sm rounded-lg text-xs font-bold text-indigo-600 animate-in zoom-in duration-300">
                      {note}
                    </span>
                  ))
@@ -472,8 +473,8 @@ export default function CadenciaPage() {
            </div>
         </section>
 
-        {/* ⑤ Candidates */}
-        {candidates.length > 0 && (
+        {/* ⑤ Candidates (Filter < 0%) */}
+        {candidates.filter(c => c.confidenceLevel > 0).length > 0 && (
           <section className="space-y-4">
             <div className="flex items-center gap-2 px-1">
               <span className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-indigo-200"></span>
@@ -481,7 +482,7 @@ export default function CadenciaPage() {
               <span className="h-[1px] flex-1 bg-gradient-to-r from-indigo-200 to-transparent"></span>
             </div>
             <div className="grid gap-3">
-              {candidates.map((c, idx) => (
+              {candidates.filter(c => c.confidenceLevel > 0).map((c, idx) => (
                 <div key={c.id} className="bg-white/60 backdrop-blur-sm border border-white/60 shadow-sm rounded-2xl p-5 relative overflow-hidden active:bg-white/90 transition-colors">
                   <div className="absolute -right-2 -bottom-6 text-7xl font-black text-indigo-900 opacity-[0.03] select-none z-0 pointer-events-none transform -rotate-12">
                     {String(idx + 1).padStart(2, '0')}
@@ -560,14 +561,15 @@ export default function CadenciaPage() {
 
       </main>
 
-      {/* --- Bottom Controls (Updated Layout & Transparent) --- */}
+      {/* --- Bottom Controls (Transparent & iOS Layout) --- */}
       <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glass} border-t-0 rounded-t-[30px] pt-4 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]`}>
         <div className="max-w-md mx-auto px-4 flex">
           
-          {/* Main Keypad (7 Note Keys) */}
+          {/* Main Keypad (3x3 Grid for 7 notes + spacers) */}
           <div className="grid grid-cols-3 gap-2 flex-1 mr-2">
-            {NOTE_KEYS.map((noteBase) => {
+            {NOTE_KEYS.map((noteBase, i) => {
               const currentSelection = selected.find(s => s.startsWith(noteBase));
+              
               return (
                 <FlickKey 
                   key={noteBase}
@@ -578,7 +580,7 @@ export default function CadenciaPage() {
               );
             })}
             
-            {/* Guide (Legend) in the remaining 2 slots */}
+            {/* Guide (Legend) */}
             <div className="col-span-2 relative h-14 rounded-2xl border border-white/40 bg-white/40 backdrop-blur-md flex items-center justify-center gap-3 text-[9px] text-slate-400 font-medium select-none shadow-sm">
                <div className="flex flex-col items-center"><span className="text-[8px] font-bold text-indigo-400">#</span><span>↑</span></div>
                <div className="w-[1px] h-6 bg-slate-300/50"></div>
@@ -588,9 +590,9 @@ export default function CadenciaPage() {
             </div>
           </div>
 
-          {/* Right Side Actions */}
+          {/* Right Side Actions (Column) */}
           <div className="flex flex-col w-[25%] gap-2">
-             {/* Delete/Reset */}
+             {/* Delete/Reset (Top Right) */}
              <button 
                 onClick={reset}
                 className="h-14 rounded-2xl bg-white/60 border border-white/60 text-slate-400 active:text-red-500 active:border-red-200 active:bg-red-50 transition-all flex items-center justify-center shadow-sm active:scale-95"
@@ -601,7 +603,7 @@ export default function CadenciaPage() {
              {/* Spacer */}
              <div className="flex-1"></div>
 
-             {/* Enter/Analyze */}
+             {/* Enter/Analyze (Bottom Right) */}
              <button 
                 onClick={analyze}
                 disabled={!canAnalyze || loading}
