@@ -72,6 +72,10 @@ function buildSystemPrompt() {
 - 「半音」「ピッチクラス」「実音高」などの語を出さない
 - 不明点は推測で埋めず「情報不足」と言い切ってよい
 
+【用語の指定：重要】
+- 和音の種類については「長三和音」「短七の和音」などの日本語名称を優先して用いてください。
+- 機能については「T」「D」「S」の記号を用いて説明してください。
+
 【出力】
 - プレーンテキストで、短く。
 - 形式は「結論 → 根拠 → 次に分かると強い情報（あれば）」。
@@ -81,13 +85,13 @@ function buildSystemPrompt() {
 function buildUserPrompt(params: {
   notes: string[];
   question: string;
-  bassHint: string | null; // rootHint -> bassHint に変更
+  bassHint: string | null;
   keyHint: string | null;
   engineChord: string | null;
   candidates: string[] | null;
 }) {
   const keyLine = params.keyHint ? params.keyHint : "（指定なし）";
-  const bassLine = params.bassHint ? params.bassHint : "（指定なし）"; // root -> bass
+  const bassLine = params.bassHint ? params.bassHint : "（指定なし）";
   const engineLine = params.engineChord ? params.engineChord : "（未提供）";
   const candLine = params.candidates?.length ? params.candidates.join(", ") : "（未提供）";
 
@@ -146,8 +150,6 @@ export async function POST(req: Request) {
 
     const notesSorted = uniq(normalized).sort(sortSpelling);
 
-    // rootHint -> bassHint に変更して受け取る
-    // bassHintは「C」みたいな指定が来がちなので、選択音と整合する形に寄せる
     const bassHintRaw = asNoteOrNull(body?.bassHint);
     
     // bassHintも選択音に含まれる場合のみ有効とする（安全策）
@@ -171,7 +173,7 @@ export async function POST(req: Request) {
     const user = buildUserPrompt({
       notes: notesSorted,
       question,
-      bassHint, // rootHint -> bassHint
+      bassHint,
       keyHint,
       engineChord,
       candidates,
