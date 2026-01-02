@@ -34,6 +34,7 @@ type CandidateUI = {
   reasonLines: string[];
   base?: string;
   confidenceLevel: number; 
+  rank: number; // 順位用に追加
 };
 
 // --- Helper ---
@@ -62,7 +63,8 @@ function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateUI[] {
       extraTones: typeof c === "string" ? [] : (c.extraTones ?? []).filter(Boolean),
       reasonLines: typeof c === "string" ? [] : (Array.isArray(c.reason) ? c.reason : [c.reason || ""]),
       base: typeof c === "string" ? undefined : c.base,
-      confidenceLevel: Math.max(0, calculatedConf), // Prevent negative visual
+      confidenceLevel: Math.max(0, calculatedConf),
+      rank: idx + 1,
     };
 
     return baseObj;
@@ -105,15 +107,15 @@ const MiniPiano = ({ selected }: { selected: string[] }) => {
   const isActive = (keyIdx: number) => activeIndices.includes(keyIdx);
 
   return (
-    <div className="h-16 w-full max-w-[240px] mx-auto relative mt-2 mb-4 select-none pointer-events-none">
-       <svg viewBox="0 0 100 60" className="w-full h-full drop-shadow-md">
+    <div className="h-12 w-full max-w-[200px] mx-auto relative mt-1 mb-2 select-none pointer-events-none">
+       <svg viewBox="0 0 100 60" className="w-full h-full drop-shadow-sm">
          {keys.filter(k => k.type === "white").map((k) => (
            <rect key={k.idx} x={k.x} y="0" width="14.28" height="60" rx="2" ry="2"
              className={`transition-all duration-300 ${isActive(k.idx) ? "fill-[url(#activeKeyGradient)] stroke-indigo-300 stroke-[0.5]" : "fill-white stroke-slate-200 stroke-[0.5]"}`} />
          ))}
          {keys.filter(k => k.type === "black").map((k) => (
            <rect key={k.idx} x={k.x} y="0" width="8" height="38" rx="1" ry="1"
-             className={`transition-all duration-300 ${isActive(k.idx) ? "fill-[url(#activeKeyGradient)] stroke-indigo-300 stroke-[0.5]" : "fill-slate-800 stroke-slate-900 stroke-[0.5]"}`} />
+             className={`transition-all duration-300 ${isActive(k.idx) ? "fill-[url(#activeKeyGradient)] stroke-indigo-300 stroke-[0.5]" : "fill-slate-700 stroke-slate-800 stroke-[0.5]"}`} />
          ))}
          <defs>
            <linearGradient id="activeKeyGradient" x1="0" x2="0" y1="0" y2="1">
@@ -209,6 +211,68 @@ const FlickKey = ({
   );
 };
 
+// --- Result Card Component (Shared for Rank 1 and others) ---
+const ResultCard = ({ candidate, isTop }: { candidate: CandidateUI, isTop: boolean }) => {
+  // 暫定ラベル判定: Topかつ信頼度が低い(例:50%未満)場合は「暫定」にする
+  const isProvisional = isTop && candidate.confidenceLevel < 50;
+  
+  return (
+    <div className={`
+      relative overflow-hidden transition-all duration-500
+      ${isTop 
+        ? "bg-gradient-to-br from-white via-indigo-50/30 to-purple-50/30 border-2 border-indigo-200 shadow-xl shadow-indigo-100/50 rounded-3xl p-6" 
+        : "bg-white/60 backdrop-blur-sm border border-white/60 shadow-sm rounded-2xl p-5 active:bg-white/90"}
+    `}>
+      {/* Rank Number Background */}
+      <div className={`absolute -right-2 -bottom-6 font-black text-indigo-900 select-none z-0 pointer-events-none transform -rotate-12 ${isTop ? "text-8xl opacity-[0.05]" : "text-7xl opacity-[0.03]"}`}>
+        {String(candidate.rank).padStart(2, '0')}
+      </div>
+
+      <div className="relative z-10">
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex flex-col">
+            {/* Label / Badge */}
+            {isTop ? (
+              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold mb-2 self-start shadow-sm border ${isProvisional ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-indigo-600 text-white border-indigo-500"}`}>
+                 <span>{isProvisional ? "⚠️" : "🏆"}</span>
+                 <span>{isProvisional ? "暫定判定" : "判定結果"}</span>
+              </div>
+            ) : (
+               <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold mb-2 self-start bg-slate-100 text-slate-400 border border-slate-200">
+                 <span>候補 {candidate.rank}</span>
+               </div>
+            )}
+            
+            <span className={`font-bold text-slate-700 tracking-tight ${isTop ? "text-4xl" : "text-xl"}`}>
+              {candidate.chord}
+            </span>
+          </div>
+
+          <div className="text-right">
+            <span className="text-[9px] text-slate-400 block">信頼度</span>
+            <span className={`font-bold ${isTop ? "text-lg text-indigo-500" : "text-xs text-indigo-400"}`}>
+              {candidate.confidenceLevel}%
+            </span>
+          </div>
+        </div>
+
+        {/* Tensions & Bass */}
+        <div className="flex flex-wrap gap-2 mt-2">
+           {candidate.base && <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-500">Bass: {candidate.base}</span>}
+           {candidate.tensions.map(t => <span key={t} className="inline-flex items-center px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[10px] font-bold text-indigo-500">{t}</span>)}
+           {!candidate.base && candidate.tensions.length === 0 && <span className="text-[10px] text-slate-300 italic">Basic Triad</span>}
+        </div>
+      </div>
+
+      {/* Confidence Bar */}
+      <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden mt-4">
+        <div className={`h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 transition-all duration-1000 ease-out`} style={{ width: `${candidate.confidenceLevel}%` }}></div>
+      </div>
+    </div>
+  );
+};
+
+
 export default function CadenciaPage() {
   const resultRef = useRef<HTMLDivElement>(null);
   const [showGuide, setShowGuide] = useState(true);
@@ -217,14 +281,13 @@ export default function CadenciaPage() {
   const NOTE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
 
   const [selected, setSelected] = useState<string[]>([]);
-  const [engineChord, setEngineChord] = useState<string>("---");
   const [candidates, setCandidates] = useState<CandidateUI[]>([]);
   const [infoText, setInfoText] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [isThinking, setIsThinking] = useState(false);
-  
+   
   // 新しい音が追加された瞬間のエフェクト用フラグ
   const [justUpdated, setJustUpdated] = useState(false);
 
@@ -256,7 +319,7 @@ export default function CadenciaPage() {
   };
 
   const reset = () => {
-    setSelected([]); setEngineChord("---"); setCandidates([]);
+    setSelected([]); setCandidates([]);
     setInfoText(""); setQuestion(""); setAnswer(""); setLoading(false);
   };
 
@@ -270,26 +333,27 @@ export default function CadenciaPage() {
       });
       const data = res.headers.get("content-type")?.includes("json") ? await res.json() : { error: await res.text() };
       if (!res.ok) {
-        setEngineChord("判定不能"); setCandidates([]); setInfoText(`システムエラー: ${data?.error}`); return;
+        setCandidates([]); setInfoText(`システムエラー: ${data?.error}`); return;
       }
-      setEngineChord((data.engineChord ?? "---").trim());
       setCandidates(normalizeCandidates(data.candidates));
       setInfoText((data.analysis ?? data.reason ?? "").trim());
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     } catch (e: any) {
-      setEngineChord("Error"); setInfoText(`通信エラー: ${e?.message}`);
+      setInfoText(`通信エラー: ${e?.message}`);
     } finally { setLoading(false); }
   }
 
   async function ask() {
     const q = question.trim();
     if (!q || loading || isThinking) return;
-    if (!canAnalyze) { setAnswer("（コードを確定させてから質問してね）"); return; }
+    if (!canAnalyze || candidates.length === 0) { setAnswer("（コードを確定させてから質問してね）"); return; }
     setIsThinking(true); setAnswer("");
+    const topChord = candidates[0].chord;
+
     try {
       const res = await fetch("/api/ask", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedNotes: selected, engineChord, question: q }),
+        body: JSON.stringify({ selectedNotes: selected, engineChord: topChord, question: q }),
       });
       setAnswer(res.ok ? await res.text() : `エラー: ${await res.text()}`);
     } catch (e: any) { setAnswer(`通信エラー: ${e?.message}`); } finally { setIsThinking(false); setQuestion(""); }
@@ -328,6 +392,13 @@ export default function CadenciaPage() {
   const sortOrder = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
   const sortedSelected = [...selected].sort((a, b) => sortOrder.indexOf(a) - sortOrder.indexOf(b));
 
+  // 結果があるかどうか
+  const hasResult = candidates.length > 0;
+  // Rank 1
+  const topCandidate = hasResult ? candidates[0] : null;
+  // Rank 2+
+  const otherCandidates = hasResult ? candidates.slice(1) : [];
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans pb-[400px] selection:bg-purple-200">
       
@@ -356,113 +427,98 @@ export default function CadenciaPage() {
         </div>
       </header>
 
-      <main className="pt-24 px-5 max-w-md mx-auto space-y-8 relative z-10">
+      <main className="pt-24 px-5 max-w-md mx-auto space-y-6 relative z-10">
         
-        {/* ① Hero Section */}
-        <section className="text-center space-y-2">
-          <div className="inline-block relative">
-             <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold text-indigo-400/80 tracking-[0.2em] whitespace-nowrap">
-               カデンツィア AI
-             </span>
-             <h1 className={`text-4xl font-black tracking-tight ${G.textMain} drop-shadow-sm pb-1`}>
-               Cadencia AI
-             </h1>
-          </div>
-          <p className="text-sm font-bold text-slate-600 flex items-center justify-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse"></span>
-            ポケットに、専属の音楽理論家を。
-          </p>
-        </section>
+        {/* ① Hero / Status Message (結果がない時だけ表示) */}
+        {!hasResult && (
+          <section className="text-center space-y-2 animate-in fade-in duration-500">
+            <div className="inline-block relative">
+               <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold text-indigo-400/80 tracking-[0.2em] whitespace-nowrap">
+                カデンツィア AI
+               </span>
+               <h1 className={`text-4xl font-black tracking-tight ${G.textMain} drop-shadow-sm pb-1`}>
+                Cadencia AI
+               </h1>
+            </div>
+            <p className="text-sm font-bold text-slate-600 flex items-center justify-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse"></span>
+              ポケットに、専属の音楽理論家を。
+            </p>
+          </section>
+        )}
 
-        {/* ② Intro / Guide Card */}
-        {showGuide && (
+        {/* ② Intro / Guide Card (Closeable) */}
+        {showGuide && !hasResult && (
           <section className="relative rounded-3xl p-0.5 animate-in fade-in slide-in-from-top-4 duration-500 bg-gradient-to-br from-indigo-200 via-purple-200 to-fuchsia-200 shadow-xl shadow-indigo-100">
             <div className="bg-white/95 backdrop-blur-xl rounded-[22px] p-6 relative overflow-hidden">
               <button onClick={() => setShowGuide(false)} className="absolute top-3 right-3 text-slate-300 active:text-slate-500 active:bg-slate-100 p-2 rounded-full transition-colors"><IconX /></button>
               
               <h2 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2"><span className="text-lg">🎓</span> はじめての方へ</h2>
-              <p className="text-[11px] text-slate-400 font-bold mb-4">Cadencia AI が選ばれる3つの理由</p>
               
-              <div className="grid gap-4 mb-6">
-                 <div className="flex gap-3 items-start">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-500 flex items-center justify-center flex-shrink-0 shadow-sm"><IconCheck /></div>
-                    <div>
-                      <h3 className="text-xs font-bold text-indigo-600">ロジック × AI</h3>
-                      <p className="text-[11px] text-slate-500 leading-snug mt-1">コード名は厳密なロジックで判定。解説はAIが担当。</p>
-                    </div>
-                 </div>
-                 <div className="flex gap-3 items-start">
-                    <div className="w-9 h-9 rounded-xl bg-fuchsia-50 border border-fuchsia-100 text-fuchsia-500 flex items-center justify-center flex-shrink-0 shadow-sm"><span className="text-xs font-serif italic font-bold">A#</span></div>
-                    <div>
-                      <h3 className="text-xs font-bold text-fuchsia-600">異名同音の区別</h3>
-                      <p className="text-[11px] text-slate-500 leading-snug mt-1">A#とBbを区別し、正しい和声解釈を導き出します。</p>
-                    </div>
-                 </div>
-                 <div className="flex gap-3 items-start">
-                    <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 text-purple-500 flex items-center justify-center flex-shrink-0 shadow-sm"><IconBrain /></div>
-                    <div>
-                      <h3 className="text-xs font-bold text-purple-600">比較と深掘り</h3>
-                      <p className="text-[11px] text-slate-500 leading-snug mt-1">別候補と比較し、AIチャットで深掘りできます。</p>
-                    </div>
-                 </div>
-              </div>
-
-              {/* Usage Steps */}
               <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 mb-4">
                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 text-center">HOW TO USE</h3>
                  <div className="flex justify-between items-center relative px-2">
-                    <div className="flex flex-col items-center gap-1.5 relative z-10 group"><div className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-lg shadow-sm group-active:scale-95 transition-transform">🎹</div><span className="text-[10px] font-bold text-slate-500">選ぶ</span></div>
+                    <div className="flex flex-col items-center gap-1.5 relative z-10 group"><div className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-lg shadow-sm">🎹</div><span className="text-[10px] font-bold text-slate-500">選ぶ</span></div>
                     <div className="h-[2px] flex-1 bg-slate-200 mx-1"></div>
-                    <div className="flex flex-col items-center gap-1.5 relative z-10 group"><div className={`w-10 h-10 ${G.main} rounded-full flex items-center justify-center text-lg shadow-md shadow-purple-200 text-white animate-pulse group-active:scale-95 transition-transform`}>✨</div><span className="text-[10px] font-bold text-purple-600">判定</span></div>
+                    <div className="flex flex-col items-center gap-1.5 relative z-10 group"><div className={`w-10 h-10 ${G.main} rounded-full flex items-center justify-center text-lg shadow-md shadow-purple-200 text-white animate-pulse`}>✨</div><span className="text-[10px] font-bold text-purple-600">判定</span></div>
                     <div className="h-[2px] flex-1 bg-slate-200 mx-1"></div>
-                    <div className="flex flex-col items-center gap-1.5 relative z-10 group"><div className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-lg shadow-sm group-active:scale-95 transition-transform">💬</div><span className="text-[10px] font-bold text-slate-500">対話</span></div>
+                    <div className="flex flex-col items-center gap-1.5 relative z-10 group"><div className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-lg shadow-sm">💬</div><span className="text-[10px] font-bold text-slate-500">対話</span></div>
                  </div>
               </div>
               
               <button onClick={() => setShowGuide(false)} className={`w-full py-3.5 rounded-2xl text-white text-xs font-bold tracking-wide shadow-lg shadow-indigo-200 ${G.main} active:scale-95 transition-transform mb-3`}>さっそく始める 🚀</button>
-              
-              <div className="text-center pt-2 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 mb-1">本アプリはベータ版です</p>
-                <FeedbackLink className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-500 hover:underline">
-                  <IconTwitter /> 開発者にフィードバックを送る
-                </FeedbackLink>
-              </div>
             </div>
           </section>
         )}
 
-        {/* ③ Main Result (Pulse Effect Added) */}
-        <section 
-          ref={resultRef} 
-          className={`${G.glass} rounded-3xl p-8 text-center relative overflow-hidden transition-all duration-300 ${justUpdated ? "shadow-[0_0_40px_rgba(167,139,250,0.4)] scale-[1.01]" : ""}`}
-        >
-          <div className="relative z-10">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <span className="text-lg">🎹</span>
-              <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">判定結果</p>
-            </div>
-            <div className={`text-5xl font-black tracking-tighter mb-4 transition-all duration-500 ${engineChord === "---" ? "text-slate-300 scale-95" : `scale-100 ${G.textMain}`}`}>
-               {engineChord}
-            </div>
-            <MiniPiano selected={selected} />
-            <div className="flex justify-center gap-2 flex-wrap min-h-[2rem] mt-4">
-               {selected.length === 0 ? (
-                 <span className="text-xs text-slate-400 bg-slate-100/50 px-3 py-1 rounded-full animate-pulse">👇 下のボタンで音を選択</span>
-               ) : (
-                 sortedSelected.map((note) => (
-                   <span key={note} className="px-3 py-1.5 bg-white border border-indigo-100 shadow-sm rounded-lg text-xs font-bold text-indigo-600 animate-in zoom-in duration-300">
-                     {note}
-                   </span>
-                 ))
-               )}
-            </div>
+        {/* ③ Result Rank 1 Card (Cadencia AIによる和音分析の結果) */}
+        {hasResult && topCandidate && (
+          <div ref={resultRef} className="animate-in fade-in slide-in-from-bottom-8 duration-500">
+             <div className="flex items-center justify-between px-2 mb-2">
+               <h3 className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                  <IconSparkles />
+                  Cadencia AIによる和音分析の結果
+               </h3>
+             </div>
+             <ResultCard candidate={topCandidate} isTop={true} />
           </div>
+        )}
+
+        {/* ④ Input Monitor (新設：入力解析モニター) */}
+        <section className={`
+           rounded-3xl border border-white/60 p-5 relative overflow-hidden transition-all duration-300
+           ${hasResult ? "bg-white/40 mt-4" : "bg-white/60 shadow-lg shadow-indigo-100/40"}
+           ${justUpdated ? "ring-2 ring-purple-300 ring-offset-2 ring-offset-[#F8FAFC]" : ""}
+        `}>
+           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+           <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                🎹 Input Monitor
+              </span>
+              <span className="text-[9px] text-slate-300 font-mono">
+                 {selected.length} NOTES
+              </span>
+           </div>
+
+           <MiniPiano selected={selected} />
+
+           <div className="flex justify-center gap-2 flex-wrap min-h-[2rem] mt-3">
+              {selected.length === 0 ? (
+                <span className="text-xs text-slate-400 bg-slate-100/50 px-3 py-1 rounded-full animate-pulse">👇 下のボタンで音を選択</span>
+              ) : (
+                sortedSelected.map((note) => (
+                  <span key={note} className="px-3 py-1.5 bg-white border border-indigo-100 shadow-sm rounded-lg text-xs font-bold text-indigo-600 animate-in zoom-in duration-200">
+                    {note}
+                  </span>
+                ))
+              )}
+           </div>
         </section>
 
-        {/* ④ AI Analysis */}
+        {/* ⑤ AI Analysis (Text) */}
         <section className={`transition-all duration-700 ease-out ${infoText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 max-h-0 overflow-hidden"}`}>
            <div className="flex gap-4 items-start pl-2">
-             <div className={`flex-shrink-0 w-12 h-12 rounded-2xl ${G.main} flex items-center justify-center text-white shadow-md animate-in zoom-in duration-300`}>
+             <div className={`flex-shrink-0 w-10 h-10 rounded-xl ${G.main} flex items-center justify-center text-white shadow-md animate-in zoom-in duration-300`}>
                 <IconRobot />
              </div>
              <div className="flex-1 bg-white/80 backdrop-blur-md rounded-2xl rounded-tl-none p-5 shadow-sm border border-indigo-50 relative">
@@ -473,45 +529,24 @@ export default function CadenciaPage() {
            </div>
         </section>
 
-        {/* ⑤ Candidates (Filter < 0%) */}
-        {candidates.filter(c => c.confidenceLevel > 0).length > 0 && (
-          <section className="space-y-4">
+        {/* ⑥ Other Candidates (Rank 2+) */}
+        {otherCandidates.length > 0 && (
+          <section className="space-y-3 pt-2">
             <div className="flex items-center gap-2 px-1">
-              <span className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-indigo-200"></span>
-              <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">その他の候補</span>
-              <span className="h-[1px] flex-1 bg-gradient-to-r from-indigo-200 to-transparent"></span>
+              <span className="h-[1px] flex-1 bg-slate-200"></span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">その他の候補</span>
+              <span className="h-[1px] flex-1 bg-slate-200"></span>
             </div>
             <div className="grid gap-3">
-              {candidates.filter(c => c.confidenceLevel > 0).map((c, idx) => (
-                <div key={c.id} className="bg-white/60 backdrop-blur-sm border border-white/60 shadow-sm rounded-2xl p-5 relative overflow-hidden active:bg-white/90 transition-colors">
-                  <div className="absolute -right-2 -bottom-6 text-7xl font-black text-indigo-900 opacity-[0.03] select-none z-0 pointer-events-none transform -rotate-12">
-                    {String(idx + 1).padStart(2, '0')}
-                  </div>
-                  <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-2">
-                       <span className="text-xl font-bold text-slate-700">{c.chord}</span>
-                       <div className="text-right">
-                          <span className="text-[9px] text-slate-400 block">信頼度</span>
-                          <span className="text-xs font-bold text-indigo-400">{c.confidenceLevel}%</span>
-                       </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                       {c.base && <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-500">Bass: {c.base}</span>}
-                       {c.tensions.map(t => <span key={t} className="inline-flex items-center px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[10px] font-bold text-indigo-500">{t}</span>)}
-                       {!c.base && c.tensions.length === 0 && <span className="text-[10px] text-slate-300 italic">Basic Triad</span>}
-                    </div>
-                  </div>
-                  <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
-                    <div className={`h-full ${G.main} transition-all duration-1000 ease-out`} style={{ width: `${c.confidenceLevel}%` }}></div>
-                  </div>
-                </div>
+              {otherCandidates.map((c) => (
+                <ResultCard key={c.id} candidate={c} isTop={false} />
               ))}
             </div>
           </section>
         )}
 
-        {/* ⑥ Ask AI */}
-        <section className={`${G.glass} rounded-3xl p-1 overflow-hidden`}>
+        {/* ⑦ Ask AI */}
+        <section className={`${G.glass} rounded-3xl p-1 overflow-hidden mt-6`}>
            <div className="bg-white/40 rounded-[20px] p-5">
               <div className="flex items-center gap-2 mb-4">
                  <div className={`w-6 h-6 rounded-full ${G.main} flex items-center justify-center text-white text-[10px]`}>
@@ -537,12 +572,12 @@ export default function CadenciaPage() {
               )}
               <div className="relative group">
                  <input
-                    className="w-full bg-white border border-indigo-100 rounded-xl py-3 pl-4 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400/50 transition-all shadow-sm placeholder:text-slate-300"
-                    placeholder="例：ドミナントって何？🤔"
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && ask()}
-                    disabled={isThinking}
+                   className="w-full bg-white border border-indigo-100 rounded-xl py-3 pl-4 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400/50 transition-all shadow-sm placeholder:text-slate-300"
+                   placeholder="例：ドミナントって何？🤔"
+                   value={question}
+                   onChange={(e) => setQuestion(e.target.value)}
+                   onKeyDown={(e) => e.key === 'Enter' && ask()}
+                   disabled={isThinking}
                  />
                  <button onClick={ask} disabled={loading || isThinking || !question.trim()} className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-white transition-all active:scale-90 ${!question.trim() ? "bg-slate-200 text-slate-400" : `${G.main} shadow-md`}`}>
                     <IconSend />
@@ -552,7 +587,7 @@ export default function CadenciaPage() {
         </section>
 
         {/* Footer Link */}
-        <section className="text-center pb-4">
+        <section className="text-center pb-4 pt-4">
            <FeedbackLink className="text-[10px] text-slate-400 hover:text-indigo-500 transition-colors inline-flex items-center gap-1">
              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
              不具合報告・機能要望はこちら (X: @araken525_toho)
@@ -565,7 +600,7 @@ export default function CadenciaPage() {
       <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glass} border-t-0 rounded-t-[30px] pt-4 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]`}>
         <div className="max-w-md mx-auto px-4 flex">
           
-          {/* Main Keypad (3x3 Grid for 7 notes + spacers) */}
+          {/* Main Keypad */}
           <div className="grid grid-cols-3 gap-2 flex-1 mr-2">
             {NOTE_KEYS.map((noteBase, i) => {
               const currentSelection = selected.find(s => s.startsWith(noteBase));
@@ -590,9 +625,8 @@ export default function CadenciaPage() {
             </div>
           </div>
 
-          {/* Right Side Actions (Column) */}
+          {/* Right Side Actions */}
           <div className="flex flex-col w-[25%] gap-2">
-             {/* Delete/Reset (Top Right) */}
              <button 
                 onClick={reset}
                 className="h-14 rounded-2xl bg-white/60 border border-white/60 text-slate-400 active:text-red-500 active:border-red-200 active:bg-red-50 transition-all flex items-center justify-center shadow-sm active:scale-95"
@@ -600,10 +634,8 @@ export default function CadenciaPage() {
                <IconTrash />
              </button>
              
-             {/* Spacer */}
              <div className="flex-1"></div>
 
-             {/* Enter/Analyze (Bottom Right) */}
              <button 
                 onClick={analyze}
                 disabled={!canAnalyze || loading}
