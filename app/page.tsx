@@ -88,7 +88,7 @@ const getKeyIndex = (note: string): number => {
 
 // --- Components ---
 
-const MiniPiano = ({ selected }: { selected: string[] }) => {
+const MiniPiano = ({ selected, rootHint }: { selected: string[], rootHint: string | null }) => {
   const keys = [
     { idx: 0, type: "white", x: 0 },
     { idx: 1, type: "black", x: 10 },
@@ -105,17 +105,27 @@ const MiniPiano = ({ selected }: { selected: string[] }) => {
   ];
   const activeIndices = selected.map(getKeyIndex);
   const isActive = (keyIdx: number) => activeIndices.includes(keyIdx);
+  
+  // Root強調表示のためのヘルパー
+  const isRootKey = (keyIdx: number) => {
+    if (!rootHint) return false;
+    return getKeyIndex(rootHint) === keyIdx;
+  };
 
   return (
     <div className="h-12 w-full max-w-[200px] mx-auto relative mt-1 mb-2 select-none pointer-events-none">
        <svg viewBox="0 0 100 60" className="w-full h-full drop-shadow-sm">
          {keys.filter(k => k.type === "white").map((k) => (
            <rect key={k.idx} x={k.x} y="0" width="14.28" height="60" rx="2" ry="2"
-             className={`transition-all duration-300 ${isActive(k.idx) ? "fill-[url(#activeKeyGradient)] stroke-indigo-300 stroke-[0.5]" : "fill-white stroke-slate-200 stroke-[0.5]"}`} />
+             className={`transition-all duration-300 ${isActive(k.idx) 
+               ? (isRootKey(k.idx) ? "fill-amber-400 stroke-amber-500" : "fill-[url(#activeKeyGradient)] stroke-indigo-300") 
+               : "fill-white stroke-slate-200"} stroke-[0.5]`} />
          ))}
          {keys.filter(k => k.type === "black").map((k) => (
            <rect key={k.idx} x={k.x} y="0" width="8" height="38" rx="1" ry="1"
-             className={`transition-all duration-300 ${isActive(k.idx) ? "fill-[url(#activeKeyGradient)] stroke-indigo-300 stroke-[0.5]" : "fill-slate-700 stroke-slate-800 stroke-[0.5]"}`} />
+             className={`transition-all duration-300 ${isActive(k.idx) 
+               ? (isRootKey(k.idx) ? "fill-amber-500 stroke-amber-600" : "fill-[url(#activeKeyGradient)] stroke-indigo-300") 
+               : "fill-slate-700 stroke-slate-800"} stroke-[0.5]`} />
          ))}
          <defs>
            <linearGradient id="activeKeyGradient" x1="0" x2="0" y1="0" y2="1">
@@ -139,19 +149,27 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// --- Flick Key Component ---
+// --- Flick Key Component with Long Press ---
 const FlickKey = ({ 
   noteBase, 
   currentSelection, 
-  onInput 
+  isRoot,
+  onInput,
+  onRootToggle
 }: { 
   noteBase: string, 
   currentSelection: string | undefined, 
-  onInput: (note: string) => void 
+  isRoot: boolean,
+  onInput: (note: string) => void,
+  onRootToggle: (note: string) => void
 }) => {
   const [startY, setStartY] = useState<number | null>(null);
   const [offsetY, setOffsetY] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressedRef = useRef(false);
+  
   const THRESHOLD = 15;
+  const LONG_PRESS_DURATION = 500; // 0.5秒で長押し判定
 
   const isActive = !!currentSelection;
   const displayLabel = currentSelection || noteBase;
@@ -160,24 +178,54 @@ const FlickKey = ({
     e.preventDefault();
     try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch {}
     setStartY(e.clientY);
+    isLongPressedRef.current = false;
+
+    // 長押しタイマー開始
+    timerRef.current = setTimeout(() => {
+      isLongPressedRef.current = true;
+      // 振動フィードバック (対応ブラウザのみ)
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+      onRootToggle(noteBase); // 長押し確定でRoot切り替え
+    }, LONG_PRESS_DURATION);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (startY === null) return;
     const delta = e.clientY - startY;
+    
+    // 少しでも動いたら長押しキャンセル（フリック操作とみなす）
+    if (Math.abs(delta) > 5) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    
     setOffsetY(Math.max(-30, Math.min(30, delta)));
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     if (startY === null) return;
-    const delta = e.clientY - startY;
+    
+    // タイマークリア
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
 
-    if (delta < -THRESHOLD) onInput(`${noteBase}#`);
-    else if (delta > THRESHOLD) onInput(`${noteBase}b`);
-    else onInput(noteBase);
+    // 長押し成立済みなら、入力処理（ON/OFF切り替え）はしない
+    if (!isLongPressedRef.current) {
+      const delta = e.clientY - startY;
+      if (delta < -THRESHOLD) onInput(`${noteBase}#`);
+      else if (delta > THRESHOLD) onInput(`${noteBase}b`);
+      else onInput(noteBase);
+    }
 
     setStartY(null);
     setOffsetY(0);
+    isLongPressedRef.current = false;
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
   };
 
@@ -189,115 +237,35 @@ const FlickKey = ({
       className={`
         relative h-14 rounded-2xl touch-none select-none overscroll-none
         transition-all duration-200 flex flex-col items-center justify-center overflow-hidden
-        border border-white/40 shadow-sm backdrop-blur-md
-        ${isActive 
-          ? "bg-gradient-to-br from-indigo-500/90 to-purple-500/90 text-white shadow-indigo-200 scale-[1.02]" 
-          : "bg-white/60 text-slate-700 active:bg-white/80 active:scale-95"}
+        border backdrop-blur-md
+        ${isRoot 
+          ? "ring-2 ring-amber-400 border-amber-300 bg-amber-50 shadow-md scale-[1.03] z-10" 
+          : "border-white/40 shadow-sm"}
+        ${!isRoot && isActive 
+          ? "bg-gradient-to-br from-indigo-500/90 to-purple-500/90 text-white shadow-indigo-200" 
+          : ""}
+        ${!isRoot && !isActive
+          ? "bg-white/60 text-slate-700 active:bg-white/80 active:scale-95"
+          : ""}
       `}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
+      {/* Root Badge */}
+      {isRoot && (
+        <div className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-amber-500 shadow-sm animate-bounce" />
+      )}
+
       <div className={`absolute top-1.5 text-[8px] font-bold transition-all ${isUp ? "opacity-100 text-white scale-110 -translate-y-0.5" : "opacity-30"}`}>#</div>
       <span 
-        className="text-xl font-bold transition-transform duration-100"
+        className={`text-xl font-bold transition-transform duration-100 ${isRoot ? "text-amber-600" : ""}`}
         style={{ transform: `translateY(${offsetY * 0.4}px)` }}
       >
         {displayLabel}
       </span>
       <div className={`absolute bottom-1.5 text-[8px] font-bold transition-all ${isDown ? "opacity-100 text-white scale-110 translate-y-0.5" : "opacity-30"}`}>b</div>
-    </div>
-  );
-};
-
-// --- Custom Inline Wheel Picker (開かないでくるくるするやつ) ---
-const InlineWheelPicker = ({ 
-  items, 
-  value, 
-  onChange, 
-  label, 
-  disabled = false,
-  activeColorClass = "text-indigo-600"
-}: { 
-  items: string[], 
-  value: string, 
-  onChange: (val: string) => void, 
-  label: string,
-  disabled?: boolean,
-  activeColorClass?: string
-}) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const ITEM_HEIGHT = 56; // h-14 = 56px
-  const isScrollingRef = useRef(false);
-
-  // 外部からのvalue変更時にスクロール位置を同期
-  useEffect(() => {
-    if (isScrollingRef.current) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    const idx = items.indexOf(value);
-    if (idx !== -1) {
-      el.scrollTop = idx * ITEM_HEIGHT;
-    }
-  }, [value, items]);
-
-  const handleScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    
-    isScrollingRef.current = true;
-    
-    // 現在の中心に近いインデックスを計算
-    const idx = Math.round(el.scrollTop / ITEM_HEIGHT);
-    const targetItem = items[idx];
-
-    if (targetItem && targetItem !== value) {
-      onChange(targetItem);
-    }
-    
-    // スクロール停止判定（簡易）
-    clearTimeout((el as any)._scrollTimeout);
-    (el as any)._scrollTimeout = setTimeout(() => {
-      isScrollingRef.current = false;
-    }, 150);
-  };
-
-  return (
-    <div className={`relative flex-1 border border-white/40 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center shadow-sm overflow-hidden h-14 ${disabled ? "opacity-50 grayscale bg-slate-50/30" : "bg-white/40"}`}>
-       {/* 上下のフェードマスク（立体感を出す） */}
-       <div className="absolute inset-x-0 top-0 h-3 bg-gradient-to-b from-white/90 to-transparent pointer-events-none z-20"></div>
-       <div className="absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-white/90 to-transparent pointer-events-none z-20"></div>
-       
-       {/* ラベル */}
-       <div className="absolute top-1 left-0 right-0 text-center pointer-events-none z-30">
-          <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest bg-white/50 px-1 rounded-full backdrop-blur-sm">{label}</span>
-       </div>
-
-       {/* スクロールエリア */}
-       <div 
-         ref={scrollRef}
-         onScroll={handleScroll}
-         className={`w-full h-full overflow-y-auto snap-y snap-mandatory scroll-smooth no-scrollbar ${disabled ? "pointer-events-none" : ""}`}
-         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-       >
-          <style jsx>{`
-            .no-scrollbar::-webkit-scrollbar { display: none; }
-          `}</style>
-          
-          {items.map((item) => (
-            <div 
-              key={item} 
-              className={`h-14 flex items-center justify-center snap-center transition-all duration-200 ${item === value ? `font-bold text-lg ${activeColorClass} scale-110` : "text-slate-300 text-sm scale-90"}`}
-            >
-               {item === "none" ? "Free" : item}
-            </div>
-          ))}
-       </div>
-       
-       {/* 選択中のガイド線（うっすら） */}
-       {/* <div className="absolute top-1/2 left-2 right-2 h-[1px] bg-indigo-500/10 -translate-y-[10px] pointer-events-none"></div> */}
-       {/* <div className="absolute top-1/2 left-2 right-2 h-[1px] bg-indigo-500/10 translate-y-[10px] pointer-events-none"></div> */}
     </div>
   );
 };
@@ -364,13 +332,13 @@ export default function CadenciaPage() {
 
   // Constants
   const NOTE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
-  const KEYS_ROOT = ["none", "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
-  const KEYS_TYPE = ["Major", "Minor"];
+  const KEYS_ROOT = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
   
   // State
   const [selected, setSelected] = useState<string[]>([]);
   const [keyRoot, setKeyRoot] = useState<string>("none"); 
   const [keyType, setKeyType] = useState<string>("Major"); 
+  const [rootHint, setRootHint] = useState<string | null>(null); // 追加: 根音指定
   
   const [candidates, setCandidates] = useState<CandidateUI[]>([]);
   const [infoText, setInfoText] = useState<string>("");
@@ -391,8 +359,13 @@ export default function CadenciaPage() {
     if (existingIndex !== -1) {
       if (existingNote === inputNote) {
         nextSelected.splice(existingIndex, 1);
+        // もし消した音がRootHintだったらRootHintも消す
+        if (rootHint?.startsWith(base)) setRootHint(null);
       } else {
         nextSelected[existingIndex] = inputNote;
+        // もし変更した音がRootHintだったらRootHintを更新するか消す？
+        // ここでは「音が変わってもRoot指定は維持（追従）」とする
+        if (rootHint?.startsWith(base)) setRootHint(inputNote);
       }
     } else {
       nextSelected.push(inputNote);
@@ -405,8 +378,25 @@ export default function CadenciaPage() {
     }
   };
 
+  // 長押しでRoot指定をトグル
+  const handleRootToggle = (noteBase: string) => {
+    // まず、その音が選択されていなければ選択状態にする（UX的に親切）
+    const existing = selected.find(s => s.startsWith(noteBase));
+    const targetNote = existing || noteBase; // まだ選択されてなければナチュラル音とする
+
+    if (!existing) {
+       handleNoteInput(targetNote);
+    }
+
+    if (rootHint?.startsWith(noteBase)) {
+      setRootHint(null); // 解除
+    } else {
+      setRootHint(targetNote); // 設定
+    }
+  };
+
   const reset = () => {
-    setSelected([]); setCandidates([]);
+    setSelected([]); setCandidates([]); setRootHint(null);
     setInfoText(""); setQuestion(""); setAnswer(""); setLoading(false);
   };
 
@@ -419,7 +409,8 @@ export default function CadenciaPage() {
     try {
       const res = await fetch("/api/analyze", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedNotes: selected, keyHint }),
+        // rootHint を追加
+        body: JSON.stringify({ selectedNotes: selected, keyHint, rootHint }),
       });
       const data = res.headers.get("content-type")?.includes("json") ? await res.json() : { error: await res.text() };
       if (!res.ok) {
@@ -578,20 +569,35 @@ export default function CadenciaPage() {
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                 🎹 Input Monitor
               </span>
-              <span className="text-[9px] text-slate-300 font-mono">
-                 {selected.length} NOTES
-              </span>
+              <div className="flex items-center gap-3">
+                 {rootHint && (
+                   <span className="text-[9px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 animate-in zoom-in">
+                      ROOT: {rootHint}
+                   </span>
+                 )}
+                 <span className="text-[9px] text-slate-300 font-mono">
+                    {selected.length} NOTES
+                 </span>
+              </div>
            </div>
 
-           <MiniPiano selected={selected} />
+           <MiniPiano selected={selected} rootHint={rootHint} />
 
            <div className="flex justify-center gap-2 flex-wrap min-h-[2rem] mt-3">
               {selected.length === 0 ? (
                 <span className="text-xs text-slate-400 bg-slate-100/50 px-3 py-1 rounded-full animate-pulse">👇 下のボタンで音を選択</span>
               ) : (
                 sortedSelected.map((note) => (
-                  <span key={note} className="px-3 py-1.5 bg-white border border-indigo-100 shadow-sm rounded-lg text-xs font-bold text-indigo-600 animate-in zoom-in duration-200">
-                    {note}
+                  <span 
+                    key={note} 
+                    className={`
+                      px-3 py-1.5 border shadow-sm rounded-lg text-xs font-bold animate-in zoom-in duration-200
+                      ${rootHint === note 
+                        ? "bg-amber-50 border-amber-300 text-amber-600 ring-1 ring-amber-300" 
+                        : "bg-white border-indigo-100 text-indigo-600"}
+                    `}
+                  >
+                    {note} {rootHint === note && <span className="text-[8px] ml-1 opacity-70">(Root)</span>}
                   </span>
                 ))
               )}
@@ -693,31 +699,63 @@ export default function CadenciaPage() {
                   key={noteBase}
                   noteBase={noteBase}
                   currentSelection={currentSelection}
+                  isRoot={!!rootHint && !!currentSelection && rootHint.startsWith(noteBase)}
                   onInput={handleNoteInput}
+                  onRootToggle={handleRootToggle}
                 />
               );
             })}
             
-            {/* Key / Scale Selector (Inline Wheel) */}
+            {/* Key / Scale Selector (Standard Select) */}
             <div className="col-span-2 h-14 flex gap-2">
-               {/* Root Picker */}
-               <InlineWheelPicker 
-                 items={KEYS_ROOT}
-                 value={keyRoot}
-                 onChange={setKeyRoot}
-                 label="KEY"
-                 activeColorClass="text-indigo-600"
-               />
+               {/* Root Selector */}
+               <div className="relative flex-1 bg-white/40 border border-white/40 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-sm overflow-hidden active:bg-white/60 transition-colors">
+                  <select 
+                     value={keyRoot}
+                     onChange={(e) => setKeyRoot(e.target.value)}
+                     className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer"
+                  >
+                     <option value="none">指定なし</option>
+                     {KEYS_ROOT.map(k => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                  <div className="flex flex-col items-center pointer-events-none">
+                     <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">KEY</span>
+                     <span className={`text-sm font-bold ${keyRoot === "none" ? "text-slate-400" : "text-indigo-600"}`}>
+                        {keyRoot === "none" ? "Free" : keyRoot}
+                     </span>
+                  </div>
+                  {/* Chevron Icon for Hint */}
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-30 pointer-events-none">
+                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+               </div>
 
-               {/* Scale Picker */}
-               <InlineWheelPicker 
-                 items={KEYS_TYPE}
-                 value={keyType}
-                 onChange={setKeyType}
-                 label="SCALE"
-                 disabled={keyRoot === "none"}
-                 activeColorClass="text-fuchsia-600"
-               />
+               {/* Quality Selector */}
+               <div className={`
+                  relative flex-1 border border-white/40 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-sm overflow-hidden transition-all
+                  ${keyRoot === "none" ? "bg-slate-50/30 opacity-50" : "bg-white/40 active:bg-white/60"}
+               `}>
+                  <select 
+                     value={keyType}
+                     onChange={(e) => setKeyType(e.target.value)}
+                     disabled={keyRoot === "none"}
+                     className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer"
+                  >
+                     <option value="Major">Major</option>
+                     <option value="Minor">Minor</option>
+                  </select>
+                  <div className="flex flex-col items-center pointer-events-none">
+                     <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">SCALE</span>
+                     <span className={`text-sm font-bold ${keyRoot === "none" ? "text-slate-300" : "text-fuchsia-600"}`}>
+                        {keyType === "Major" ? "Maj" : "min"}
+                     </span>
+                  </div>
+                  {keyRoot !== "none" && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-30 pointer-events-none">
+                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  )}
+               </div>
             </div>
           </div>
 
