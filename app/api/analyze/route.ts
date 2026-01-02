@@ -281,7 +281,8 @@ export async function POST(req: Request) {
         reason: safeStr(c?.reason, ""),
         provisional: typeof c?.provisional === "boolean" ? c.provisional : false,
       }))
-      .filter((c: CandidateObj) => !!c.chord); // ★ここを修正しました！ (c: CandidateObj) と型指定
+      // ↓ ここで型エラーが出ていたので修正しました（CandidateObj型を明示）
+      .filter((c: CandidateObj) => !!c.chord);
 
     // --------------------
     // 順位の保険（重要）
