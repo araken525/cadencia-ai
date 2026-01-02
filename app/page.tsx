@@ -4,6 +4,10 @@ import { useMemo, useRef, useState, useEffect } from "react";
 
 // --- Constants ---
 const G = {
+  // 復活させたメインカラー定義
+  main: "bg-gradient-to-tr from-indigo-500 via-purple-500 to-fuchsia-500",
+  textMain: "bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600",
+  
   // Apple Intelligence風 オーロラグラデーション
   aiGradient: "bg-gradient-to-r from-blue-400 via-indigo-400 via-purple-400 to-pink-400 bg-[length:200%_200%] animate-aurora",
   glass: "bg-white/70 backdrop-blur-xl border border-white/50 shadow-lg shadow-indigo-100/50",
@@ -120,7 +124,7 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   );
 };
 
-// 2. Flick Key (Simple Mode)
+// 2. Flick Key
 const FlickKey = ({ 
   noteBase, currentSelection, isBass, isRoot, onInput, className
 }: { 
@@ -303,23 +307,18 @@ export default function CadenciaPage() {
     const existingIndex = selected.findIndex(s => s.startsWith(base));
     let nextSelected = [...selected];
 
-    // 入力処理（通常）
     const updateSelection = () => {
       if (existingIndex !== -1) {
-        // 既に同音名がある場合
         if (selected[existingIndex] === inputNote && type === "tap") {
-          // タップかつ同じ音なら削除
           nextSelected.splice(existingIndex, 1);
           if (bassHint?.startsWith(base)) setBassHint(null);
           if (rootHint?.startsWith(base)) setRootHint(null);
         } else {
-          // 入れ替え（フリックでの変更など）
           nextSelected[existingIndex] = inputNote;
           if (bassHint?.startsWith(base)) setBassHint(inputNote);
           if (rootHint?.startsWith(base)) setRootHint(inputNote);
         }
       } else {
-        // 新規追加
         nextSelected.push(inputNote);
       }
       setSelected(nextSelected);
@@ -327,27 +326,20 @@ export default function CadenciaPage() {
       setTimeout(() => setJustUpdated(false), 300);
     };
 
-    // モード別処理
     if (inputMode === "root") {
-      // 選択になければ追加
       if (existingIndex === -1) {
         nextSelected.push(inputNote);
         setSelected(nextSelected);
       } else {
-        // 既にある場合はその音をRootにする（入力された変位に従う）
         nextSelected[existingIndex] = inputNote;
         setSelected(nextSelected);
       }
-      
-      // Root設定
       if (rootHint === inputNote) {
-        setRootHint(null); // 解除
+        setRootHint(null);
       } else {
         setRootHint(inputNote);
-        if (bassHint === inputNote) setBassHint(null); // Bassなら解除
+        if (bassHint === inputNote) setBassHint(null);
       }
-      setInputMode("normal"); // 1回で戻る仕様にするか？今回は維持か戻るか選べるが、使い勝手重視で戻さない方が連続指定しやすい？いや、誤爆防ぐなら戻すべき。
-      // ここでは「モードON→選択→モードOFF」の挙動にする（安全のため）
       setInputMode("normal");
 
     } else if (inputMode === "bass") {
@@ -358,8 +350,6 @@ export default function CadenciaPage() {
         nextSelected[existingIndex] = inputNote;
         setSelected(nextSelected);
       }
-
-      // Bass設定
       if (bassHint === inputNote) {
         setBassHint(null);
       } else {
@@ -369,7 +359,6 @@ export default function CadenciaPage() {
       setInputMode("normal");
 
     } else {
-      // 通常モード
       updateSelection();
     }
   };
@@ -529,14 +518,6 @@ export default function CadenciaPage() {
            </div>
         </section>
 
-        {/* Other Candidates List */}
-        {otherCandidates.length > 1 && (
-          <section className="space-y-3 pt-2 pb-2">
-            <div className="flex items-center gap-2 px-1"><span className="h-[1px] flex-1 bg-slate-200"></span><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">更に他の候補</span><span className="h-[1px] flex-1 bg-slate-200"></span></div>
-            <div className="grid gap-3">{otherCandidates.slice(1).map((c) => (<ResultCard key={c.chord} candidate={c} isTop={false} isKeySet={isKeySet} />))}</div>
-          </section>
-        )}
-
         {/* Ask AI Input Area */}
         <section className={`${G.glass} rounded-[32px] p-1 overflow-hidden mt-6`}>
            <div className="bg-white/40 rounded-[28px] p-5">
@@ -622,7 +603,7 @@ export default function CadenciaPage() {
 }
 
 // Icons
-const IconSparkles = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
+const IconSparkles = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/></svg>;
 const IconSend = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
 const IconRefresh = () => <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>;
 const IconTrash = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
