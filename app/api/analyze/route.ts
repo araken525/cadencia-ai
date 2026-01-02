@@ -9,7 +9,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  * - 「判定(engineChord)」「候補(candidates)」「考察(analysis)」「信頼度(confidence)」をAIで生成
  * - 入力表記は絶対に尊重
  * - keyHint / rootHint / bassHint をAIに明示的に渡す
- * - 保険ロジック: bassHint優先 → rootHint優先 でリストを並べ替える（候補は削除しない）
+ * - 保険ロジック: bassHint優先 → rootHint優先 でリストを並べ替える
  */
 
 // -------------------- Gemini --------------------
@@ -99,8 +99,8 @@ type CandidateObj = {
 type AnalyzeResponse = {
   status: "ok" | "ambiguous" | "insufficient";
   engineChord: string;
-  chordType?: string; // ★ここを追加しました
-  confidence?: number; // ★ここを追加しました
+  chordType?: string;
+  confidence?: number;
   candidates: CandidateObj[];
   analysis: string;
   notes: string[];
@@ -116,9 +116,10 @@ function buildSystemPrompt() {
 
 【絶対ルール】
 - 入力された音名表記をそのまま使う（異名同音を勝手に統合しない）
-- 押下順は意味を持たない
+- 押された順番は意味を持たない
 - rootHint がある場合は「根音候補として強く尊重」する
 - bassHint がある場合は「最低音（バス）候補として強く尊重」し、転回形や分数コード表記に反映する
+- **bassHint の指定がない場合は、原則として「基本形」（分数コードでない形）を最優先の候補として扱ってください。勝手に転回形を上位にしないこと。**
 - keyHint がある場合は、機能（TDS）と和音記号を必ず算出する
 - 3音未満なら status="insufficient"
 
@@ -218,13 +219,13 @@ export async function POST(req: Request) {
     // --------------------
     if (candidates.length > 0) {
       if (bassHint) {
-        // bassHintがある場合: 実際にベース音が一致するものを最優先にソート（filterで除外しない）
+        // bassHintがある場合: 実際にベース音が一致するものを最優先にソート
         candidates.sort((a, b) => {
           const aMatch = getChordBass(a.chord) === bassHint;
           const bMatch = getChordBass(b.chord) === bassHint;
-          if (aMatch && !bMatch) return -1; // aを優先
-          if (!aMatch && bMatch) return 1;  // bを優先
-          return 0; // その他の順序は維持
+          if (aMatch && !bMatch) return -1; 
+          if (!aMatch && bMatch) return 1;  
+          return 0; 
         });
       } else if (rootHint) {
         // rootHintがある場合: ルート音が一致するものを最優先にソート
@@ -236,6 +237,7 @@ export async function POST(req: Request) {
           return 0;
         });
       }
+      // ヒントがない場合は、AIの出した順序（プロンプトで「基本形優先」と指示済み）を尊重
     }
 
     const top = candidates[0];
