@@ -4,13 +4,19 @@ import { useMemo, useRef, useState, useEffect } from "react";
 
 // --- Constants ---
 const G = {
-  // Apple Intelligence風の虹色グラデーション
+  // 復活: メインのグラデーション（ボタンやバー用）
+  main: "bg-gradient-to-tr from-indigo-500 via-purple-500 to-fuchsia-500",
+  // 復活: テキスト用のグラデーション
+  textMain: "bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600",
+  
+  // Apple Intelligence風の虹色グラデーション（Ask AIボタン用）
   aiGradient: "bg-[conic-gradient(at_top_left,_var(--tw-gradient-stops))] from-indigo-200 via-red-200 to-yellow-100",
   // よりリッチなガラス表現
   glass: "bg-white/70 backdrop-blur-xl border border-white/50 shadow-lg shadow-indigo-100/50",
   glassActive: "bg-white/90 backdrop-blur-2xl border border-white/60 shadow-xl",
 };
 
+const NOTE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
 const KEYS_ROOT = ["none", "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
 const KEYS_TYPE = ["Major", "Minor"];
 const SORT_ORDER = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
@@ -534,6 +540,14 @@ export default function CadenciaPage() {
              </div>
            </div>
         </section>
+
+        {/* Other Candidates List */}
+        {otherCandidates.length > 1 && (
+          <section className="space-y-3 pt-2 pb-2">
+            <div className="flex items-center gap-2 px-1"><span className="h-[1px] flex-1 bg-slate-200"></span><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">更に他の候補</span><span className="h-[1px] flex-1 bg-slate-200"></span></div>
+            <div className="grid gap-3">{otherCandidates.slice(1).map((c) => (<ResultCard key={c.chord} candidate={c} isTop={false} isKeySet={isKeySet} />))}</div>
+          </section>
+        )}
 
         {/* Ask AI Input Area */}
         <section className={`${G.glass} rounded-[32px] p-1 overflow-hidden mt-6`}>
