@@ -48,7 +48,7 @@ function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateUI[] {
     else if (idx === 2) conf = 45;
     else conf = 20;
 
-    const calculatedConf = conf - (idx * 5); // Index penalty
+    const calculatedConf = conf - (idx * 5);
 
     const chord = typeof c === "string" ? c : (c.chord ?? "—");
     
@@ -211,6 +211,97 @@ const FlickKey = ({
   );
 };
 
+// --- Custom Inline Wheel Picker (開かないでくるくるするやつ) ---
+const InlineWheelPicker = ({ 
+  items, 
+  value, 
+  onChange, 
+  label, 
+  disabled = false,
+  activeColorClass = "text-indigo-600"
+}: { 
+  items: string[], 
+  value: string, 
+  onChange: (val: string) => void, 
+  label: string,
+  disabled?: boolean,
+  activeColorClass?: string
+}) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const ITEM_HEIGHT = 56; // h-14 = 56px
+  const isScrollingRef = useRef(false);
+
+  // 外部からのvalue変更時にスクロール位置を同期
+  useEffect(() => {
+    if (isScrollingRef.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const idx = items.indexOf(value);
+    if (idx !== -1) {
+      el.scrollTop = idx * ITEM_HEIGHT;
+    }
+  }, [value, items]);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    
+    isScrollingRef.current = true;
+    
+    // 現在の中心に近いインデックスを計算
+    const idx = Math.round(el.scrollTop / ITEM_HEIGHT);
+    const targetItem = items[idx];
+
+    if (targetItem && targetItem !== value) {
+      onChange(targetItem);
+    }
+    
+    // スクロール停止判定（簡易）
+    clearTimeout((el as any)._scrollTimeout);
+    (el as any)._scrollTimeout = setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 150);
+  };
+
+  return (
+    <div className={`relative flex-1 border border-white/40 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center shadow-sm overflow-hidden h-14 ${disabled ? "opacity-50 grayscale bg-slate-50/30" : "bg-white/40"}`}>
+       {/* 上下のフェードマスク（立体感を出す） */}
+       <div className="absolute inset-x-0 top-0 h-3 bg-gradient-to-b from-white/90 to-transparent pointer-events-none z-20"></div>
+       <div className="absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-white/90 to-transparent pointer-events-none z-20"></div>
+       
+       {/* ラベル */}
+       <div className="absolute top-1 left-0 right-0 text-center pointer-events-none z-30">
+          <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest bg-white/50 px-1 rounded-full backdrop-blur-sm">{label}</span>
+       </div>
+
+       {/* スクロールエリア */}
+       <div 
+         ref={scrollRef}
+         onScroll={handleScroll}
+         className={`w-full h-full overflow-y-auto snap-y snap-mandatory scroll-smooth no-scrollbar ${disabled ? "pointer-events-none" : ""}`}
+         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+       >
+          <style jsx>{`
+            .no-scrollbar::-webkit-scrollbar { display: none; }
+          `}</style>
+          
+          {items.map((item) => (
+            <div 
+              key={item} 
+              className={`h-14 flex items-center justify-center snap-center transition-all duration-200 ${item === value ? `font-bold text-lg ${activeColorClass} scale-110` : "text-slate-300 text-sm scale-90"}`}
+            >
+               {item === "none" ? "Free" : item}
+            </div>
+          ))}
+       </div>
+       
+       {/* 選択中のガイド線（うっすら） */}
+       {/* <div className="absolute top-1/2 left-2 right-2 h-[1px] bg-indigo-500/10 -translate-y-[10px] pointer-events-none"></div> */}
+       {/* <div className="absolute top-1/2 left-2 right-2 h-[1px] bg-indigo-500/10 translate-y-[10px] pointer-events-none"></div> */}
+    </div>
+  );
+};
+
 // --- Result Card Component ---
 const ResultCard = ({ candidate, isTop }: { candidate: CandidateUI, isTop: boolean }) => {
   const isProvisional = isTop && candidate.confidenceLevel < 50;
@@ -273,12 +364,13 @@ export default function CadenciaPage() {
 
   // Constants
   const NOTE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
-  const KEYS_ROOT = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
+  const KEYS_ROOT = ["none", "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
+  const KEYS_TYPE = ["Major", "Minor"];
   
   // State
   const [selected, setSelected] = useState<string[]>([]);
-  const [keyRoot, setKeyRoot] = useState<string>("none"); // "none" or "C", "C#" etc.
-  const [keyType, setKeyType] = useState<string>("Major"); // "Major" or "Minor"
+  const [keyRoot, setKeyRoot] = useState<string>("none"); 
+  const [keyType, setKeyType] = useState<string>("Major"); 
   
   const [candidates, setCandidates] = useState<CandidateUI[]>([]);
   const [infoText, setInfoText] = useState<string>("");
@@ -316,15 +408,12 @@ export default function CadenciaPage() {
   const reset = () => {
     setSelected([]); setCandidates([]);
     setInfoText(""); setQuestion(""); setAnswer(""); setLoading(false);
-    // Key設定はリセットしないほうが使いやすいかもしれないが、今回は全リセットに含める？
-    // いったんKeyは維持する方針にする（演奏中はキー変わらないこと多いため）
   };
 
   async function analyze() {
     if (!canAnalyze || loading) return;
     setLoading(true); setAnswer(""); setInfoText("");
     
-    // KeyHintの作成
     const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
 
     try {
@@ -366,8 +455,6 @@ export default function CadenciaPage() {
   const IconRefresh = () => <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>;
   const IconTrash = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
   const IconX = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
-  const IconBrain = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>;
-  const IconCheck = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>;
   const IconRobot = () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="11" width="18" height="10" rx="2" />
@@ -383,7 +470,6 @@ export default function CadenciaPage() {
   const IconArrowRight = () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
   );
-  const IconMusic = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>;
 
   // Constants
   const G = {
@@ -612,56 +698,26 @@ export default function CadenciaPage() {
               );
             })}
             
-            {/* Key / Scale Selector (Replaces Guide) */}
-            <div className="col-span-2 relative h-14 flex gap-2">
-               {/* Root Selector */}
-               <div className="relative flex-1 bg-white/40 border border-white/40 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-sm overflow-hidden active:bg-white/60 transition-colors">
-                  <select 
-                     value={keyRoot}
-                     onChange={(e) => setKeyRoot(e.target.value)}
-                     className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer"
-                  >
-                     <option value="none">指定なし</option>
-                     {KEYS_ROOT.map(k => <option key={k} value={k}>{k}</option>)}
-                  </select>
-                  <div className="flex flex-col items-center pointer-events-none">
-                     <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">KEY</span>
-                     <span className={`text-sm font-bold ${keyRoot === "none" ? "text-slate-400" : "text-indigo-600"}`}>
-                        {keyRoot === "none" ? "Free" : keyRoot}
-                     </span>
-                  </div>
-                  {/* Chevron Icon for Hint */}
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-30 pointer-events-none">
-                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                  </div>
-               </div>
+            {/* Key / Scale Selector (Inline Wheel) */}
+            <div className="col-span-2 h-14 flex gap-2">
+               {/* Root Picker */}
+               <InlineWheelPicker 
+                 items={KEYS_ROOT}
+                 value={keyRoot}
+                 onChange={setKeyRoot}
+                 label="KEY"
+                 activeColorClass="text-indigo-600"
+               />
 
-               {/* Quality Selector */}
-               <div className={`
-                  relative flex-1 border border-white/40 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-sm overflow-hidden transition-all
-                  ${keyRoot === "none" ? "bg-slate-50/30 opacity-50" : "bg-white/40 active:bg-white/60"}
-               `}>
-                  <select 
-                     value={keyType}
-                     onChange={(e) => setKeyType(e.target.value)}
-                     disabled={keyRoot === "none"}
-                     className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer"
-                  >
-                     <option value="Major">Major</option>
-                     <option value="Minor">Minor</option>
-                  </select>
-                  <div className="flex flex-col items-center pointer-events-none">
-                     <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">SCALE</span>
-                     <span className={`text-sm font-bold ${keyRoot === "none" ? "text-slate-300" : "text-fuchsia-600"}`}>
-                        {keyType === "Major" ? "Maj" : "min"}
-                     </span>
-                  </div>
-                  {keyRoot !== "none" && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-30 pointer-events-none">
-                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </div>
-                  )}
-               </div>
+               {/* Scale Picker */}
+               <InlineWheelPicker 
+                 items={KEYS_TYPE}
+                 value={keyType}
+                 onChange={setKeyType}
+                 label="SCALE"
+                 disabled={keyRoot === "none"}
+                 activeColorClass="text-fuchsia-600"
+               />
             </div>
           </div>
 
