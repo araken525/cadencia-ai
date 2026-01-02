@@ -26,7 +26,8 @@ type ReqBody = {
   candidates?: CandidateObj[];
   analysis?: string;
   question?: string;
-  keyHint?: string; // "C major" etc / "none"
+  keyHint?: string;  // "C major" etc / "none"
+  rootHint?: string; // "C", "F#" etc / null
 };
 
 export async function POST(req: Request) {
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
     const analysis = typeof body.analysis === "string" ? body.analysis : "";
     const question = (body.question ?? "").trim();
     const keyHint = (body.keyHint ?? "none").trim() || "none";
+    const rootHint = (body.rootHint ?? "").trim() || null;
 
     if (!question) {
       return NextResponse.json({ error: "質問が空です。" }, { status: 400 });
@@ -57,8 +59,14 @@ export async function POST(req: Request) {
 - 文脈不足なら「情報不足」と明言する
 - 調性指定(keyHint)がある場合は、その前提で機能の説明をしてよい（ただし断定しすぎない）
 
+【重要：根音指定(rootHint)がある場合】
+- ユーザーが手動で「これが根音だ」と指定しています。
+- 解説はその根音を基準とした解釈（コードネーム）を最優先・正解として扱ってください。
+- 他の解釈（転回形など）はあくまで「可能性」や「補足」として触れる程度に留めてください。
+
 【やること】
 - ユーザーの質問に答える（余計な追加提案はしない）
+- 初心者にもわかりやすく、かつ理論的に正しく。
 - 必要なら「前後の和音/旋律が分かると確定できる」と短く添える
 `.trim();
 
@@ -66,19 +74,22 @@ export async function POST(req: Request) {
 入力音:
 ${selectedNotes.join(", ") || "（なし）"}
 
+rootHint（ユーザー指定の根音）:
+${rootHint || "（指定なし）"}
+
 keyHint（調性指定）:
 ${keyHint}
 
-engineChord（候補ラベル。判定不能でもよい）:
+engineChord（現在の判定結果）:
 ${engineChord || "（未指定）"}
 
-candidates（参考）:
+candidates（AIによる分析候補）:
 ${JSON.stringify(candidates.slice(0, 10), null, 2)}
 
-analysis（参考）:
+analysis（AIによる分析コメント）:
 ${analysis || "（なし）"}
 
-質問:
+ユーザーからの質問:
 ${question}
 `.trim();
 
