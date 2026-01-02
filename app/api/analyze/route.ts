@@ -5,8 +5,11 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /**
- * 目的: 「判定(engineChord)」「候補(candidates)」「考察(analysis)」をAIで生成する
- * 追加: 常に最有力候補を表示 / 暫定バッジ / 和音の種類(chordType)
+ * 目的: 「判定(engineChord)」「候補(candidates)」「考察(analysis)」を全部AIで生成する
+ * 追加:
+ * - 常に最有力候補を表示するため、返却直前に engineChord を補正
+ * - provisional(暫定) を返してUIでバッジ表示
+ * - chordType（和音の種類）もAIに返させてUI表示
  */
 
 // -------------------- Gemini --------------------
@@ -41,15 +44,12 @@ function sortSpelling(a: string, b: string) {
   const pa = parseSpelling(a);
   const pb = parseSpelling(b);
   if (!pa || !pb) return a.localeCompare(b);
-
   const la = LETTER_INDEX[pa.letter] ?? 999;
   const lb = LETTER_INDEX[pb.letter] ?? 999;
   if (la !== lb) return la - lb;
-
   const aa = ACC_INDEX[pa.acc] ?? 999;
   const ab = ACC_INDEX[pb.acc] ?? 999;
   if (aa !== ab) return aa - ab;
-
   return a.localeCompare(b);
 }
 
@@ -57,14 +57,12 @@ function uniq<T>(arr: T[]) {
   return [...new Set(arr)];
 }
 
-// Geminiが余計な文字を返しても拾う
+// Geminiがたまに余計な文字を返しても拾えるようにする
 function parseJsonSafely(text: string) {
   const t = (text ?? "").trim();
-
   try {
     return JSON.parse(t);
   } catch {}
-
   const m = t.match(/\{[\s\S]*\}/);
   if (m) {
     try {
@@ -74,19 +72,21 @@ function parseJsonSafely(text: string) {
   throw new Error("AIのJSONパースに失敗しました");
 }
 
-// notesSorted から暫定ラベル（最後の砦）
-function makeFallbackLabel(notesSorted: string[]) {
-  if (notesSorted.length === 0) return "（未選択）";
-  // UI用に短く：C+E+G みたいに
-  return notesSorted.join("+");
+function isBlankEngineChord(s: unknown) {
+  const v = typeof s === "string" ? s.trim() : "";
+  return v === "" || v === "判定不能" || v === "---";
+}
+
+function fallbackLabelFromNotes(notesSorted: string[]) {
+  // 例: "C–E–G"（とにかく「何を押したか」を出す）
+  return notesSorted.length ? notesSorted.join("–") : "判定不能";
 }
 
 // -------------------- Types --------------------
 type CandidateObj = {
   chord: string;
-  score?: number;       // 0..100（AI基準）
-  confidence?: number;  // 0..1（AI基準）
-  chordType?: string;   // 例: "長三和音" / "属七の和音" / "不明（文脈不足）"
+  score?: number;             // 0..100（AI基準でOK）
+  confidence?: number;        // 0..1
   chordTones?: string[];
   extraTones?: string[];
   reason?: string;
@@ -94,16 +94,13 @@ type CandidateObj = {
 
 type AnalyzeResponse = {
   status: "ok" | "ambiguous" | "insufficient";
-  engineChord: string;
-  confidence: number;     // 0..1（AI全体）
-  chordType: string;      // ★追加：トップの“和音種類”
+  engineChord: string;        // UI表示用の“最有力ラベル”
+  chordType: string;          // 例: "属七の和音" / "長三和音" / "sus4の可能性" / "曖昧"
+  confidence: number;         // 0..1
   analysis: string;
   candidates: CandidateObj[];
   notes: string[];
-
-  // ★追加：UI用
-  provisional: boolean;   // engineChord が補正/暫定なら true
-  badge: "確度高" | "暫定" | "情報不足";
+  provisional: boolean;       // ← 追加：補正で入れたら true
 };
 
 // -------------------- Prompt --------------------
@@ -112,7 +109,7 @@ function buildSystemPrompt() {
 あなたは音楽理論（古典和声・機能和声）の専門家です。
 
 【絶対ルール（嘘防止）】
-- 入力された音名表記をそのまま使う（異名同音を統合しない：A#とBb、CbとBを同一視しない）
+- 入力された音名表記をそのまま使う（異名同音を勝手に統合しない：A#とBb、CbとBを同一視しない）
 - 押された順番は意味を持たない（こちらで既に表記順に整列済み）
 - 文脈が無い限り、sus4 / add9 / 9th / 分数コード を断定しない（「可能性」か「情報不足」と言う）
 - 無理にコード名を決めない。曖昧なら status="ambiguous"、3音未満なら status="insufficient"
@@ -125,16 +122,15 @@ function buildSystemPrompt() {
 
 {
   "status": "ok" | "ambiguous" | "insufficient",
-  "engineChord": string,
+  "engineChord": string,   // 最有力ラベル（曖昧なら "判定不能" でも可）
+  "chordType": string,     // 例: "長三和音" "短三和音" "属七の和音" "減三和音" "増三和音" "sus4の可能性" "曖昧"
   "confidence": number,    // 0..1
-  "chordType": string,     // 例: "長三和音" / "属七の和音" / "不明（文脈不足）"
-  "analysis": string,      // やさしめ。機能和声。
+  "analysis": string,      // 人間向け。やさしめ。機能和声。
   "candidates": [
     {
       "chord": string,
-      "score": number,          // 0..100
-      "confidence": number,     // 0..1
-      "chordType": string,      // 候補ごとの“和音種類”
+      "score": number,        // 0..100
+      "confidence": number,   // 0..1
       "chordTones": string[],
       "extraTones": string[],
       "reason": string
@@ -144,7 +140,7 @@ function buildSystemPrompt() {
 
 【candidatesについて】
 - 最大10件。上から有力順。
-- “断定できない候補”は、reasonに「文脈不足」などを明記してOK。
+- 断定できない候補は reason に「文脈不足」「曖昧」を明記してOK。
 - chordTones/extraTones は入力表記をそのまま使う。
 `.trim();
 }
@@ -155,10 +151,10 @@ function buildUserPrompt(notesSorted: string[]) {
 ${notesSorted.join(", ")}
 
 依頼:
-- candidates を必ず返す（最大10）
-- analysis は「1行結論 → 根拠 → 次に分かると強い情報」の順
-- 曖昧なら status="ambiguous"、engineChord は "判定不能" でもOK
-- chordType は“和音の種類”だけを短く（例: 長三和音 / 短三和音 / 属七の和音 / 不明（文脈不足））
+- candidates を必ず返して（最大10）
+- chordType も必ず返して（機能和声の言葉）
+- analysis は「1行結論 → 根拠 → 次に分かると強い情報」の順で
+- 曖昧なら status を ambiguous にしてOK。engineChord は "判定不能" でもOK
 `.trim();
 }
 
@@ -168,39 +164,37 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const selectedNotesRaw: string[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
 
-    // 正規化 → 無効を落とす → 重複排除 → 表記ソート（押下順排除）
+    // 正規化 → 無効文字を落とす → 重複排除 → 表記ソート（押下順排除）
     const normalized = selectedNotesRaw.map(normalizeAccidentals).filter(Boolean);
     const onlyNotes = normalized.filter(n => /^[A-G]((?:bb|b|##|#)?)$/.test(n));
     const notesSorted = uniq(onlyNotes).sort(sortSpelling);
 
-    // AI未接続でも落とさない
+    // AI未接続でもAPIが落ちないように
     if (!model) {
       const res: AnalyzeResponse = {
         status: notesSorted.length < 3 ? "insufficient" : "ambiguous",
-        engineChord: notesSorted.length >= 1 ? makeFallbackLabel(notesSorted) : "判定不能",
+        engineChord: notesSorted.length ? fallbackLabelFromNotes(notesSorted) : "判定不能",
+        chordType: "情報不足",
         confidence: 0,
-        chordType: "不明（AI未接続）",
         analysis: "（AI未接続）GEMINI_API_KEY が未設定です。",
         candidates: [],
         notes: notesSorted,
         provisional: true,
-        badge: notesSorted.length < 3 ? "情報不足" : "暫定",
       };
       return NextResponse.json(res);
     }
 
-    // 3音未満は “AIに聞く” こともできるけど、UIを安定させるならここで明示
+    // 3音未満もAIに投げてもいいけど、UIの安定のためここで返す
     if (notesSorted.length < 3) {
       const res: AnalyzeResponse = {
         status: "insufficient",
-        engineChord: makeFallbackLabel(notesSorted),
+        engineChord: fallbackLabelFromNotes(notesSorted),
+        chordType: "情報不足",
         confidence: 0,
-        chordType: "不明（情報不足）",
         analysis: "音が3つ未満のため、和音として判断できません（情報不足）。",
         candidates: [],
         notes: notesSorted,
         provisional: true,
-        badge: "情報不足",
       };
       return NextResponse.json(res);
     }
@@ -217,54 +211,42 @@ export async function POST(req: Request) {
       },
     });
 
-    const json = parseJsonSafely(result.response.text()) as Partial<AnalyzeResponse> & { candidates?: any[] };
+    const text = result.response.text();
+    const json = parseJsonSafely(text) as Partial<AnalyzeResponse>;
 
-    // まずAI結果を受け取る
+    // まずAI結果を安全に整形
     let res: AnalyzeResponse = {
       status: (json.status as any) || "ambiguous",
       engineChord: typeof json.engineChord === "string" ? json.engineChord : "判定不能",
+      chordType: typeof (json as any).chordType === "string" ? String((json as any).chordType) : "曖昧",
       confidence: typeof json.confidence === "number" ? json.confidence : 0.3,
-      chordType: typeof (json as any).chordType === "string" ? (json as any).chordType : "不明（文脈不足）",
       analysis: typeof json.analysis === "string" ? json.analysis : "（出力が不完全でした）",
-      candidates: Array.isArray(json.candidates) ? (json.candidates as any).slice(0, 10) : [],
+      candidates: Array.isArray((json as any).candidates) ? (json as any).candidates.slice(0, 10) : [],
       notes: notesSorted,
       provisional: false,
-      badge: "確度高",
     };
 
-    // --------------------
-    // ★ここが “最小改修の肝”：返却直前に engineChord を補正
-    // --------------------
-    const topCandidateChord = res.candidates?.[0]?.chord;
-
-    const needsFix =
-      !res.engineChord ||
-      res.engineChord.trim() === "" ||
-      res.engineChord.trim() === "判定不能";
-
-    if (needsFix) {
-      if (typeof topCandidateChord === "string" && topCandidateChord.trim() !== "") {
-        res.engineChord = topCandidateChord;
-        res.provisional = true;
-        res.badge = res.status === "ok" ? "暫定" : (res.status === "insufficient" ? "情報不足" : "暫定");
+    // ★ここが最小改修ポイント：engineChord を補正して「常に最有力候補」を表示
+    if (isBlankEngineChord(res.engineChord)) {
+      const top = res.candidates?.[0]?.chord;
+      if (typeof top === "string" && top.trim()) {
+        res.engineChord = top.trim();
+        res.provisional = true; // AIが判定不能にしたので暫定採用
+        if (!res.chordType || res.chordType === "曖昧" || res.chordType === "情報不足") {
+          res.chordType = "暫定（候補1位採用）";
+        }
       } else {
-        res.engineChord = makeFallbackLabel(notesSorted);
+        res.engineChord = fallbackLabelFromNotes(notesSorted);
         res.provisional = true;
-        res.badge = res.status === "insufficient" ? "情報不足" : "暫定";
-      }
-    } else {
-      // engineChord はあるが status が曖昧なら「暫定」に落としてもよい（お好み）
-      if (res.status !== "ok") {
-        res.provisional = true;
-        res.badge = res.status === "insufficient" ? "情報不足" : "暫定";
+        res.chordType = "暫定（入力音の並び）";
       }
     }
 
-    // chordType が空ならトップ候補から拾う（任意）
-    if ((!res.chordType || res.chordType.trim() === "") && res.candidates?.[0]?.chordType) {
-      res.chordType = String(res.candidates[0].chordType);
+    // candidates が空のときも “暫定ラベル” は出しておく
+    if (!res.candidates || res.candidates.length === 0) {
       res.provisional = true;
-      if (res.badge === "確度高") res.badge = "暫定";
+      if (res.engineChord.trim() === "") res.engineChord = fallbackLabelFromNotes(notesSorted);
+      if (!res.chordType) res.chordType = "曖昧";
     }
 
     return NextResponse.json(res);
