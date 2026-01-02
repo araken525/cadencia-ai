@@ -199,15 +199,18 @@ const FlickKey = ({
   );
 };
 
-// --- Result Card ---
+// --- Result Card (Revised Layout) ---
 const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, isTop: boolean, isKeySet: boolean }) => {
   const isProvisional = isTop && (candidate.provisional || candidate.score < 50);
   const percent = candidate.score;
 
   return (
     <div className={`relative overflow-hidden transition-all duration-500 group ${isTop ? "bg-gradient-to-br from-white via-indigo-50/30 to-purple-50/30 border-2 border-indigo-200 shadow-xl shadow-indigo-100/50 rounded-3xl p-6" : "bg-white/60 backdrop-blur-sm border border-white/60 shadow-sm rounded-2xl p-4 active:bg-white/90"}`}>
+      {/* Background Number */}
       <div className={`absolute -right-2 -bottom-4 font-black text-indigo-900 select-none z-0 pointer-events-none transform -rotate-12 ${isTop ? "text-8xl opacity-[0.05]" : "text-6xl opacity-[0.03]"}`}>{String(isTop ? 1 : 2).padStart(2, '0')}</div>
-      <div className="relative z-10 space-y-3">
+      
+      <div className="relative z-10 flex flex-col gap-3">
+        {/* 1. Header: Name & Confidence */}
         <div className="flex justify-between items-start">
           <div>
             {isTop && (
@@ -222,15 +225,45 @@ const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, i
             <span className={`font-bold ${isTop ? "text-xl text-indigo-600" : "text-sm text-indigo-400"}`}>{percent}%</span>
           </div>
         </div>
-        {candidate.chordType && <div className="text-xs font-bold text-slate-500">{candidate.chordType}</div>}
+
+        {/* 2. Chord Type */}
+        {candidate.chordType && <div className="text-xs font-bold text-slate-500 -mt-1">{candidate.chordType}</div>}
+
+        {/* 3 & 4. Function & Analysis (Only if Key is set) */}
         {isKeySet && (
-          <div className="flex flex-wrap gap-2">
-            {candidate.tds && candidate.tds !== "?" && <span className={`px-2 py-1 rounded-md text-[10px] font-black border ${candidate.tds === "T" ? "bg-cyan-50 text-cyan-600 border-cyan-100" : candidate.tds === "D" ? "bg-pink-50 text-pink-600 border-pink-100" : candidate.tds === "S" ? "bg-lime-50 text-lime-600 border-lime-100" : "bg-slate-50 text-slate-500 border-slate-200"}`}>{candidate.tds === "SD" ? "S(SD)" : candidate.tds}機能</span>}
-            {candidate.romanNumeral && <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-violet-50 text-violet-600 border border-violet-100">{candidate.romanNumeral}</span>}
-            {candidate.inversion && candidate.inversion !== "unknown" && <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">{candidate.inversion === "root" ? "基本形" : candidate.inversion === "1st" ? "第1転回" : candidate.inversion === "2nd" ? "第2転回" : "転回形"}</span>}
+          <div className="flex flex-wrap gap-2 items-center mt-1">
+            {/* Function (TDS) */}
+            {candidate.tds && candidate.tds !== "?" && (
+              <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border shadow-sm ${
+                candidate.tds === "T" ? "bg-cyan-50 text-cyan-600 border-cyan-100" :
+                candidate.tds === "D" ? "bg-pink-50 text-pink-600 border-pink-100" :
+                candidate.tds === "S" ? "bg-lime-50 text-lime-600 border-lime-100" :
+                "bg-slate-50 text-slate-500 border-slate-200"
+              }`}>
+                {candidate.tds === "SD" ? "S(SD)" : candidate.tds}機能
+              </span>
+            )}
+            
+            {/* Roman Numeral & Inversion */}
+            <div className="flex items-center bg-white/50 border border-indigo-100 rounded-lg overflow-hidden shadow-sm">
+                {candidate.romanNumeral && (
+                  <span className="px-2.5 py-1 text-[10px] font-black bg-violet-50 text-violet-600 border-r border-indigo-100">
+                    {candidate.romanNumeral}
+                  </span>
+                )}
+                {candidate.inversion && candidate.inversion !== "unknown" && (
+                  <span className="px-2 py-1 text-[10px] font-bold text-slate-500">
+                    {candidate.inversion === "root" ? "基本形" : 
+                     candidate.inversion === "1st" ? "第1転回" :
+                     candidate.inversion === "2nd" ? "第2転回" : "転回形"}
+                  </span>
+                )}
+            </div>
           </div>
         )}
-        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+
+        {/* 5. Confidence Bar */}
+        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-1">
           <div className={`h-full transition-all duration-1000 ease-out ${isTop ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500" : "bg-slate-300"}`} style={{ width: `${percent}%` }}></div>
         </div>
       </div>
@@ -250,7 +283,7 @@ export default function CadenciaPage() {
   const [keyType, setKeyType] = useState<string>("Major"); 
   const [bassHint, setBassHint] = useState<string | null>(null); 
   const [rootHint, setRootHint] = useState<string | null>(null);
-  const [rootMode, setRootMode] = useState(false); // Root指定モード
+  const [rootMode, setRootMode] = useState(false); 
 
   const [candidates, setCandidates] = useState<CandidateObj[]>([]);
   const [infoText, setInfoText] = useState<string>("");
@@ -306,7 +339,7 @@ export default function CadenciaPage() {
     const targetNote = existing || noteBase;
     if (!existing) handleNoteInput(targetNote);
     setRootHint(prev => (prev?.startsWith(noteBase) ? null : targetNote));
-    setRootMode(false); // Root指定したらモード終了
+    setRootMode(false); 
   };
 
   const reset = () => {
@@ -465,7 +498,7 @@ export default function CadenciaPage() {
         <section className="text-center pb-4 pt-4"><FeedbackLink className="text-[10px] text-slate-400 hover:text-indigo-500 transition-colors inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>不具合報告・機能要望はこちら (X: @araken525_toho)</FeedbackLink></section>
       </main>
 
-      {/* --- REBUILT Bottom Controls (5 Columns x 4 Rows) --- */}
+      {/* --- REBUILT Bottom Controls (5 Columns) --- */}
       <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glass} border-t-0 rounded-t-[30px] pt-4 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]`}>
         <div className="max-w-md mx-auto px-4">
           <div className="grid grid-cols-5 grid-rows-4 gap-2 h-full">
