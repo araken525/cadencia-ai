@@ -10,100 +10,104 @@ const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const model = genAI ? genAI.getGenerativeModel({ model: modelName }) : null;
 
-type CandidateObj = {
-  chord: string;
-  chordType?: string;
-  score?: number;
-  confidence?: number;
-  chordTones?: string[];
-  extraTones?: string[];
-  reason?: string;
-};
+// -------------------- Utils --------------------
+function normalizeAccidentals(s: string) {
+  return (s ?? "")
+    .trim()
+    .replaceAll("♭", "b")
+    .replaceAll("♯", "#")
+    .replaceAll("𝄫", "bb")
+    .replaceAll("𝄪", "##");
+}
 
-type ReqBody = {
-  selectedNotes?: string[];
-  engineChord?: string;
-  candidates?: CandidateObj[];
-  analysis?: string;
-  question?: string;
-  keyHint?: string;  // "C major" etc / "none"
-  rootHint?: string; // "C", "F#" etc / null
-};
-
+// -------------------- Route --------------------
 export async function POST(req: Request) {
   try {
-    const body = (await req.json().catch(() => ({}))) as ReqBody;
+    const body = await req.json().catch(() => ({}));
 
-    const selectedNotes = Array.isArray(body.selectedNotes) ? body.selectedNotes : [];
-    const engineChord = (body.engineChord ?? "").trim();
-    const candidates = Array.isArray(body.candidates) ? body.candidates : [];
-    const analysis = typeof body.analysis === "string" ? body.analysis : "";
-    const question = (body.question ?? "").trim();
-    const keyHint = (body.keyHint ?? "none").trim() || "none";
-    const rootHint = (body.rootHint ?? "").trim() || null;
+    const selectedNotesRaw: string[] = Array.isArray(body?.selectedNotes)
+      ? body.selectedNotes
+      : [];
 
-    if (!question) {
-      return NextResponse.json({ error: "質問が空です。" }, { status: 400 });
-    }
+    const engineChord: string = body?.engineChord ?? "";
+    const question: string = body?.question ?? "";
+    const rootHint: string | null = body?.rootHint ?? null;
+    const keyHint: string | null = body?.keyHint ?? null;
 
     if (!model) {
-      return NextResponse.json({ error: "（AI未接続）GEMINI_API_KEY が未設定です。" }, { status: 500 });
+      return NextResponse.json(
+        { error: "GEMINI_API_KEY が未設定です。" },
+        { status: 500 }
+      );
     }
 
+    if (!question.trim()) {
+      return NextResponse.json(
+        { error: "質問が空です。" },
+        { status: 400 }
+      );
+    }
+
+    const notes = selectedNotesRaw
+      .map(normalizeAccidentals)
+      .filter(n => /^[A-G]((?:bb|b|##|#)?)$/.test(n));
+
+    // -------------------- Prompt --------------------
     const system = `
 あなたは音楽理論（古典和声・機能和声）の専門家です。
 
-【絶対ルール】
-- 入力された音名表記をそのまま使う（異名同音を同一視しない）
-- 半音・ピッチクラス等の語を出さない
-- 文脈不足なら「情報不足」と明言する
-- 調性指定(keyHint)がある場合は、その前提で機能の説明をしてよい（ただし断定しすぎない）
+【最重要ルール】
+- rootHint が与えられている場合、それを「根音として確定扱い」する
+- rootHint があるのに別の根音を仮定してはいけない
+- 異名同音は統合しない（A# ≠ Bb）
+- 押された順番は意味を持たない
+- 文脈不足の場合は「情報不足」と明言してよい
+- 「半音」「ピッチクラス」などの語は禁止
+- 機能和声の語彙を優先する（主和音・属和音・下属和音・導音など）
 
-【重要：根音指定(rootHint)がある場合】
-- ユーザーが手動で「これが根音だ」と指定しています。
-- 解説はその根音を基準とした解釈（コードネーム）を最優先・正解として扱ってください。
-- 他の解釈（転回形など）はあくまで「可能性」や「補足」として触れる程度に留めてください。
+【役割】
+- 判定のやり直しは禁止
+- engineChord を前提に「解釈・意味・機能」を説明する
+- ユーザーの質問にだけ答える
 
-【やること】
-- ユーザーの質問に答える（余計な追加提案はしない）
-- 初心者にもわかりやすく、かつ理論的に正しく。
-- 必要なら「前後の和音/旋律が分かると確定できる」と短く添える
 `.trim();
 
     const user = `
-入力音:
-${selectedNotes.join(", ") || "（なし）"}
+入力音（表記）:
+${notes.join(", ")}
 
-rootHint（ユーザー指定の根音）:
-${rootHint || "（指定なし）"}
+判定された和音:
+${engineChord}
 
-keyHint（調性指定）:
-${keyHint}
+${rootHint ? `ユーザー指定の根音（最優先）:\n${rootHint}` : "根音指定: なし"}
 
-engineChord（現在の判定結果）:
-${engineChord || "（未指定）"}
+${keyHint ? `想定調性:\n${keyHint}` : "調性指定: なし"}
 
-candidates（AIによる分析候補）:
-${JSON.stringify(candidates.slice(0, 10), null, 2)}
-
-analysis（AIによる分析コメント）:
-${analysis || "（なし）"}
-
-ユーザーからの質問:
+質問:
 ${question}
+
+出力条件:
+- 結論 → 理由 → 注意点 の順で
+- 100〜200字程度
+- やさしい日本語
 `.trim();
 
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: user }] }],
       systemInstruction: system,
-      generationConfig: { temperature: 0.2 },
+      generationConfig: {
+        temperature: 0.3,
+      },
     });
 
-    const text = result.response.text().trim();
-    return new NextResponse(text || "（AIの応答が空でした）", {
+    return new NextResponse(result.response.text(), {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
+
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message ?? "Unknown error" },
+      { status: 500 }
+    );
   }
 }
