@@ -5,12 +5,12 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /**
- * 目的: 「判定(engineChord)」「候補(candidates)」「考察(analysis)」を全部AIで生成する
+ * 目的:
+ * - 「判定(engineChord)」「候補(candidates)」「考察(analysis)」「信頼度(confidence)」をAIで生成
  * - 入力表記は絶対に尊重（異名同音の統合禁止）
- * - 押下順は意味なし（コード側でソートしてからAIに渡す）
- * - rootHint（根音指定）が来たら、それを最優先で解釈させる（ただし入力音に存在する場合のみ）
- * - keyHint（調性指定）が来たら、機能和声の語りで優先する
- * - 出力は必ずJSON
+ * - 押下順は意味なし（サーバ側で表記順ソートしてからAIに渡す）
+ * - keyHint / rootHint をAIに明示的に渡す
+ * - 返却直前に「常に最有力候補を表示」へ補正（engineChordは candidates[0] を採用）
  */
 
 // -------------------- Gemini --------------------
@@ -27,8 +27,7 @@ function normalizeAccidentals(s: string) {
     .replaceAll("♭", "b")
     .replaceAll("♯", "#")
     .replaceAll("𝄫", "bb")
-    .replaceAll("𝄪", "##")
-    .replaceAll("−", "-");
+    .replaceAll("𝄪", "##");
 }
 
 type Acc = "" | "#" | "##" | "b" | "bb";
@@ -40,7 +39,6 @@ function parseSpelling(s: string): { letter: string; acc: Acc } | null {
   if (!m) return null;
   return { letter: m[1], acc: (m[2] ?? "") as Acc };
 }
-
 function sortSpelling(a: string, b: string) {
   const pa = parseSpelling(a);
   const pb = parseSpelling(b);
@@ -53,128 +51,133 @@ function sortSpelling(a: string, b: string) {
   if (aa !== ab) return aa - ab;
   return a.localeCompare(b);
 }
-
 function uniq<T>(arr: T[]) {
   return [...new Set(arr)];
 }
 
-// Geminiがたまに余計な文字を返しても拾えるようにする
+// Geminiが余計な文を返しても拾う
 function parseJsonSafely(text: string) {
   const t = (text ?? "").trim();
-
   try {
     return JSON.parse(t);
   } catch {}
-
   const m = t.match(/\{[\s\S]*\}/);
   if (m) {
     try {
       return JSON.parse(m[0]);
     } catch {}
   }
-
   throw new Error("AIのJSONパースに失敗しました");
+}
+
+function clamp01(n: any, fallback = 0) {
+  const x = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(x)) return fallback;
+  return Math.max(0, Math.min(1, x));
+}
+function clampScore(n: any, fallback = 0) {
+  const x = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(x)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(x)));
+}
+function safeStr(s: any, fallback = "") {
+  return typeof s === "string" ? s : fallback;
+}
+function safeArrStr(a: any) {
+  return Array.isArray(a) ? a.filter((x) => typeof x === "string") : [];
 }
 
 // -------------------- Types --------------------
 type CandidateObj = {
-  chord: string;
-  score?: number;        // 0..100（AI基準でOK）
-  confidence?: number;   // 0..1（AI基準でOK）
-  chordTones?: string[];
-  extraTones?: string[];
-  reason?: string;
-  // 追加してもOK（使わなくてもOK）
-  root?: string;
+  chord: string;           // 表示用コード名（ただし断定しすぎない運用OK）
+  chordType?: string;      // 例: "属七の和音" / "長三和音" / "短三和音" / "半減七" など
+  score: number;           // 0..100（AI基準）
+  confidence: number;      // 0..1（AI基準）
+  chordTones: string[];    // 入力表記ベース
+  extraTones: string[];    // 入力表記ベース
+  reason: string;          // 短い根拠
+  provisional?: boolean;   // 暫定判定フラグ（AIまたは補正で付与）
 };
 
 type AnalyzeResponse = {
   status: "ok" | "ambiguous" | "insufficient";
-  engineChord: string;
-  chordType?: string; // 追加: 「長三和音」「属七」などをUIに出したい用（AIに出させる）
-  confidence: number; // 0..1
-  analysis: string;
+  engineChord: string;     // 最有力表示（最終的に candidates[0] に補正）
+  chordType?: string;      // 最有力の種類（あれば）
+  confidence: number;      // 0..1（最有力）
+  analysis: string;        // 人間向け文章
   candidates: CandidateObj[];
-  notes: string[];
-  keyHint?: string;
-  rootHint?: string | null;
+  notes: string[];         // 正規化・表記ソート後
+  keyHint: string;         // 受け取った keyHint（整形）
+  rootHint: string | null; // 受け取った rootHint（整形）
 };
 
 // -------------------- Prompt --------------------
-function buildSystemPrompt(opts: {
-  rootHint: string | null;
-  keyHint: string | null;
-}) {
-  const { rootHint, keyHint } = opts;
-
+function buildSystemPrompt() {
   return `
 あなたは音楽理論（古典和声・機能和声）の専門家です。
 
-【絶対ルール（嘘防止）】
+【絶対ルール】
 - 入力された音名表記をそのまま使う（異名同音を勝手に統合しない：A#とBb、CbとBを同一視しない）
 - 押された順番は意味を持たない（こちらで既に表記順に整列済み）
-- 文脈が無い限り、sus4 / add9 / 9th / 分数コード を断定しない（「可能性」か「情報不足」と言う）
-- 無理にコード名を決めない。曖昧なら status="ambiguous"、3音未満なら status="insufficient"
+- rootHint が与えられている場合は「根音候補として強く尊重」する（ただし絶対視はせず、矛盾があれば reason に書く）
+- keyHint が与えられている場合は、機能（主/属/下属など）の説明に必ず反映する
+- 文脈が無い限り sus4 / add9 / 分数コード を断定しない（「可能性」か「情報不足」と言う）
+- 3音未満なら status="insufficient"
+- 無理にコード名を決めない。曖昧なら status="ambiguous"（ただし candidates は必ず出す）
 - 「半音」「ピッチクラス」「実音高」などの語を出さない（説明は音名と機能和声の言葉で）
-- 機能和声の語彙を優先（主和音/属和音/下属和音、導音、倚音/経過音/掛留など）
-- 不明点は推測で埋めず「情報不足」と言い切ってよい
 
-【重要：根音指定(rootHint)がある場合】
-- rootHint が与えられている場合、engineChord と candidates は「その根音(rootHint)を根音として扱う解釈」を最優先にしてください。
-- rootHint を無視して別の根音にしてはいけません。
-- ただし rootHint が入力音に含まれない場合は「拘束条件としては無効」とし、通常通り判断してOKです。
-
-【調性指定(keyHint)がある場合】
-- keyHint が与えられている場合、analysis はその調性の機能（主/属/下属など）に寄せて説明してください。
-- ただし keyHint が不確かな場合は断定せず「その調性だと〜と解釈しやすい」程度に留める。
-
-【出力は必ず application/json の“JSONのみ”】【説明文やコードブロック禁止】
+【出力はJSONのみ】（説明文やコードブロック禁止）
 必ず次の形で返す：
 
 {
   "status": "ok" | "ambiguous" | "insufficient",
   "engineChord": string,
-  "chordType": string,        // 例: "長三和音" "短三和音" "属七の和音" "減七" など（わからなければ "不明"）
-  "confidence": number,       // 0..1
-  "analysis": string,         // やさしめ。機能和声。
+  "chordType": string,
+  "confidence": number,   // 0..1（engineChordの自信）
+  "analysis": string,     // やさしめ。機能和声。 1行結論→根拠→次に分かると強い情報
   "candidates": [
     {
       "chord": string,
+      "chordType": string,
       "score": number,        // 0..100
       "confidence": number,   // 0..1
-      "root": string,         // 候補の根音表記（入力表記に合わせる）
       "chordTones": string[],
       "extraTones": string[],
-      "reason": string
+      "reason": string,
+      "provisional": boolean
     }
   ]
 }
 
-【candidatesについて】
-- 最大10件。上から有力順。
-- rootHint が有効な場合、候補は原則その root を共有（rootHintと同じ）するのが望ましい。
-- chordTones/extraTones は入力表記をそのまま使う。
+【candidatesの条件】
+- 最大10件、上から有力順
+- chordTones/extraTones は入力表記をそのまま使う
+- 断定できない候補は provisional=true にして reason に「文脈不足」等を書く
 `.trim();
 }
 
-function buildUserPrompt(notesSorted: string[], opts: { rootHint: string | null; keyHint: string | null }) {
-  const { rootHint, keyHint } = opts;
+function buildUserPrompt(params: {
+  notesSorted: string[];
+  keyHint: string;
+  rootHint: string | null;
+}) {
+  const { notesSorted, keyHint, rootHint } = params;
 
   return `
 入力音（表記順・重複なし）:
 ${notesSorted.join(", ")}
 
-rootHint（根音指定）:
-${rootHint ?? "なし"}
+keyHint:
+${keyHint || "none"}
 
-keyHint（調性指定）:
-${keyHint ?? "なし"}
+rootHint:
+${rootHint || "none"}
 
 依頼:
 - candidates を必ず返して（最大10）
-- analysis は「1行結論 → 根拠 → 次に分かると強い情報」の順で
-- rootHint が有効なら、その根音を前提に engineChord と candidates を作る
-- 曖昧なら status を ambiguous にしてよいが、candidatesは必ず出す
+- candidates[0] は「現時点で最有力」として扱える形で（ただし曖昧なら provisional=true でOK）
+- analysis は「1行結論 → 根拠 → 次に分かると強い情報」
+- 機能和声の言い方で（主/属/下属、導音、倚音・掛留など）
 `.trim();
 }
 
@@ -182,75 +185,55 @@ ${keyHint ?? "なし"}
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-
     const selectedNotesRaw: string[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
 
-    // 追加: keyHint / rootHint
-    const keyHintRaw: string | null = typeof body?.keyHint === "string" ? body.keyHint : null;
-    const rootHintRaw: string | null = typeof body?.rootHint === "string" ? body.rootHint : null;
+    // 追加入力（UIから来る）
+    const keyHintRaw = typeof body?.keyHint === "string" ? body.keyHint : "none";
+    const rootHintRaw = typeof body?.rootHint === "string" ? body.rootHint : null;
 
-    // 正規化 → note形式だけ残す → 重複排除 → 表記ソート
+    // 正規化 → 無効文字を落とす → 重複排除 → 表記ソート（押下順排除）
     const normalized = selectedNotesRaw.map(normalizeAccidentals).filter(Boolean);
     const onlyNotes = normalized.filter((n) => /^[A-G]((?:bb|b|##|#)?)$/.test(n));
     const notesSorted = uniq(onlyNotes).sort(sortSpelling);
 
-    // rootHintも同じ正規化＆検証（※入力音に含まれないroot指定は無効化）
-    const rootHintNorm = rootHintRaw ? normalizeAccidentals(rootHintRaw) : null;
-    const rootHintValid =
-      rootHintNorm && /^[A-G]((?:bb|b|##|#)?)$/.test(rootHintNorm) && notesSorted.includes(rootHintNorm)
-        ? rootHintNorm
-        : null;
+    const keyHint = (keyHintRaw || "none").trim();
+    const rootHint = rootHintRaw ? normalizeAccidentals(rootHintRaw).trim() : null;
 
-    // keyHintは文字列としては残す（"none" なら無効）
-    const keyHintNorm =
-      keyHintRaw && keyHintRaw !== "none" && keyHintRaw.trim().length > 0 ? keyHintRaw.trim() : null;
-
-    // AI未接続でもAPIが落ちないように
+    // AI未接続でも落とさない
     if (!model) {
       const res: AnalyzeResponse = {
         status: notesSorted.length < 3 ? "insufficient" : "ambiguous",
-        engineChord: notesSorted[0] ? `${notesSorted[0]}（暫定）` : "判定不能",
-        chordType: "不明",
+        engineChord: notesSorted.length ? `${notesSorted[0]}(暫定)` : "判定不能",
+        chordType: "情報不足",
         confidence: 0,
         analysis: "（AI未接続）GEMINI_API_KEY が未設定です。",
         candidates: [],
         notes: notesSorted,
-        keyHint: keyHintNorm ?? undefined,
-        rootHint: rootHintValid,
+        keyHint,
+        rootHint,
       };
       return NextResponse.json(res);
     }
 
-    // 3音未満は「和音としては不十分」だが、常に何かは返す（UI都合）
+    // 3音未満：ただし「常に最有力表示」したいので暫定ラベルは作る
     if (notesSorted.length < 3) {
+      const label = notesSorted.length ? `${notesSorted.join("-")}(暫定)` : "判定不能";
       const res: AnalyzeResponse = {
         status: "insufficient",
-        engineChord: notesSorted[0] ? `${notesSorted[0]}（暫定）` : "判定不能",
-        chordType: "不明",
+        engineChord: label,
+        chordType: "情報不足",
         confidence: 0,
         analysis: "音が3つ未満のため、和音として判断できません（情報不足）。",
-        candidates: notesSorted[0]
-          ? [
-              {
-                chord: `${notesSorted[0]}（暫定）`,
-                score: 1,
-                confidence: 0.1,
-                root: rootHintValid ?? notesSorted[0],
-                chordTones: notesSorted,
-                extraTones: [],
-                reason: "音数不足のため暫定表示",
-              },
-            ]
-          : [],
+        candidates: [],
         notes: notesSorted,
-        keyHint: keyHintNorm ?? undefined,
-        rootHint: rootHintValid,
+        keyHint,
+        rootHint,
       };
       return NextResponse.json(res);
     }
 
-    const system = buildSystemPrompt({ rootHint: rootHintValid, keyHint: keyHintNorm });
-    const user = buildUserPrompt(notesSorted, { rootHint: rootHintValid, keyHint: keyHintNorm });
+    const system = buildSystemPrompt();
+    const user = buildUserPrompt({ notesSorted, keyHint, rootHint });
 
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: user }] }],
@@ -264,28 +247,65 @@ export async function POST(req: Request) {
     const text = result.response.text();
     const json = parseJsonSafely(text) as Partial<AnalyzeResponse>;
 
-    // 最低限の形に整える
-    const candidates = Array.isArray((json as any).candidates) ? (json as any).candidates.slice(0, 10) : [];
+    // candidates 整形（壊れても落ちない）
+    const rawCandidates = Array.isArray((json as any).candidates) ? (json as any).candidates : [];
+    const candidates: CandidateObj[] = rawCandidates
+      .slice(0, 10)
+      .map((c: any): CandidateObj => ({
+        chord: safeStr(c?.chord, "判定不能"),
+        chordType: safeStr(c?.chordType, ""),
+        score: clampScore(c?.score, 0),
+        confidence: clamp01(c?.confidence, 0),
+        chordTones: safeArrStr(c?.chordTones),
+        extraTones: safeArrStr(c?.extraTones),
+        reason: safeStr(c?.reason, ""),
+        provisional: typeof c?.provisional === "boolean" ? c.provisional : false,
+      }))
+      .filter((c) => !!c.chord);
 
-    let engineChord =
-      typeof json.engineChord === "string" && json.engineChord.trim().length > 0 ? json.engineChord.trim() : "判定不能";
-
-    // ★最小改修方針：常に最有力候補を表示（AIが判定不能でも補正）
-    if (engineChord === "判定不能" || engineChord === "---") {
-      if (candidates?.[0]?.chord) engineChord = String(candidates[0].chord);
-      else if (notesSorted[0]) engineChord = `${notesSorted[0]}（暫定）`;
+    // --------------------
+    // 「常に最有力候補を表示」補正
+    // - engineChord が空/判定不能なら candidates[0] を採用
+    // - candidates が無い場合は notesSorted から暫定ラベル
+    // --------------------
+    const top = candidates[0];
+    let engineChord = safeStr((json as any).engineChord, "").trim();
+    if (!engineChord || engineChord === "判定不能") {
+      engineChord = top?.chord || `${notesSorted.join("-")}(暫定)`;
     }
 
+    // 最有力の種類もトップに寄せる（あれば）
+    const chordType = (safeStr((json as any).chordType, "").trim() || top?.chordType || "情報不足").trim();
+
+    // status: AIの返しを尊重（ただし最低限）
+    const statusRaw = safeStr((json as any).status, "ambiguous") as any;
+    const status: AnalyzeResponse["status"] =
+      statusRaw === "ok" || statusRaw === "ambiguous" || statusRaw === "insufficient"
+        ? statusRaw
+        : "ambiguous";
+
+    // 最有力のconfidence: engineChord由来が怪しければ top.confidence を採用
+    let confidence = clamp01((json as any).confidence, 0);
+    if ((!confidence || confidence === 0) && top) confidence = clamp01(top.confidence, 0.3);
+
+    // 暫定バッジ用：AIが曖昧と言ってる、または信頼度が低いなら provisional
+    if (top) {
+      const prov = status !== "ok" || confidence < 0.5;
+      top.provisional = top.provisional || prov;
+    }
+
+    const analysis = safeStr((json as any).analysis, "（出力が不完全でした）");
+
     const res: AnalyzeResponse = {
-      status: (json.status as any) || "ambiguous",
+      status,
       engineChord,
-      chordType: typeof (json as any).chordType === "string" ? String((json as any).chordType) : "不明",
-      confidence: typeof json.confidence === "number" ? json.confidence : 0.3,
-      analysis: typeof json.analysis === "string" ? json.analysis : "（出力が不完全でした）",
+      chordType,
+      confidence,
+      analysis,
       candidates,
       notes: notesSorted,
-      keyHint: keyHintNorm ?? undefined,
-      rootHint: rootHintValid,
+      keyHint,
+      rootHint,
     };
 
     return NextResponse.json(res);
