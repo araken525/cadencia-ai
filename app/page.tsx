@@ -199,17 +199,21 @@ const FlickKey = ({
   );
 };
 
-// --- Result Card (Revised Layout) ---
+// --- Result Card (Revised Design) ---
 const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, isTop: boolean, isKeySet: boolean }) => {
   const isProvisional = isTop && (candidate.provisional || candidate.score < 50);
   const percent = candidate.score;
 
+  // Inversion Japanese mapping
+  const invMap: Record<string, string> = { "root": "基本形", "1st": "第1転回", "2nd": "第2転回", "3rd": "第3転回", "unknown": "―" };
+  const invJp = invMap[candidate.inversion || "unknown"] || "―";
+
   return (
     <div className={`relative overflow-hidden transition-all duration-500 group ${isTop ? "bg-gradient-to-br from-white via-indigo-50/30 to-purple-50/30 border-2 border-indigo-200 shadow-xl shadow-indigo-100/50 rounded-3xl p-6" : "bg-white/60 backdrop-blur-sm border border-white/60 shadow-sm rounded-2xl p-4 active:bg-white/90"}`}>
-      {/* Background Number */}
       <div className={`absolute -right-2 -bottom-4 font-black text-indigo-900 select-none z-0 pointer-events-none transform -rotate-12 ${isTop ? "text-8xl opacity-[0.05]" : "text-6xl opacity-[0.03]"}`}>{String(isTop ? 1 : 2).padStart(2, '0')}</div>
       
       <div className="relative z-10 flex flex-col gap-3">
+        
         {/* 1. Header: Name & Confidence */}
         <div className="flex justify-between items-start">
           <div>
@@ -226,46 +230,56 @@ const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, i
           </div>
         </div>
 
-        {/* 2. Chord Type */}
-        {candidate.chordType && <div className="text-xs font-bold text-slate-500 -mt-1">{candidate.chordType}</div>}
+        {/* --- Analysis Block (Encapsulated) --- */}
+        <div className="bg-white/60 rounded-xl p-3 border border-white/50 shadow-sm">
+           
+           {/* 3. Chord Type */}
+           <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100/50">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">種類</span>
+              <span className="text-sm font-bold text-slate-700">{candidate.chordType || "―"}</span>
+           </div>
 
-        {/* 3 & 4. Function & Analysis (Only if Key is set) */}
-        {isKeySet && (
-          <div className="flex flex-wrap gap-2 items-center mt-1">
-            {/* Function (TDS) */}
-            {candidate.tds && candidate.tds !== "?" && (
-              <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border shadow-sm ${
-                candidate.tds === "T" ? "bg-cyan-50 text-cyan-600 border-cyan-100" :
-                candidate.tds === "D" ? "bg-pink-50 text-pink-600 border-pink-100" :
-                candidate.tds === "S" ? "bg-lime-50 text-lime-600 border-lime-100" :
-                "bg-slate-50 text-slate-500 border-slate-200"
-              }`}>
-                {candidate.tds === "SD" ? "S(SD)" : candidate.tds}機能
-              </span>
-            )}
-            
-            {/* Roman Numeral & Inversion */}
-            <div className="flex items-center bg-white/50 border border-indigo-100 rounded-lg overflow-hidden shadow-sm">
-                {candidate.romanNumeral && (
-                  <span className="px-2.5 py-1 text-[10px] font-black bg-violet-50 text-violet-600 border-r border-indigo-100">
-                    {candidate.romanNumeral}
-                  </span>
-                )}
-                {candidate.inversion && candidate.inversion !== "unknown" && (
-                  <span className="px-2 py-1 text-[10px] font-bold text-slate-500">
-                    {candidate.inversion === "root" ? "基本形" : 
-                     candidate.inversion === "1st" ? "第1転回" :
-                     candidate.inversion === "2nd" ? "第2転回" : "転回形"}
-                  </span>
-                )}
-            </div>
-          </div>
-        )}
+           {/* 4 & 5. Function Grid (TDS, Roman, Inv) */}
+           {isKeySet ? (
+             <div className="grid grid-cols-3 gap-2">
+                
+                {/* Function (TDS) */}
+                <div className="bg-slate-50/80 rounded-lg p-2 flex flex-col items-center justify-center border border-slate-100 min-h-[50px]">
+                   <span className="text-[8px] text-slate-400 font-bold mb-0.5">機能</span>
+                   <span className={`text-xl font-black leading-none ${
+                      candidate.tds === "T" ? "text-cyan-500" : 
+                      candidate.tds === "D" ? "text-pink-500" : 
+                      candidate.tds === "S" || candidate.tds === "SD" ? "text-lime-500" : "text-slate-300"
+                   }`}>
+                      {candidate.tds === "?" ? "―" : candidate.tds === "SD" ? "S" : candidate.tds}
+                   </span>
+                </div>
 
-        {/* 5. Confidence Bar */}
+                {/* Roman Numeral */}
+                <div className="bg-slate-50/80 rounded-lg p-2 flex flex-col items-center justify-center border border-slate-100 min-h-[50px]">
+                   <span className="text-[8px] text-slate-400 font-bold mb-0.5">記号</span>
+                   <span className="text-base font-serif font-bold text-slate-700 leading-none">{candidate.romanNumeral || "―"}</span>
+                </div>
+
+                {/* Inversion */}
+                <div className="bg-slate-50/80 rounded-lg p-2 flex flex-col items-center justify-center border border-slate-100 min-h-[50px]">
+                   <span className="text-[8px] text-slate-400 font-bold mb-0.5">転回</span>
+                   <span className="text-xs font-bold text-slate-600 leading-none mt-0.5">{invJp}</span>
+                </div>
+
+             </div>
+           ) : (
+             <div className="text-center text-[10px] text-slate-400 py-2 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+               KEYを指定すると機能分析が表示されます
+             </div>
+           )}
+        </div>
+
+        {/* 6. Confidence Bar */}
         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-1">
           <div className={`h-full transition-all duration-1000 ease-out ${isTop ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500" : "bg-slate-300"}`} style={{ width: `${percent}%` }}></div>
         </div>
+
       </div>
     </div>
   );
@@ -503,25 +517,25 @@ export default function CadenciaPage() {
         <div className="max-w-md mx-auto px-4">
           <div className="grid grid-cols-5 grid-rows-4 gap-2 h-full">
             
-            {/* Row 1: C, D, E, F, Cancel */}
-            <FlickKey className="col-start-1 row-start-1" noteBase="C" currentSelection={selected.find(s=>s.startsWith("C"))} isBass={bassHint?.startsWith("C")??false} isRoot={rootHint?.startsWith("C")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
-            <FlickKey className="col-start-2 row-start-1" noteBase="D" currentSelection={selected.find(s=>s.startsWith("D"))} isBass={bassHint?.startsWith("D")??false} isRoot={rootHint?.startsWith("D")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
-            <FlickKey className="col-start-3 row-start-1" noteBase="E" currentSelection={selected.find(s=>s.startsWith("E"))} isBass={bassHint?.startsWith("E")??false} isRoot={rootHint?.startsWith("E")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
-            <FlickKey className="col-start-4 row-start-1" noteBase="F" currentSelection={selected.find(s=>s.startsWith("F"))} isBass={bassHint?.startsWith("F")??false} isRoot={rootHint?.startsWith("F")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
+            {/* Row 1 */}
+            <div className="col-start-1 row-start-1"></div> {/* Space */}
+            <FlickKey className="col-start-2 row-start-1" noteBase="C" currentSelection={selected.find(s=>s.startsWith("C"))} isBass={bassHint?.startsWith("C")??false} isRoot={rootHint?.startsWith("C")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
+            <FlickKey className="col-start-3 row-start-1" noteBase="D" currentSelection={selected.find(s=>s.startsWith("D"))} isBass={bassHint?.startsWith("D")??false} isRoot={rootHint?.startsWith("D")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
+            <FlickKey className="col-start-4 row-start-1" noteBase="E" currentSelection={selected.find(s=>s.startsWith("E"))} isBass={bassHint?.startsWith("E")??false} isRoot={rootHint?.startsWith("E")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
             <button className="col-start-5 row-start-1 h-14 rounded-xl bg-white/60 border border-white/60 text-slate-400 active:text-red-500 active:bg-red-50 transition-all flex items-center justify-center shadow-sm active:scale-95" onClick={reset}><IconTrash /></button>
 
-            {/* Row 2: ROOT, G, A, B, Analyze(start) */}
+            {/* Row 2 */}
             <button 
               className={`col-start-1 row-start-2 row-span-2 h-full rounded-xl flex flex-col items-center justify-center border text-[9px] font-bold shadow-sm active:scale-95 transition-all leading-tight ${rootMode ? "bg-rose-400 border-rose-500 text-white shadow-rose-200" : "bg-white/60 border-white/60 text-slate-400"}`}
               onClick={() => setRootMode(!rootMode)}
             >
               <span>根音</span><span>を</span><span>選ぶ</span><span className="text-[7px] opacity-70 mt-1">{rootMode ? "ON" : "OFF"}</span>
             </button>
-            <FlickKey className="col-start-2 row-start-2" noteBase="G" currentSelection={selected.find(s=>s.startsWith("G"))} isBass={bassHint?.startsWith("G")??false} isRoot={rootHint?.startsWith("G")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
-            <FlickKey className="col-start-3 row-start-2" noteBase="A" currentSelection={selected.find(s=>s.startsWith("A"))} isBass={bassHint?.startsWith("A")??false} isRoot={rootHint?.startsWith("A")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
-            <FlickKey className="col-start-4 row-start-2" noteBase="B" currentSelection={selected.find(s=>s.startsWith("B"))} isBass={bassHint?.startsWith("B")??false} isRoot={rootHint?.startsWith("B")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
-            <button className={`col-start-5 row-start-2 row-span-3 rounded-xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20 ${canAnalyze && !loading ? `${G.main} text-white shadow-indigo-300/50` : "bg-slate-100 text-slate-300 cursor-not-allowed"}`} onClick={analyze} disabled={!canAnalyze || loading}>{loading ? <IconRefresh /> : <IconArrowRight />}<span className="text-[10px] font-bold mt-1 text-center leading-tight">判定</span></button>
-
+            <FlickKey className="col-start-2 row-start-2" noteBase="F" currentSelection={selected.find(s=>s.startsWith("F"))} isBass={bassHint?.startsWith("F")??false} isRoot={rootHint?.startsWith("F")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
+            <FlickKey className="col-start-3 row-start-2" noteBase="G" currentSelection={selected.find(s=>s.startsWith("G"))} isBass={bassHint?.startsWith("G")??false} isRoot={rootHint?.startsWith("G")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
+            <FlickKey className="col-start-4 row-start-2" noteBase="A" currentSelection={selected.find(s=>s.startsWith("A"))} isBass={bassHint?.startsWith("A")??false} isRoot={rootHint?.startsWith("A")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
+            <FlickKey className="col-start-5 row-start-2" noteBase="B" currentSelection={selected.find(s=>s.startsWith("B"))} isBass={bassHint?.startsWith("B")??false} isRoot={rootHint?.startsWith("B")??false} rootMode={rootMode} onInput={handleNoteInput} onBassToggle={handleBassToggle} onRootSet={handleRootSet} />
+            
             {/* Row 3: Key Selector Group (Native Selects) */}
             <div className="col-start-2 col-span-3 row-start-3 h-14 bg-white/60 backdrop-blur-md rounded-xl border border-white/60 shadow-sm flex items-center overflow-hidden">
                 {/* Label */}
@@ -550,6 +564,16 @@ export default function CadenciaPage() {
                 </div>
             </div>
 
+            {/* Analyze Button (Spans 2 rows vertically on the right) */}
+            <button 
+              onClick={analyze} disabled={!canAnalyze || loading}
+              className={`col-start-5 row-start-3 row-span-2 rounded-xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20
+              ${canAnalyze && !loading ? `${G.main} text-white shadow-indigo-300/50` : "bg-slate-100 text-slate-300 cursor-not-allowed"}`}
+            >
+               {loading ? <IconRefresh /> : <IconArrowRight />}
+               <span className="text-[10px] font-bold mt-1 text-center leading-tight">判定</span>
+            </button>
+
             {/* Row 4: Ask AI */}
             <button onClick={focusInput} className="col-start-1 col-span-4 row-start-4 h-14 rounded-xl bg-white/80 border border-white/60 text-indigo-600 font-bold shadow-sm active:scale-95 flex items-center justify-center gap-2">
                <div className={`w-6 h-6 rounded-full ${G.main} flex items-center justify-center text-white text-[10px]`}><IconSparkles /></div><span className="text-xs">Cadencia AI にきく</span>
@@ -563,7 +587,7 @@ export default function CadenciaPage() {
 }
 
 // Icons
-const IconSparkles = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
+const IconSparkles = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/></svg>;
 const IconSend = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
 const IconRefresh = () => <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>;
 const IconTrash = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
