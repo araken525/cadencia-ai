@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 
-// --- Constants: Theme & Keys ---
+// --- Constants ---
 const G = {
-  // AIっぽいグラデーション定義
   main: "bg-gradient-to-tr from-indigo-500 via-purple-500 to-fuchsia-500",
   textMain: "bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600",
-  glass: "bg-white/60 backdrop-blur-xl border border-white/40 shadow-xl shadow-indigo-500/10",
+  glass: "bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl shadow-indigo-500/10",
   glassDark: "bg-slate-900/5 backdrop-blur-md border border-white/20",
 };
 
@@ -70,7 +69,14 @@ const getKeyIndex = (note: string): number => {
 
 // --- Components ---
 
-// 1. Mini Piano Display
+// 1. Feedback Link (Missing in previous code)
+const FeedbackLink = ({ className, children }: { className?: string, children: React.ReactNode }) => (
+  <a href="https://x.com/araken525_toho?s=21" target="_blank" rel="noopener noreferrer" className={className}>
+    {children}
+  </a>
+);
+
+// 2. Mini Piano Display
 const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassHint: string | null, rootHint: string | null }) => {
   const keys = [
     { idx: 0, type: "white", x: 0 }, { idx: 1, type: "black", x: 10 },
@@ -115,7 +121,7 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   );
 };
 
-// 2. Flick Key Button
+// 3. Flick Key Button
 const FlickKey = ({ 
   noteBase, currentSelection, isBass, isRoot, rootMode, onInput, onBassToggle, onRootSet, className
 }: { 
@@ -192,7 +198,7 @@ const FlickKey = ({
   );
 };
 
-// 3. Result Card (Rich Design)
+// 4. Result Card (Rich Design)
 const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, isTop: boolean, isKeySet: boolean }) => {
   const isProvisional = isTop && (candidate.provisional || candidate.score < 50);
   const percent = candidate.score;
@@ -483,14 +489,12 @@ export default function CadenciaPage() {
               </div>
            </div>
            <MiniPiano selected={selected} bassHint={bassHint} rootHint={rootHint} />
-           <div className="flex justify-center gap-2 flex-wrap min-h-[2rem] mt-3">
-              {selected.length === 0 ? (<span className="text-xs text-slate-400 bg-slate-100/50 px-3 py-1 rounded-full animate-pulse">👇 下のボタンで音を選択</span>) : (
-                sortedSelected.map((note) => (
-                  <span key={note} className={`px-2.5 py-1 border shadow-sm rounded-lg text-xs font-bold animate-in zoom-in duration-200 ${rootHint === note ? "bg-rose-50 border-rose-300 text-rose-600 ring-1 ring-rose-300" : bassHint === note ? "bg-amber-50 border-amber-300 text-amber-600 ring-1 ring-amber-300" : "bg-white border-indigo-100 text-indigo-600"}`}>
-                    {note} {rootHint === note && <span className="text-[8px] ml-1 opacity-70">(R)</span>} {bassHint === note && <span className="text-[8px] ml-1 opacity-70">(B)</span>}
-                  </span>
-                ))
-              )}
+           <div className="flex justify-center gap-2 flex-wrap mt-3">
+              {sortedSelected.map((note) => (
+                <span key={note} className={`px-2.5 py-1 border shadow-sm rounded-lg text-xs font-bold animate-in zoom-in duration-200 ${rootHint === note ? "bg-rose-50 border-rose-300 text-rose-600 ring-1 ring-rose-300" : bassHint === note ? "bg-amber-50 border-amber-300 text-amber-600 ring-1 ring-amber-300" : "bg-white border-indigo-100 text-indigo-600"}`}>
+                  {note} {rootHint === note && <span className="text-[8px] ml-1 opacity-70">(R)</span>} {bassHint === note && <span className="text-[8px] ml-1 opacity-70">(B)</span>}
+                </span>
+              ))}
            </div>
         </section>
 
