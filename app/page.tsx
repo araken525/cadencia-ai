@@ -8,7 +8,7 @@ const G = {
   heroGradient: "bg-gradient-to-r from-blue-600 via-cyan-500 to-sky-400",
   heroText: "bg-clip-text text-transparent bg-gradient-to-r from-blue-700 via-cyan-600 to-sky-500",
   
-  // カード共通：より立体的で清潔感のある白
+  // カード共通
   cardBase: "bg-white rounded-[32px] shadow-xl shadow-blue-900/5 border border-white overflow-hidden relative",
   
   // ガラス質感（キーボード用）
@@ -80,7 +80,7 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// 1. Mini Piano
+// 1. Mini Piano (Resized to be taller)
 const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassHint: string | null, rootHint: string | null }) => {
   const keys = [
     { idx: 0, type: "white", x: 0 }, { idx: 1, type: "black", x: 10 },
@@ -96,7 +96,8 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   const isRoot = (keyIdx: number) => rootHint ? getKeyIndex(rootHint) === keyIdx : false;
 
   return (
-    <div className="h-24 w-full relative select-none pointer-events-none bg-gradient-to-b from-slate-50 to-white">
+    // Height changed to h-40 (approx half of card visual weight)
+    <div className="h-40 w-full relative select-none pointer-events-none bg-gradient-to-b from-slate-50 to-white">
        <svg viewBox="0 0 100 50" className="w-full h-full" preserveAspectRatio="none">
          {keys.filter(k => k.type === "white").map((k) => (
            <path key={k.idx} d={`M${k.x},0 h14.28 v46 a4,4 0 0 1 -4,4 h-6.28 a4,4 0 0 1 -4,-4 z`}
@@ -187,7 +188,7 @@ const FlickKey = ({
   );
 };
 
-// 3. Result Card (Redesigned: Unified Bar, Translucent Number)
+// 3. Result Card (Modified to always show specs)
 const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: CandidateObj, isTop: boolean, isKeySet: boolean, rank: number }) => {
   const isProvisional = isTop && (candidate.provisional || candidate.score < 50);
   const percent = candidate.score;
@@ -197,7 +198,7 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
   return (
     <div className={`relative overflow-hidden transition-all duration-700 group ${G.cardBase} p-0`}>
       
-      {/* Translucent Rank Number (Restored) */}
+      {/* Translucent Rank Number */}
       <div className={`absolute -right-4 -bottom-6 font-black select-none pointer-events-none z-0 tracking-tighter leading-none ${isTop ? "text-slate-100 text-[10rem]" : "text-slate-50 text-[6rem]"}`}>
         {String(rank).padStart(2, '0')}
       </div>
@@ -224,52 +225,48 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
           </div>
         </div>
 
-        {/* Unified Specs Bar (Requested Design) */}
-        {isKeySet ? (
-           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 shadow-inner flex items-center justify-between divide-x divide-slate-200/60">
-              
-              {/* Function */}
-              <div className="flex-1 flex flex-col items-center justify-center px-1">
-                 <span className="text-[9px] font-bold text-slate-400 mb-1">機能</span>
-                 <span className={`text-2xl font-black leading-none ${
-                    candidate.tds === "T" ? "text-cyan-500" : 
-                    candidate.tds === "D" ? "text-rose-500" : 
-                    candidate.tds === "S" || candidate.tds === "SD" ? "text-emerald-500" : "text-slate-300"
-                 }`}>
-                   {candidate.tds === "?" ? "―" : candidate.tds === "SD" ? "S" : candidate.tds}
-                 </span>
-              </div>
+        {/* Unified Specs Bar (Always Visible) */}
+        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 shadow-inner flex items-center justify-between divide-x divide-slate-200/60">
+            
+            {/* Function (Depend on Key) */}
+            <div className={`flex-1 flex flex-col items-center justify-center px-1 ${!isKeySet ? "opacity-30 grayscale" : ""}`}>
+                <span className="text-[9px] font-bold text-slate-400 mb-1">機能</span>
+                <span className={`text-2xl font-black leading-none ${
+                  candidate.tds === "T" ? "text-cyan-500" : 
+                  candidate.tds === "D" ? "text-rose-500" : 
+                  candidate.tds === "S" || candidate.tds === "SD" ? "text-emerald-500" : "text-slate-300"
+                }`}>
+                  {!isKeySet ? "―" : (candidate.tds === "?" ? "―" : candidate.tds === "SD" ? "S" : candidate.tds)}
+                </span>
+            </div>
 
-              {/* Roman */}
-              <div className="flex-1 flex flex-col items-center justify-center px-1">
-                 <span className="text-[9px] font-bold text-slate-400 mb-1">記号</span>
-                 <span className="text-xl font-serif font-black text-slate-700 leading-none">{candidate.romanNumeral || "―"}</span>
-              </div>
+            {/* Roman (Depend on Key) */}
+            <div className={`flex-1 flex flex-col items-center justify-center px-1 ${!isKeySet ? "opacity-30 grayscale" : ""}`}>
+                <span className="text-[9px] font-bold text-slate-400 mb-1">記号</span>
+                <span className="text-xl font-serif font-black text-slate-700 leading-none">
+                  {!isKeySet ? "―" : (candidate.romanNumeral || "―")}
+                </span>
+            </div>
 
-              {/* Inversion */}
-              <div className="flex-1 flex flex-col items-center justify-center px-1">
-                 <span className="text-[9px] font-bold text-slate-400 mb-1">転回形</span>
-                 <span className="text-xs font-bold text-slate-600 leading-none text-center">{invJp}</span>
-              </div>
+            {/* Inversion (Always Show) */}
+            <div className="flex-1 flex flex-col items-center justify-center px-1">
+                <span className="text-[9px] font-bold text-slate-400 mb-1">転回形</span>
+                <span className="text-xs font-bold text-slate-600 leading-none text-center">{invJp}</span>
+            </div>
 
-              {/* Type */}
-              <div className="flex-1 flex flex-col items-center justify-center px-1">
-                 <span className="text-[9px] font-bold text-slate-400 mb-1">種類</span>
-                 <span className="text-xs font-bold text-slate-600 leading-none text-center">{candidate.chordType || "―"}</span>
-              </div>
+            {/* Type (Always Show) */}
+            <div className="flex-1 flex flex-col items-center justify-center px-1">
+                <span className="text-[9px] font-bold text-slate-400 mb-1">種類</span>
+                <span className="text-xs font-bold text-slate-600 leading-none text-center">{candidate.chordType || "―"}</span>
+            </div>
 
-           </div>
-        ) : (
-          <div className="bg-slate-50 rounded-2xl p-4 border border-dashed border-slate-200 text-center">
-            <span className="text-[10px] font-bold text-slate-400">🔑 Keyを設定すると詳細分析が表示されます</span>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
 };
 
-// 4. Insight Card (With Watermark)
+// 4. Insight Card (Book Icon)
 const InsightCard = ({ text }: { text: string }) => (
   <div className={`${G.cardBase} p-6 overflow-hidden`}>
     {/* Watermark */}
@@ -280,7 +277,7 @@ const InsightCard = ({ text }: { text: string }) => (
     <div className="relative z-10">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md">
-           <IconSparkles className="w-4 h-4" />
+           <IconBook className="w-4 h-4" />
         </div>
         <h3 className="text-sm font-bold text-slate-800">Cadencia AI の考察</h3>
       </div>
@@ -289,7 +286,7 @@ const InsightCard = ({ text }: { text: string }) => (
   </div>
 );
 
-// 5. Ask Card (Drastically Redesigned - Chat Style)
+// 5. Ask Card
 const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp, answer }: any) => {
   return (
     <div className={`${G.cardBase} p-0 flex flex-col overflow-hidden`}>
@@ -326,7 +323,7 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
            </div>
         )}
 
-        {/* Empty State / Prompt */}
+        {/* Empty State */}
         {!answer && !isThinking && (
            <div className="text-center py-6 text-slate-300 text-xs font-bold">
               気になったことを入力してみよう
@@ -334,7 +331,6 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
         )}
       </div>
 
-      {/* Input Area (Sticky Bottom of Card) */}
       <div className="p-3 bg-white border-t border-slate-100">
          <div className="relative flex items-center gap-2">
             <input 
@@ -359,15 +355,19 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
   );
 }
 
-// 6. Loading Overlay
+// 6. Loading Overlay (Updated Text)
 const LoadingOverlay = () => (
-  <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/60 backdrop-blur-md animate-in fade-in duration-300">
-    <div className="relative w-20 h-20">
+  <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/60 backdrop-blur-md animate-in fade-in duration-300 px-6">
+    <div className="relative w-20 h-20 mb-6">
       <div className="absolute inset-0 rounded-full border-4 border-slate-100 border-t-cyan-500 animate-spin"></div>
     </div>
-    <div className="mt-6 text-center space-y-2">
-      <h2 className="text-lg font-black text-slate-800">Analyzing...</h2>
-      <p className="text-xs font-bold text-slate-400 tracking-widest animate-pulse">音楽理論AIが解析中</p>
+    <div className="text-center space-y-4 max-w-xs">
+      <h2 className="text-base font-black text-slate-800 leading-tight">
+        Cadencia AIが和音を分析し、<br/>解説の生成をしています…
+      </h2>
+      <p className="text-[10px] font-medium text-slate-400 leading-relaxed animate-pulse">
+        複雑な和音や、たくさんの解釈がある組み合わせの場合、あらゆる可能性を考慮するため、時間がかかる場合があります。
+      </p>
     </div>
   </div>
 );
@@ -553,7 +553,7 @@ export default function CadenciaPage() {
           </p>
         </section>
 
-        {/* Input Card (Console Style) */}
+        {/* Input Card */}
         <section className={`${G.cardBase} bg-gradient-to-b from-white to-slate-50 border-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
            <div className="p-5">
               <h3 className="text-xs font-bold text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
@@ -666,15 +666,14 @@ export default function CadenciaPage() {
                    <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-400" : "text-cyan-600"}`}>{keyRoot === "none" ? "なし" : keyRoot}</span></div>
                 </div>
                 <div className={`flex-1 relative h-full active:bg-black/5 transition-colors ${keyRoot === "none" ? "opacity-50" : ""}`}>
-                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={keyRoot === "none"}>{KEYS_TYPE.map(k => <option key={k} value={k}>{k === "Major" ? "メジャー" : "マイナー"}</option>)}</select>
-                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-300" : "text-purple-600"}`}>{keyType === "Major" ? "メジャー" : "マイナー"}</span></div>
+                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={keyRoot === "none"}>{KEYS_TYPE.map(k => <option key={k} value={k}>{k === "Major" ? "Major" : "Minor"}</option>)}</select>
+                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-300" : "text-purple-600"}`}>{keyType === "Major" ? "Major" : "Minor"}</span></div>
                 </div>
             </div>
             
             <button className={`col-start-4 row-start-3 row-span-2 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20 relative overflow-hidden group ${canAnalyze && !loading ? "bg-cyan-500 text-white" : "bg-slate-100 text-slate-300 cursor-not-allowed"}`} onClick={analyze} disabled={!canAnalyze || loading}>
-               <div className="relative z-10 flex flex-col items-center">
-                 {loading ? <IconRefresh className="animate-spin" /> : <IconArrowRight />}
-                 <span className="text-[10px] font-bold mt-1 text-center leading-tight">判定</span>
+               <div className="relative z-10 flex flex-col items-center px-1">
+                 <span className="text-[9px] font-bold text-center leading-tight">Cadencia AIに<br/>分析させる</span>
                </div>
             </button>
 
@@ -696,10 +695,8 @@ export default function CadenciaPage() {
 
 // Icons
 const IconBook = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>;
-const IconSparkles = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
+const IconSparkles = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/></svg>;
 const IconSend = ({className}: {className?: string}) => <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
-const IconRefresh = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>;
 const IconTrash = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
 const IconTwitter = ({className}: {className?: string}) => <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>;
-const IconArrowRight = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>;
 const IconRobot = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="12" cy="5" r="2" /><path d="M12 7v4" /><line x1="8" y1="16" x2="8" y2="16" /><line x1="16" y1="16" x2="16" y2="16" /></svg>;
