@@ -3,104 +3,103 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { normalizeAccidentals, intervalBetween } from "@/lib/theory/interval";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const geminiModelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-const model = process.env.GEMINI_API_KEY
-  ? genAI.getGenerativeModel({ model: geminiModelName })
-  : null;
+const apiKey = process.env.GEMINI_API_KEY || "";
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
-type ReqBody = {
-  selectedNotes?: string[];
-  engineChord?: string;     // "判定不能" でもOK
-  analysis?: any;           // /api/analyze のレスポンス丸ごと想定
-  candidates?: any;         // /api/analyze の候補
-  question?: string;
-};
+const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const model = genAI ? genAI.getGenerativeModel({ model: modelName }) : null;
 
-function safeJson(v: any) {
-  try { return JSON.stringify(v, null, 2); } catch { return String(v); }
+function normalizeAccidentals(s: string) {
+  return (s ?? "")
+    .trim()
+    .replaceAll("♭", "b")
+    .replaceAll("♯", "#")
+    .replaceAll("𝄫", "bb")
+    .replaceAll("𝄪", "##")
+    .replaceAll("−", "-");
 }
 
-// engineChord から根音表記だけ抜く（見つからない時は null）
-function extractRootFromChordName(chord: string): string | null {
-  const s = (chord ?? "").trim();
-  const m = s.match(/^([A-G])((?:bb|b|##|#)?)/);
-  if (!m) return null;
-  return `${m[1]}${m[2] ?? ""}`.trim();
+function parseJsonSafely(text: string) {
+  const t = (text ?? "").trim();
+  try {
+    return JSON.parse(t);
+  } catch {}
+  const m = t.match(/\{[\s\S]*\}/);
+  if (m) return JSON.parse(m[0]);
+  throw new Error("AIのJSONパースに失敗しました");
+}
+
+type AskBody = {
+  question?: string;
+  // analyze結果をそのまま渡せるようにする（無くても動く）
+  notes?: string[];
+  engineChord?: string;
+  candidates?: any[];
+  analysis?: string;
+};
+
+type AskResponse = {
+  ok: true;
+  answer: string;
+};
+
+function buildSystemPrompt() {
+  return `
+あなたは音楽理論（古典和声・機能和声）の専門家です。
+
+【絶対ルール（嘘防止）】
+- 入力された音名表記をそのまま使う（異名同音を統合しない）
+- 文脈が無い場合は断定しない（情報不足と言う）
+- 「半音」「ピッチクラス」「実音高」などの語は出さない
+- 機能和声の観点で説明する（主/属/下属、導音、倚音・経過音・掛留など）
+- engineChord が "判定不能" でも、質問には答える（ただし情報不足を明記）
+
+【出力は必ずJSONのみ】
+{ "answer": string }
+`.trim();
 }
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json().catch(() => null)) as ReqBody | null;
-    if (!body) return new Response("Bad request", { status: 400 });
+    const body = (await req.json().catch(() => ({}))) as AskBody;
 
-    const selectedNotes = (body.selectedNotes ?? []).map(normalizeAccidentals).filter(Boolean);
     const question = (body.question ?? "").trim();
-
-    // ★ここ重要：判定不能でも質問できる
     if (!question) {
-      return new Response("質問が空です。", { status: 400 });
-    }
-    if (selectedNotes.length === 0) {
-      return new Response("音が空です。", { status: 400 });
+      return NextResponse.json({ error: "質問が空です。" }, { status: 400 });
     }
 
-    const engineChord = (body.engineChord ?? "判定不能").trim() || "判定不能";
-    const analysis = body.analysis ?? null;
-    const candidates = body.candidates ?? null;
+    const notes = Array.isArray(body.notes) ? body.notes.map(normalizeAccidentals) : [];
+    const engineChord = (body.engineChord ?? "").trim() || "判定不能";
+    const candidates = Array.isArray(body.candidates) ? body.candidates.slice(0, 10) : [];
+    const analysis = (body.analysis ?? "").trim();
 
     if (!model) {
-      return new Response("GEMINI_API_KEY が未設定です。", { status: 500 });
+      return NextResponse.json({ error: "GEMINI_API_KEY が未設定です。" }, { status: 500 });
     }
 
-    // 根音推定（判定不能なら作らない）
-    const root = engineChord !== "判定不能" ? extractRootFromChordName(engineChord) : null;
-    const intervalMap =
-      root
-        ? selectedNotes
-            .map(n => `${root}→${n}: ${intervalBetween(root, n)?.label ?? "（算出不可）"}`)
-            .join("\n")
-        : "（engineChordが判定不能のため、根音→各音の音程は提示できません）";
-
-    const system = `
-あなたは音楽理論（古典和声・機能和声）の専門家です。
-
-【絶対ルール】
-- 入力された音名表記をそのまま使う（異名同音を勝手に統合しない）
-- 半音・ピッチクラス・実音高という言葉を出さない
-- 「機能和声」の言い回しを優先（主/属/下属、導音、非和声音）
-- engineChord を勝手に言い換え・再判定しない（判定不能なら“判定不能”のまま）
-- 文脈不足なら推測で埋めず「情報不足」と言い切る
-- sus4/add9/9th 等は、前後文脈が無ければ断定しない
-
-【出力（自然文）フォーマット】
-A. ひとことで（1〜2行）
-B. 質問への回答（根拠は「入力音名」「engineChord」「候補」「解析」に限定）
-C. 情報不足（あれば明確に）
-D. 次に分かると強い情報（前後の進行/旋律）
-`.trim();
+    const system = buildSystemPrompt();
 
     const user = `
 入力音（表記そのまま）:
-${selectedNotes.join(", ")}
+${notes.length ? notes.join(", ") : "（未提供）"}
 
-engineChord（変更禁止）:
+engineChord（参考。判定不能の可能性あり）:
 ${engineChord}
 
-根音→各音の音程ラベル（文字間隔）:
-${intervalMap}
+候補（参考。無い場合あり）:
+${candidates.length ? JSON.stringify(candidates, null, 2) : "（なし）"}
 
-候補/解析（参考。再判定は禁止）:
-analysis:
-${safeJson(analysis)}
-
-candidates:
-${safeJson(candidates)}
+既存のanalysis（参考。無い場合あり）:
+${analysis || "（なし）"}
 
 質問:
 ${question}
+
+条件:
+- まず結論を短く
+- 次に根拠（入力表記に基づく）
+- 最後に「次に分かると強い情報」
 `.trim();
 
     const result = await model.generateContent({
@@ -108,13 +107,19 @@ ${question}
       systemInstruction: system,
       generationConfig: {
         temperature: 0.2,
+        responseMimeType: "application/json",
       },
     });
 
-    const text = result.response.text()?.trim() ?? "";
-    return new Response(text || "（AIの応答が空でした）", {
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
+    const text = result.response.text();
+    const json = parseJsonSafely(text) as { answer?: string };
+
+    const res: AskResponse = {
+      ok: true,
+      answer: typeof json.answer === "string" ? json.answer : "（回答が空でした）",
+    };
+
+    return NextResponse.json(res);
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
   }
