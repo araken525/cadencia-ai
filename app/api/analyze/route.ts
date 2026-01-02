@@ -9,8 +9,9 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  * - 「判定(engineChord)」「候補(candidates)」「考察(analysis)」「信頼度(confidence)」をAIで生成
  * - 入力表記は絶対に尊重（異名同音の統合禁止）
  * - 押下順は意味なし（サーバ側で表記順ソートしてからAIに渡す）
- * - keyHint / rootHint をAIに明示的に渡す
+ * - keyHint / rootHint / bassHint をAIに明示的に渡す
  * - 返却直前に「常に最有力候補を表示」へ補正（engineChordは candidates[0] を採用）
+ * - 順位の保険: bassHint優先 → rootHint
  */
 
 // -------------------- Gemini --------------------
@@ -101,14 +102,15 @@ type CandidateObj = {
 
 type AnalyzeResponse = {
   status: "ok" | "ambiguous" | "insufficient";
-  engineChord: string;     // 最有力表示（最終的に candidates[0] に補正）
-  chordType?: string;      // 最有力の種類（あれば）
-  confidence: number;      // 0..1（最有力）
-  analysis: string;        // 人間向け文章
+  engineChord: string;       // 最有力表示（最終的に candidates[0] に補正）
+  chordType?: string;        // 最有力の種類（あれば）
+  confidence: number;        // 0..1（最有力）
+  analysis: string;          // 人間向け文章
   candidates: CandidateObj[];
-  notes: string[];         // 正規化・表記ソート後
-  keyHint: string;         // 受け取った keyHint（整形）
-  rootHint: string | null; // 受け取った rootHint（整形）
+  notes: string[];           // 正規化・表記ソート後
+  keyHint: string;           // 受け取った keyHint（整形）
+  rootHint: string | null;   // 受け取った rootHint（整形）
+  bassHint: string | null;   // 受け取った bassHint（整形）
 };
 
 // -------------------- Prompt --------------------
@@ -120,8 +122,9 @@ function buildSystemPrompt() {
 - 入力された音名表記をそのまま使う（異名同音を勝手に統合しない：A#とBb、CbとBを同一視しない）
 - 押された順番は意味を持たない（こちらで既に表記順に整列済み）
 - rootHint が与えられている場合は「根音候補として強く尊重」する（ただし絶対視はせず、矛盾があれば reason に書く）
+- bassHint が与えられている場合は「最低音（バス）候補として強く尊重」し、転回形/分数コードの表記に反映してよい（矛盾があれば reason に書く）
 - keyHint が与えられている場合は、機能（主/属/下属など）の説明に必ず反映する
-- 文脈が無い限り sus4 / add9 / 分数コード を断定しない（「可能性」か「情報不足」と言う）
+- 文脈が無い限り sus4 / add9 などを断定しない（「可能性」か「情報不足」と言う）
 - 3音未満なら status="insufficient"
 - 無理にコード名を決めない。曖昧なら status="ambiguous"（ただし candidates は必ず出す）
 - 「半音」「ピッチクラス」「実音高」などの語を出さない（説明は音名と機能和声の言葉で）
@@ -160,8 +163,9 @@ function buildUserPrompt(params: {
   notesSorted: string[];
   keyHint: string;
   rootHint: string | null;
+  bassHint: string | null;
 }) {
-  const { notesSorted, keyHint, rootHint } = params;
+  const { notesSorted, keyHint, rootHint, bassHint } = params;
 
   return `
 入力音（表記順・重複なし）:
@@ -173,9 +177,13 @@ ${keyHint || "none"}
 rootHint:
 ${rootHint || "none"}
 
+bassHint:
+${bassHint || "none"}
+
 依頼:
 - candidates を必ず返して（最大10）
 - candidates[0] は「現時点で最有力」として扱える形で（ただし曖昧なら provisional=true でOK）
+- bassHint がある場合、転回形/分数コードの候補（例: C/G など）を上位に置いてよい
 - analysis は「1行結論 → 根拠 → 次に分かると強い情報」
 - 機能和声の言い方で（主/属/下属、導音、倚音・掛留など）
 `.trim();
@@ -190,6 +198,7 @@ export async function POST(req: Request) {
     // 追加入力（UIから来る）
     const keyHintRaw = typeof body?.keyHint === "string" ? body.keyHint : "none";
     const rootHintRaw = typeof body?.rootHint === "string" ? body.rootHint : null;
+    const bassHintRaw = typeof body?.bassHint === "string" ? body.bassHint : null;
 
     // 正規化 → 無効文字を落とす → 重複排除 → 表記ソート（押下順排除）
     const normalized = selectedNotesRaw.map(normalizeAccidentals).filter(Boolean);
@@ -197,13 +206,16 @@ export async function POST(req: Request) {
     const notesSorted = uniq(onlyNotes).sort(sortSpelling);
 
     const keyHint = (keyHintRaw || "none").trim();
-    
-    // rootHintも正規化し、かつ「選択音に含まれているか」をチェック
-    // （選択音にない音をルート指定された場合、無視しないとAIが混乱するため）
+
+    // rootHint / bassHint も正規化し、かつ「選択音に含まれているか」をチェック
     const rootHintNormalized = rootHintRaw ? normalizeAccidentals(rootHintRaw).trim() : null;
-    const rootHint = (rootHintNormalized && notesSorted.includes(rootHintNormalized)) 
-      ? rootHintNormalized 
-      : null;
+    const bassHintNormalized = bassHintRaw ? normalizeAccidentals(bassHintRaw).trim() : null;
+
+    const rootHint =
+      rootHintNormalized && notesSorted.includes(rootHintNormalized) ? rootHintNormalized : null;
+
+    const bassHint =
+      bassHintNormalized && notesSorted.includes(bassHintNormalized) ? bassHintNormalized : null;
 
     // AI未接続でも落とさない
     if (!model) {
@@ -217,6 +229,7 @@ export async function POST(req: Request) {
         notes: notesSorted,
         keyHint,
         rootHint,
+        bassHint,
       };
       return NextResponse.json(res);
     }
@@ -234,12 +247,13 @@ export async function POST(req: Request) {
         notes: notesSorted,
         keyHint,
         rootHint,
+        bassHint,
       };
       return NextResponse.json(res);
     }
 
     const system = buildSystemPrompt();
-    const user = buildUserPrompt({ notesSorted, keyHint, rootHint });
+    const user = buildUserPrompt({ notesSorted, keyHint, rootHint, bassHint });
 
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: user }] }],
@@ -269,10 +283,19 @@ export async function POST(req: Request) {
       }))
       .filter((c) => !!c.chord);
 
-    // ★追加: rootHintがある場合、そのルートで始まるコードを強制的に1位に持ってくる（保険）
-    if (rootHint && candidates.length > 0) {
+    // --------------------
+    // 順位の保険（重要）
+    // 1) bassHint があるなら「/bassHint」を含む候補を先頭へ（転回形を最優先）
+    // 2) それが無ければ rootHint があるなら「rootで始まる」候補を先頭へ
+    // --------------------
+    if (candidates.length > 0 && bassHint) {
+      const hasSlashBass = (ch: string) => ch.includes(`/${bassHint}`);
+      candidates = [
+        ...candidates.filter(c => hasSlashBass(c.chord)),
+        ...candidates.filter(c => !hasSlashBass(c.chord)),
+      ];
+    } else if (candidates.length > 0 && rootHint) {
       const startsWithRoot = (ch: string) => ch.startsWith(rootHint);
-      // ルートが一致するものを前へ、それ以外を後ろへ
       candidates = [
         ...candidates.filter(c => startsWithRoot(c.chord)),
         ...candidates.filter(c => !startsWithRoot(c.chord)),
@@ -281,15 +304,18 @@ export async function POST(req: Request) {
 
     // --------------------
     // 「常に最有力候補を表示」補正
+    // engineChord は最終的に candidates[0] を採用（空/判定不能対策）
     // --------------------
     const top = candidates[0];
     let engineChord = safeStr((json as any).engineChord, "").trim();
+
+    // まずAIのengineChordが弱い/空ならtopに寄せる
     if (!engineChord || engineChord === "判定不能") {
       engineChord = top?.chord || `${notesSorted.join("-")}(暫定)`;
-    } else if (top && rootHint && engineChord !== top.chord && top.chord.startsWith(rootHint)) {
-      // AIがengineChordには別候補を入れたが、rootHint指定があるのでcandidates[0]を優先採用する
-      engineChord = top.chord;
     }
+
+    // 最終的な表示は「topを正」とする（UI方針：常に最有力候補）
+    if (top?.chord) engineChord = top.chord;
 
     const chordType = (safeStr((json as any).chordType, "").trim() || top?.chordType || "情報不足").trim();
 
@@ -320,6 +346,7 @@ export async function POST(req: Request) {
       notes: notesSorted,
       keyHint,
       rootHint,
+      bassHint,
     };
 
     return NextResponse.json(res);
