@@ -43,7 +43,7 @@ function sortSpelling(a: string, b: string) {
   return a.localeCompare(b);
 }
 
-function uniq(arr: string[]) {
+function uniq<T>(arr: T[]) {
   return [...new Set(arr)];
 }
 
@@ -66,7 +66,7 @@ function buildSystemPrompt() {
 【絶対ルール】
 - 入力された音名表記をそのまま使う（異名同音を統合しない。A#とBb、CbとBを同一視しない）
 - 押下順は意味を持たない（こちらで表記順に整列済み）
-- rootHint（根音指定）があれば「根音はそれ」として扱う（推測で別の根音に変えない）
+- bassHint（最低音指定）があれば「最低音(Bass)はそれ」として扱う。転回形の説明に使う。
 - keyHint（調性指定）があれば、その調性の中での機能（主/属/下属など）を優先して説明する
 - 文脈が無い限り sus4 / add9 / 分数コード を断定しない（可能性・情報不足と言う）
 - 「半音」「ピッチクラス」「実音高」などの語を出さない
@@ -81,13 +81,13 @@ function buildSystemPrompt() {
 function buildUserPrompt(params: {
   notes: string[];
   question: string;
-  rootHint: string | null;
+  bassHint: string | null; // rootHint -> bassHint に変更
   keyHint: string | null;
   engineChord: string | null;
   candidates: string[] | null;
 }) {
   const keyLine = params.keyHint ? params.keyHint : "（指定なし）";
-  const rootLine = params.rootHint ? params.rootHint : "（指定なし）";
+  const bassLine = params.bassHint ? params.bassHint : "（指定なし）"; // root -> bass
   const engineLine = params.engineChord ? params.engineChord : "（未提供）";
   const candLine = params.candidates?.length ? params.candidates.join(", ") : "（未提供）";
 
@@ -95,8 +95,8 @@ function buildUserPrompt(params: {
 入力音（表記順・重複なし）:
 ${params.notes.join(", ")}
 
-根音指定 rootHint:
-${rootLine}
+最低音指定 bassHint:
+${bassLine}
 
 調性指定 keyHint:
 ${keyLine}
@@ -112,7 +112,7 @@ ${params.question}
 
 注意:
 - まずは「入力音そのもの」について答える（質問が結果に触れている場合のみ結果も扱う）
-- rootHint があるのに「根音が分からない」とは言わない
+- bassHint があるのに「最低音が分からない」「転回形が不明」とは言わない
 - keyHint があるのに「調性が分からない」とは言わない
 `.trim();
 }
@@ -129,8 +129,6 @@ export async function POST(req: Request) {
       ? body.keyHint.trim()
       : null;
 
-    // rootHintは「C」みたいなベース指定が来がちなので、選択音と整合する形に寄せる
-    const rootHintRaw = asNoteOrNull(body?.rootHint);
     const engineChord = typeof body?.engineChord === "string" && body.engineChord.trim()
       ? body.engineChord.trim()
       : null;
@@ -148,9 +146,12 @@ export async function POST(req: Request) {
 
     const notesSorted = uniq(normalized).sort(sortSpelling);
 
-    // rootHintが「C」しか来てない時、選択音の中に「C#」等があるならそれを優先して合わせたいが、
-    // 異名同音統合は禁止なので、ここでは「完全一致のみ採用」。
-    const rootHint = rootHintRaw && notesSorted.includes(rootHintRaw) ? rootHintRaw : rootHintRaw;
+    // rootHint -> bassHint に変更して受け取る
+    // bassHintは「C」みたいな指定が来がちなので、選択音と整合する形に寄せる
+    const bassHintRaw = asNoteOrNull(body?.bassHint);
+    
+    // bassHintも選択音に含まれる場合のみ有効とする（安全策）
+    const bassHint = bassHintRaw && notesSorted.includes(bassHintRaw) ? bassHintRaw : null;
 
     if (!question) {
       return new NextResponse("質問が空です。", {
@@ -166,12 +167,11 @@ export async function POST(req: Request) {
       });
     }
 
-    // 2音以下でも「入力音についての質問」なら答えられるので弾かない（ここが重要）
     const system = buildSystemPrompt();
     const user = buildUserPrompt({
       notes: notesSorted,
       question,
-      rootHint,
+      bassHint, // rootHint -> bassHint
       keyHint,
       engineChord,
       candidates,
