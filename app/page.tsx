@@ -2,31 +2,26 @@
 
 import { useMemo, useRef, useState, useEffect } from "react";
 
-// --- Design Constants: Luminous Void (Ultimate Modern Dark) ---
+// --- Design Constants: Ceramic White & Vivid Glass (Ultimate Light) ---
 const G = {
-  // 背景: 深い宇宙のようなダークネイビー〜黒のグラデーション + ノイズ
-  bgMain: "bg-slate-950",
-  bgGradient: "bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950",
+  // 背景: 陶磁器のような高貴な白、かすかな光のグラデーション
+  bgMain: "bg-slate-50",
+  bgGradient: "bg-[radial-gradient(at_top_left,_var(--tw-gradient-stops))] from-indigo-100/40 via-white to-white",
   
-  // テキスト: 発光感のある白と、落ち着いたグレー
-  textMain: "text-slate-100",
-  textSub: "text-slate-400",
-  textAccent: "text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-400",
+  // テキスト: 視認性の高いスレートグレー
+  textMain: "text-slate-800",
+  textSub: "text-slate-500",
   
-  // ガラス素材: 黒ベースのすりガラス、極細の輝くボーダー
-  glass: "bg-slate-900/60 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/50",
-  glassKey: "bg-white/5 border border-white/10 hover:bg-white/10 active:bg-white/20 transition-all duration-200 backdrop-blur-md",
+  // アクセント: 知的なインディゴと、ひらめきのバイオレット
+  accentPrimary: "text-indigo-600 bg-indigo-50 border-indigo-200",
+  accentVivid: "bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/30",
   
-  // カード: 浮遊感のあるダークカード
-  card: "bg-slate-900/40 border border-white/10 rounded-[24px] shadow-xl backdrop-blur-xl",
+  // マテリアル: 非常に薄いセラミックのような質感
+  card: "bg-white/80 backdrop-blur-xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[24px]",
   
-  // アクセント: ネオンの輝き（AI感、デジタル感）
-  glowCyan: "shadow-[0_0_20px_rgba(34,211,238,0.3)] border-cyan-500/50",
-  glowPink: "shadow-[0_0_20px_rgba(232,121,249,0.3)] border-fuchsia-500/50",
-  
-  // ステータス色
-  accentRoot: "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)]",
-  accentBass: "bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]",
+  // キーボード: 触り心地の良さそうなマットな質感
+  keyBase: "bg-white border border-slate-200 shadow-[0_2px_0_#E2E8F0] active:translate-y-[1px] active:shadow-none transition-all",
+  keyActive: "bg-indigo-500 border-indigo-600 text-white shadow-[0_2px_0_#4338CA]",
 };
 
 const NOTE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
@@ -94,7 +89,7 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// 1. Mini Piano (Cyber Style)
+// 1. Mini Piano (Clean Modern)
 const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassHint: string | null, rootHint: string | null }) => {
   const keys = [
     { idx: 0, type: "white", x: 0 }, { idx: 1, type: "black", x: 10 },
@@ -110,32 +105,30 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   const isRoot = (keyIdx: number) => rootHint ? getKeyIndex(rootHint) === keyIdx : false;
 
   return (
-    <div className="h-16 w-full relative select-none pointer-events-none rounded-xl overflow-hidden shadow-inner bg-black/40">
-       <svg viewBox="0 0 100 50" className="w-full h-full">
+    <div className="h-16 w-full relative select-none pointer-events-none">
+       <svg viewBox="0 0 100 50" className="w-full h-full drop-shadow-sm">
          {keys.filter(k => k.type === "white").map((k) => (
-           <path key={k.idx} d={`M${k.x},0 h14.28 v44 a2,2 0 0 1 -2,2 h-10.28 a2,2 0 0 1 -2,-2 z`}
-             className={`transition-all duration-300 ${
+           <path key={k.idx} d={`M${k.x},0 h14.28 v45 a3,3 0 0 1 -3,3 h-8.28 a3,3 0 0 1 -3,-3 z`}
+             className={`transition-all duration-200 ${
                isActive(k.idx) 
-                 ? (isRoot(k.idx) ? "fill-rose-500" : isBass(k.idx) ? "fill-amber-500" : "fill-cyan-500") 
-                 : "fill-slate-800/50"
-             } stroke-slate-700/50 stroke-[0.5]`} />
+                 ? (isRoot(k.idx) ? "fill-rose-400" : isBass(k.idx) ? "fill-amber-400" : "fill-indigo-400") 
+                 : "fill-white"
+             } stroke-slate-100 stroke-[0.5]`} />
          ))}
          {keys.filter(k => k.type === "black").map((k) => (
            <path key={k.idx} d={`M${k.x},0 h8 v30 a2,2 0 0 1 -2,2 h-4 a2,2 0 0 1 -2,-2 z`}
-             className={`transition-all duration-300 ${
+             className={`transition-all duration-200 ${
                isActive(k.idx) 
-                 ? (isRoot(k.idx) ? "fill-rose-400" : isBass(k.idx) ? "fill-amber-400" : "fill-cyan-400") 
-                 : "fill-black"
+                 ? (isRoot(k.idx) ? "fill-rose-600" : isBass(k.idx) ? "fill-amber-600" : "fill-indigo-600") 
+                 : "fill-slate-700"
              }`} />
          ))}
        </svg>
-       {/* Glow Overlay */}
-       <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/5 to-transparent pointer-events-none mix-blend-screen"></div>
     </div>
   );
 };
 
-// 2. Flick Key (Glass Pad Style)
+// 2. Flick Key (Ceramic Tile)
 const FlickKey = ({ 
   noteBase, currentSelection, isBass, isRoot, onInput, className
 }: { 
@@ -177,31 +170,28 @@ const FlickKey = ({
 
   return (
     <div className={`
-      relative rounded-[16px] touch-none select-none overflow-hidden flex flex-col items-center justify-center z-0
-      transition-all duration-200
-      ${isRoot ? G.accentRoot
-        : isBass ? G.accentBass
-        : G.glassKey}
-      ${!isBass && !isRoot && isActive ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.2)]" : ""}
-      ${!isActive && !isRoot && !isBass ? "text-slate-300" : ""}
-      active:scale-95
+      relative rounded-2xl touch-none select-none overflow-visible flex flex-col items-center justify-center z-0
+      ${isRoot ? "bg-rose-50 border-2 border-rose-200 shadow-sm" 
+        : isBass ? "bg-amber-50 border-2 border-amber-200 shadow-sm" 
+        : isActive ? G.keyActive : G.keyBase}
       ${className}
     `}
     onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       
-      {/* Background Glow */}
-      {isActive && <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />}
-
       {/* Guide Indicators */}
-      <div className={`absolute top-1.5 left-0 right-0 flex justify-center transition-all duration-300 ${isUp ? "opacity-100 -translate-y-1 text-cyan-400 font-bold scale-110" : "opacity-0"}`}>
+      <div className={`absolute top-1.5 left-0 right-0 flex justify-center transition-all ${isUp ? "opacity-100 -translate-y-1 font-bold" : "opacity-0 text-slate-300"}`}>
         <span className="text-[10px]">♯</span>
       </div>
-      <div className={`absolute bottom-1.5 left-0 right-0 flex justify-center transition-all duration-300 ${isDown ? "opacity-100 translate-y-1 text-cyan-400 font-bold scale-110" : "opacity-0"}`}>
+      <div className={`absolute bottom-1.5 left-0 right-0 flex justify-center transition-all ${isDown ? "opacity-100 translate-y-1 font-bold" : "opacity-0 text-slate-300"}`}>
         <span className="text-[10px]">♭</span>
       </div>
+
+      {/* Status Dots */}
+      {isRoot && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500" />}
+      {isBass && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500" />}
       
       {/* Label */}
-      <span className={`text-2xl font-medium tracking-tighter relative z-10 transition-transform`} 
+      <span className={`text-2xl font-bold tracking-tight transition-transform ${isRoot ? "text-rose-600" : isBass ? "text-amber-600" : isActive ? "text-white" : "text-slate-600"}`} 
         style={{ transform: `translateY(${offsetY * 0.4}px)` }}>
         {displayLabel}
       </span>
@@ -209,7 +199,7 @@ const FlickKey = ({
   );
 };
 
-// 3. Result Card (Dashboard Widget Style)
+// 3. Result Card (Clean Interface)
 const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, isTop: boolean, isKeySet: boolean }) => {
   const isProvisional = isTop && (candidate.provisional || candidate.score < 50);
   const percent = candidate.score;
@@ -217,127 +207,116 @@ const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, i
   const invJp = invMap[candidate.inversion || "unknown"] || "―";
 
   return (
-    <div className={`relative overflow-hidden transition-all duration-700 group animate-in slide-in-from-bottom-4 fade-in
+    <div className={`relative overflow-hidden transition-all duration-500 group animate-in slide-in-from-bottom-4 fade-in
       ${isTop 
-        ? `bg-slate-900/80 border border-white/20 shadow-[0_0_40px_-10px_rgba(100,100,255,0.15)] rounded-[30px] p-6`
-        : "bg-slate-900/40 border border-white/5 shadow-sm rounded-[20px] p-4"}
+        ? "bg-white border border-indigo-100 shadow-xl shadow-indigo-100/50 rounded-[32px] p-6" 
+        : "bg-white border border-slate-100 shadow-sm rounded-2xl p-4"}
     `}>
-      {/* Dynamic Background Gradient for Top */}
-      {isTop && (
-        <>
-          <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-indigo-600/20 blur-[80px] -z-10 rounded-full pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-[200px] h-[200px] bg-fuchsia-600/20 blur-[80px] -z-10 rounded-full pointer-events-none"></div>
-        </>
-      )}
-
-      {/* Rank Number (Outline) */}
-      <div className={`absolute -right-4 -bottom-8 font-black text-transparent stroke-text select-none z-0 pointer-events-none transform -rotate-12 ${isTop ? "text-9xl opacity-10" : "text-7xl opacity-5"}`} 
-           style={{ WebkitTextStroke: "1px rgba(255,255,255,0.1)" }}>
+      {/* Rank Number */}
+      <div className={`absolute -right-3 -bottom-6 font-black text-slate-50 select-none z-0 pointer-events-none transform -rotate-12 ${isTop ? "text-9xl" : "text-7xl"}`}>
         {String(isTop ? 1 : 2).padStart(2, '0')}
       </div>
 
-      <div className="relative z-10 flex flex-col gap-5">
+      <div className="relative z-10 flex flex-col gap-4">
         {/* Header Section */}
         <div className="flex justify-between items-start">
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap gap-2 items-center">
               {isTop && (
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide border ${isProvisional ? "bg-amber-500/10 text-amber-400 border-amber-500/30" : "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"} shadow-[0_0_10px_rgba(0,0,0,0.2)]`}>
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide border ${isProvisional ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-indigo-600 text-white border-indigo-500"}`}>
                   {isProvisional ? "⚠️ 暫定判定" : "🏆 判定結果"}
                 </span>
               )}
               {candidate.chordType && (
-                <span className="px-3 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-slate-300 border border-white/10">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
                   {candidate.chordType}
                 </span>
               )}
             </div>
-            <h2 className={`font-black text-white tracking-tighter leading-none ${isTop ? "text-5xl drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "text-2xl"}`}>
+            <h2 className={`font-black text-slate-800 tracking-tighter leading-none ${isTop ? "text-5xl" : "text-2xl"}`}>
               {candidate.chord}
             </h2>
           </div>
           <div className="flex flex-col items-end">
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Confidence</span>
-            <span className={`font-black ${isTop ? "text-3xl text-transparent bg-clip-text bg-gradient-to-br from-cyan-300 to-indigo-400" : "text-sm text-slate-500"}`}>{percent}<span className="text-xs opacity-50 text-slate-400">%</span></span>
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Confidence</span>
+            <span className={`font-black ${isTop ? "text-3xl text-indigo-600" : "text-sm text-indigo-400"}`}>{percent}<span className="text-xs opacity-50">%</span></span>
           </div>
         </div>
 
         {/* Function Analysis Grid */}
         {isKeySet ? (
-          <div className="bg-white/5 rounded-2xl p-1.5 border border-white/5 grid grid-cols-12 gap-1.5">
+          <div className="bg-slate-50 rounded-2xl p-1.5 border border-slate-100 grid grid-cols-12 gap-1.5">
             {/* Function (TDS) */}
-            <div className="col-span-4 bg-slate-950/50 rounded-xl border border-white/5 flex flex-col items-center justify-center py-3 shadow-inner">
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">機能</span>
+            <div className="col-span-4 bg-white rounded-xl border border-slate-100 flex flex-col items-center justify-center py-2 shadow-sm">
+              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">機能</span>
               <span className={`text-3xl font-black leading-none ${
-                candidate.tds === "T" ? "text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]" : 
-                candidate.tds === "D" ? "text-rose-400 drop-shadow-[0_0_10px_rgba(244,63,94,0.5)]" : 
-                candidate.tds === "S" || candidate.tds === "SD" ? "text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.5)]" : "text-slate-600"
+                candidate.tds === "T" ? "text-sky-500" : 
+                candidate.tds === "D" ? "text-rose-500" : 
+                candidate.tds === "S" || candidate.tds === "SD" ? "text-emerald-500" : "text-slate-300"
               }`}>
                 {candidate.tds === "?" ? "―" : candidate.tds === "SD" ? "S" : candidate.tds}
               </span>
             </div>
             {/* Details */}
             <div className="col-span-8 flex flex-col gap-1.5">
-               <div className="flex-1 bg-slate-950/50 rounded-xl border border-white/5 flex items-center justify-between px-4">
-                  <span className="text-[10px] font-bold text-slate-500">和音記号</span>
-                  <span className="text-lg font-serif font-bold text-slate-200">{candidate.romanNumeral || "―"}</span>
+               <div className="flex-1 bg-white rounded-xl border border-slate-100 flex items-center justify-between px-4 shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-400">記号</span>
+                  <span className="text-lg font-serif font-bold text-slate-700">{candidate.romanNumeral || "―"}</span>
                </div>
-               <div className="flex-1 bg-slate-950/50 rounded-xl border border-white/5 flex items-center justify-between px-4">
-                  <span className="text-[10px] font-bold text-slate-500">転回形</span>
-                  <span className="text-xs font-bold text-slate-400">{invJp}</span>
+               <div className="flex-1 bg-white rounded-xl border border-slate-100 flex items-center justify-between px-4 shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-400">転回</span>
+                  <span className="text-xs font-bold text-slate-600">{invJp}</span>
                </div>
             </div>
           </div>
         ) : (
-          <div className="text-center py-4 bg-white/5 rounded-2xl border border-dashed border-white/10">
-            <span className="text-[10px] font-bold text-slate-500 flex items-center justify-center gap-1">
-              <span>🗝️</span> Keyを指定すると機能分析(TDS)が表示されます
+          <div className="text-center py-4 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+            <span className="text-[11px] font-bold text-slate-400 flex items-center justify-center gap-1">
+              <span>🗝️</span> Keyを設定して機能を分析
             </span>
           </div>
         )}
 
         {/* Confidence Bar */}
-        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-          <div className={`h-full transition-all duration-1000 ease-out relative ${isTop ? "bg-gradient-to-r from-cyan-500 to-fuchsia-500" : "bg-slate-600"}`} style={{ width: `${percent}%` }}>
-             {isTop && <div className="absolute inset-0 bg-white/30 animate-pulse"></div>}
-          </div>
+        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+          <div className={`h-full transition-all duration-1000 ease-out rounded-full ${isTop ? "bg-indigo-500" : "bg-slate-300"}`} style={{ width: `${percent}%` }} />
         </div>
       </div>
     </div>
   );
 };
 
-// 4. Insight Card (AI Terminal Style)
+// 4. Insight Card (Chat Bubble)
 const InsightCard = ({ text }: { text: string }) => (
-  <div className="relative rounded-[24px] overflow-hidden bg-slate-900/50 border border-indigo-500/30 p-6 shadow-[0_0_30px_-10px_rgba(99,102,241,0.2)]">
+  <div className={`${G.card} p-6 border-l-4 border-l-indigo-500`}>
     <div className="flex items-center gap-3 mb-3">
-      <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-300 border border-indigo-500/50 shadow-[0_0_10px_rgba(99,102,241,0.4)]">
-         <IconRobot className="w-4 h-4" />
+      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+         <IconRobot className="w-5 h-5" />
       </div>
-      <h3 className="text-sm font-bold text-indigo-200">Cadencia AI の考察</h3>
+      <h3 className="text-sm font-bold text-slate-700">Cadencia AI の考察</h3>
     </div>
-    <p className="text-sm leading-relaxed text-slate-300 whitespace-pre-wrap font-medium">{text}</p>
+    <p className="text-sm leading-relaxed text-slate-600 whitespace-pre-wrap font-medium">{text}</p>
   </div>
 );
 
-// 5. Ask Card (Modern Input)
+// 5. Ask Card
 const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp }: any) => (
-  <div className={`relative rounded-[24px] overflow-hidden ${G.glass} p-1 transition-all`}>
-    <div className="bg-slate-950/80 backdrop-blur-xl rounded-[22px] p-5">
-      <h3 className="text-xs font-bold text-slate-400 mb-3 flex items-center gap-2 uppercase tracking-wider">
-        <span className="text-lg">💬</span> Cadencia AIに質問
+  <div className={`${G.card} p-1 bg-gradient-to-br from-indigo-50 to-white`}>
+    <div className="p-5">
+      <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+        <span className="text-xl">✨</span> 質問コーナー
       </h3>
       <div className="relative group">
         <input 
           ref={inputRefProp}
-          className="w-full bg-slate-900 border border-slate-700/50 rounded-xl py-3.5 pl-4 pr-12 text-base focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-transparent transition-all shadow-inner placeholder:text-slate-600 text-white" 
+          className="w-full bg-white border border-slate-200 rounded-xl py-4 pl-5 pr-14 text-base focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all shadow-sm placeholder:text-slate-300 text-slate-700" 
           placeholder="例：なぜこの機能になるの？" 
           value={question} 
           onChange={(e) => setQuestion(e.target.value)} 
           onKeyDown={(e) => e.key === 'Enter' && ask()} 
           disabled={isThinking} 
         />
-        <button onClick={ask} disabled={loading || isThinking || !question.trim()} className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-white transition-all active:scale-90 shadow-lg ${!question.trim() ? "bg-slate-800 text-slate-500" : "bg-gradient-to-r from-cyan-500 to-indigo-500 shadow-cyan-500/30"}`}>
+        <button onClick={ask} disabled={loading || isThinking || !question.trim()} className={`absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-lg text-white transition-all active:scale-95 shadow-md ${!question.trim() ? "bg-slate-200 text-slate-400" : "bg-indigo-600 hover:bg-indigo-700"}`}>
           <IconSend className="w-4 h-4" />
         </button>
       </div>
@@ -345,19 +324,18 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
   </div>
 );
 
-// 6. Loading Overlay (Neon Pulse)
+// 6. Loading Overlay (Clean Pulse)
 const LoadingOverlay = () => (
-  <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 backdrop-blur-xl animate-in fade-in duration-300">
-    <div className="relative w-24 h-24">
-      <div className="absolute inset-0 rounded-full border-2 border-slate-800"></div>
-      <div className="absolute inset-0 rounded-full border-t-2 border-cyan-400 animate-spin shadow-[0_0_15px_rgba(34,211,238,0.5)]"></div>
-      <div className="absolute inset-4 rounded-full bg-slate-900 flex items-center justify-center shadow-inner">
-         <IconSparkles className="w-8 h-8 text-indigo-400 animate-pulse" />
+  <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/90 backdrop-blur-xl animate-in fade-in duration-300">
+    <div className="relative w-20 h-20">
+      <div className="absolute inset-0 bg-indigo-500 rounded-full animate-ping opacity-20"></div>
+      <div className="absolute inset-4 bg-white rounded-full flex items-center justify-center shadow-lg border border-indigo-100">
+         <IconSparkles className="w-6 h-6 text-indigo-500 animate-pulse" />
       </div>
     </div>
-    <div className="mt-8 text-center space-y-2">
-      <h2 className={`text-xl font-black ${G.textAccent} tracking-tight`}>Processing Harmony...</h2>
-      <p className="text-xs font-bold text-slate-500 tracking-widest animate-pulse">音楽理論AIが解析中</p>
+    <div className="mt-6 text-center space-y-1">
+      <h2 className="text-lg font-bold text-slate-800">Analyzing...</h2>
+      <p className="text-xs font-medium text-slate-400">音楽理論AIが解析中</p>
     </div>
   </div>
 );
@@ -385,6 +363,10 @@ export default function CadenciaPage() {
 
   const canAnalyze = selected.length >= 3;
   const isKeySet = keyRoot !== "none";
+
+  const hasResult = candidates.length > 0;
+  const topCandidate = hasResult ? candidates[0] : null;
+  const otherCandidates = hasResult ? candidates.slice(1) : [];
 
   const sortedSelected = useMemo(() => {
     return [...selected].sort((a, b) => SORT_ORDER.indexOf(a) - SORT_ORDER.indexOf(b));
@@ -500,92 +482,82 @@ export default function CadenciaPage() {
     } catch (e: any) { setAnswer(`通信エラー: ${e?.message}`); } finally { setIsThinking(false); setQuestion(""); }
   }
 
-  // --- Render ---
-  const hasResult = candidates.length > 0;
-  const topCandidate = hasResult ? candidates[0] : null;
-  const otherCandidates = hasResult ? candidates.slice(1) : [];
-
   return (
-    <div className={`min-h-screen ${G.bgMain} ${G.textMain} font-sans pb-[450px] selection:bg-cyan-500/30 overflow-x-hidden`}>
+    <div className={`min-h-screen ${G.bgMain} ${G.textMain} font-sans pb-[450px] selection:bg-indigo-100 overflow-x-hidden`}>
       
-      {/* Dynamic Background */}
+      {/* Background Gradient */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div className={`absolute inset-0 ${G.bgGradient}`}></div>
-        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] rounded-full bg-indigo-900/20 blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] rounded-full bg-fuchsia-900/20 blur-[120px]"></div>
       </div>
 
       {loading && <LoadingOverlay />}
 
       {/* Header */}
-      <header className={`fixed top-0 inset-x-0 z-50 h-16 ${G.glass} flex items-center justify-between px-5 transition-all border-b border-white/5`}>
+      <header className={`fixed top-0 inset-x-0 z-50 h-16 bg-white/90 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-5 transition-all`}>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20">
-             <IconSparkles className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 text-lg">
+             🎹
           </div>
           <div className="flex flex-col justify-center leading-none">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className={`text-lg font-black tracking-tight ${G.textAccent}`}>Cadencia AI</span>
-              <FeedbackLink className="bg-white/10 border border-white/10 text-[9px] font-bold text-slate-300 px-2 py-0.5 rounded-full hover:bg-white/20 transition-colors flex items-center gap-1">
+            <span className="text-[9px] font-bold text-slate-400 tracking-wide mb-0.5">音楽理論AIアシスタント</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-lg font-black tracking-tight text-slate-800`}>Cadencia AI</span>
+              <FeedbackLink className="bg-slate-100 border border-slate-200 text-[9px] font-bold text-slate-500 px-2 py-0.5 rounded-full hover:bg-slate-200 transition-colors flex items-center gap-1">
                 <span>BETA</span>
               </FeedbackLink>
             </div>
-            <span className="text-[10px] font-bold text-slate-500 tracking-wide">ポケットに、専属音楽理論家を。</span>
           </div>
         </div>
       </header>
 
-      <main className="pt-28 px-5 max-w-md mx-auto space-y-8 relative z-10">
+      <main className="pt-24 px-5 max-w-md mx-auto space-y-6 relative z-10">
         
         {/* Hero */}
         {!hasResult && (
           <section className="text-center space-y-4 animate-in fade-in zoom-in duration-700 py-6">
-            <div className="inline-block relative">
-               <span className="block text-[10px] font-bold text-slate-500 tracking-[0.3em] mb-2 uppercase">Music Theory Intelligence</span>
-               <h1 className={`text-5xl font-black tracking-tighter text-white pb-2 drop-shadow-xl`}>
-                 Cadencia
-               </h1>
-            </div>
-            <p className="text-sm font-medium text-slate-400 flex items-center justify-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]"></span>
-              Luminous Void Edition
+            <h1 className={`text-4xl font-black tracking-tighter text-slate-800`}>
+              ポケットに、<br/>専属音楽理論家を。
+            </h1>
+            <p className="text-sm font-medium text-slate-500 flex items-center justify-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+              いつでもどこでも、和音を分析
             </p>
           </section>
         )}
 
         {/* Input Monitor Card */}
-        <section className={`${G.glass} rounded-[30px] p-1 overflow-hidden transition-all duration-300 ${justUpdated ? "ring-1 ring-cyan-500/50" : ""}`}>
-           <div className="bg-slate-950/50 backdrop-blur-xl rounded-[28px] p-5">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                  <IconKeyboard className="w-4 h-4" /> 入力モニター
-                </h3>
-                <span className="text-[10px] font-bold text-cyan-400 bg-cyan-950/30 px-2 py-1 rounded border border-cyan-500/20">{selected.length} NOTES</span>
-              </div>
-              
-              <div className="flex flex-wrap gap-2 mb-4 min-h-[2rem]">
-                {selected.length === 0 ? (
-                  <span className="text-xs text-slate-600 italic pl-1">鍵盤を弾いて音を追加...</span>
-                ) : (
-                  sortedSelected.map((note) => (
-                    <span key={note} className={`px-3 py-1.5 border shadow-lg rounded-xl text-xs font-bold animate-in zoom-in duration-200 backdrop-blur-md ${
-                      rootHint === note 
-                        ? G.accentRoot
-                        : bassHint === note 
-                          ? G.accentBass
-                          : "bg-slate-800 border-slate-700 text-slate-200"
-                    }`}>
-                      {note}
-                      {rootHint === note && <span className="ml-1.5 text-[9px] bg-rose-500/20 px-1 rounded text-rose-300">根</span>}
-                      {bassHint === note && <span className="ml-1.5 text-[9px] bg-amber-500/20 px-1 rounded text-amber-300">底</span>}
-                    </span>
-                  ))
-                )}
-              </div>
+        <section className={`${G.card} p-5 transition-all duration-300 ${justUpdated ? "ring-2 ring-indigo-100" : ""}`}>
+           <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                <IconKeyboard className="w-4 h-4" /> Input Monitor
+              </h3>
+              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full border border-indigo-100">{selected.length} NOTES</span>
+           </div>
+           
+           <div className="flex flex-wrap gap-2 mb-4 min-h-[2.5rem]">
+             {selected.length === 0 ? (
+               <div className="w-full text-center py-2 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                 <span className="text-xs text-slate-400">👇 下のキーボードをタップしてね</span>
+               </div>
+             ) : (
+               sortedSelected.map((note) => (
+                 <span key={note} className={`px-3 py-1.5 border-b-2 shadow-sm rounded-xl text-sm font-bold animate-in zoom-in duration-200 ${
+                   rootHint === note 
+                     ? "bg-rose-50 border-rose-200 text-rose-600" 
+                     : bassHint === note 
+                       ? "bg-amber-50 border-amber-200 text-amber-600" 
+                       : "bg-white border-slate-200 text-slate-700"
+                 }`}>
+                   {note}
+                   {rootHint === note && <span className="ml-1 text-[9px] opacity-70">根</span>}
+                   {bassHint === note && <span className="ml-1 text-[9px] opacity-70">底</span>}
+                 </span>
+               ))
+             )}
+           </div>
 
-              <div className="pt-2 border-t border-white/5">
-                 <MiniPiano selected={selected} bassHint={bassHint} rootHint={rootHint} />
-              </div>
+           <div className="pt-2 border-t border-slate-100">
+              <MiniPiano selected={selected} bassHint={bassHint} rootHint={rootHint} />
            </div>
         </section>
 
@@ -593,9 +565,9 @@ export default function CadenciaPage() {
         {hasResult && (
           <div ref={resultRef} className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
              
-             <div className="flex items-center gap-2 px-2">
-               <div className={`w-1 h-6 rounded-full bg-gradient-to-b from-cyan-400 to-fuchsia-500`}></div>
-               <h2 className="text-lg font-bold text-white">分析結果</h2>
+             <div className="flex items-center gap-3 px-1">
+               <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">分析結果</h2>
+               <div className="h-[1px] flex-1 bg-slate-200"></div>
              </div>
 
              {topCandidate && <ResultCard candidate={topCandidate} isTop={true} isKeySet={isKeySet} />}
@@ -604,10 +576,8 @@ export default function CadenciaPage() {
 
              {otherCandidates.length > 0 && (
                <div className="space-y-3">
-                 <div className="flex items-center gap-3 px-2 py-2">
-                   <div className="h-[1px] flex-1 bg-white/10"></div>
-                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">その他の候補</span>
-                   <div className="h-[1px] flex-1 bg-white/10"></div>
+                 <div className="flex items-center justify-center py-2">
+                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">その他の候補</span>
                  </div>
                  {otherCandidates.map((c) => (<ResultCard key={c.chord} candidate={c} isTop={false} isKeySet={isKeySet} />))}
                </div>
@@ -616,8 +586,8 @@ export default function CadenciaPage() {
              <div className="pt-4 pb-8">
                {answer && (
                  <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                   <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-indigo-500/30 rounded-[24px] rounded-tl-none p-6 text-sm text-slate-300 leading-relaxed shadow-lg relative">
-                     <span className="absolute -top-3 -left-2 text-2xl filter drop-shadow-md grayscale opacity-80">🤖</span>
+                   <div className="bg-indigo-50 border border-indigo-100 rounded-[24px] rounded-tl-none p-5 text-sm text-indigo-900 leading-relaxed shadow-sm relative">
+                     <span className="absolute -top-3 -left-2 text-3xl filter drop-shadow-sm">🤖</span>
                      <div className="pl-2">{answer}</div>
                    </div>
                  </div>
@@ -637,18 +607,15 @@ export default function CadenciaPage() {
       </main>
 
       {/* --- Floating Glass Keyboard --- */}
-      <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glass} rounded-t-[36px] pt-5 pb-8 border-t border-white/10 transition-transform duration-300`}>
-        {/* Glow Line */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
-        
+      <div className={`fixed bottom-0 inset-x-0 z-50 bg-white/90 backdrop-blur-xl rounded-t-[32px] pt-5 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] transition-transform duration-300 border-t border-white/50`}>
         <div className="max-w-md mx-auto px-4">
-          <div className="grid grid-cols-4 grid-rows-4 gap-2.5 h-full">
+          <div className="grid grid-cols-4 grid-rows-4 gap-2 h-full">
             
             {/* Row 1 */}
             <FlickKey className="col-start-1 row-start-1" noteBase="C" currentSelection={selected.find(s=>s.startsWith("C"))} isBass={bassHint?.startsWith("C")??false} isRoot={rootHint?.startsWith("C")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-2 row-start-1" noteBase="D" currentSelection={selected.find(s=>s.startsWith("D"))} isBass={bassHint?.startsWith("D")??false} isRoot={rootHint?.startsWith("D")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-3 row-start-1" noteBase="E" currentSelection={selected.find(s=>s.startsWith("E"))} isBass={bassHint?.startsWith("E")??false} isRoot={rootHint?.startsWith("E")??false} onInput={handleKeyInput} />
-            <button className="col-start-4 row-start-1 h-14 rounded-2xl bg-white/5 border border-white/10 text-slate-500 active:text-rose-400 active:bg-rose-950/30 transition-all flex items-center justify-center hover:bg-white/10 active:scale-95" onClick={reset}><IconTrash /></button>
+            <button className="col-start-4 row-start-1 h-14 rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 active:bg-rose-100 active:text-rose-500 transition-all flex items-center justify-center shadow-sm active:scale-95" onClick={reset}><IconTrash /></button>
 
             {/* Row 2 */}
             <FlickKey className="col-start-1 row-start-2" noteBase="F" currentSelection={selected.find(s=>s.startsWith("F"))} isBass={bassHint?.startsWith("F")??false} isRoot={rootHint?.startsWith("F")??false} onInput={handleKeyInput} />
@@ -657,38 +624,36 @@ export default function CadenciaPage() {
             <FlickKey className="col-start-4 row-start-2" noteBase="B" currentSelection={selected.find(s=>s.startsWith("B"))} isBass={bassHint?.startsWith("B")??false} isRoot={rootHint?.startsWith("B")??false} onInput={handleKeyInput} />
 
             {/* Row 3: Mode & Key */}
-            <div className="col-start-1 row-start-3 h-14 flex flex-col gap-1.5">
-               <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border ${inputMode === "root" ? "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-[0_0_10px_rgba(244,63,94,0.3)]" : "bg-white/5 text-slate-500 border-white/5"}`}>根音</button>
-               <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border ${inputMode === "bass" ? "bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.3)]" : "bg-white/5 text-slate-500 border-white/5"}`}>最低音</button>
+            <div className="col-start-1 row-start-3 h-14 flex flex-col gap-1">
+               <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border-b-2 ${inputMode === "root" ? "bg-rose-500 text-white border-rose-600 shadow-sm" : "bg-white text-slate-500 border-slate-200"}`}>Root</button>
+               <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border-b-2 ${inputMode === "bass" ? "bg-amber-500 text-white border-amber-600 shadow-sm" : "bg-white text-slate-500 border-slate-200"}`}>Bass</button>
             </div>
 
-            <div className="col-start-2 col-span-2 row-start-3 h-14 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 flex items-center overflow-hidden">
-                <div className="flex-[0.8] flex items-center justify-center border-r border-white/5 h-full px-1">
-                   <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap leading-tight text-center">調性は</span>
+            <div className="col-start-2 col-span-2 row-start-3 h-14 bg-white rounded-2xl border-2 border-slate-100 shadow-sm flex items-center overflow-hidden">
+                <div className="flex-[0.8] flex items-center justify-center border-r-2 border-dotted border-slate-100 h-full px-1">
+                   <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap leading-tight text-center">調性は</span>
                 </div>
-                <div className="flex-1 relative h-full border-r border-white/5 group active:bg-white/5 transition-colors">
-                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyRoot} onChange={(e) => setKeyRoot(e.target.value)}>{KEYS_ROOT.map(k => <option key={k} value={k} className="text-black">{k === "none" ? "なし" : k}</option>)}</select>
-                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-600" : "text-cyan-400"}`}>{keyRoot === "none" ? "なし" : keyRoot}</span></div>
+                <div className="flex-1 relative h-full border-r-2 border-dotted border-slate-100 group active:bg-slate-50 transition-colors">
+                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyRoot} onChange={(e) => setKeyRoot(e.target.value)}>{KEYS_ROOT.map(k => <option key={k} value={k}>{k === "none" ? "なし" : k}</option>)}</select>
+                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-300" : "text-indigo-600"}`}>{keyRoot === "none" ? "なし" : keyRoot}</span></div>
                 </div>
-                <div className={`flex-1 relative h-full active:bg-white/5 transition-colors ${keyRoot === "none" ? "opacity-30" : ""}`}>
-                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={keyRoot === "none"}>{KEYS_TYPE.map(k => <option key={k} value={k} className="text-black">{k === "Major" ? "メジャー" : "マイナー"}</option>)}</select>
-                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-600" : "text-fuchsia-400"}`}>{keyType === "Major" ? "メジャー" : "マイナー"}</span></div>
+                <div className={`flex-1 relative h-full active:bg-slate-50 transition-colors ${keyRoot === "none" ? "opacity-30" : ""}`}>
+                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={keyRoot === "none"}>{KEYS_TYPE.map(k => <option key={k} value={k}>{k === "Major" ? "メジャー" : "マイナー"}</option>)}</select>
+                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-300" : "text-fuchsia-600"}`}>{keyType === "Major" ? "メジャー" : "マイナー"}</span></div>
                 </div>
             </div>
             
-            <button className={`col-start-4 row-start-3 row-span-2 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/10 relative overflow-hidden group ${canAnalyze && !loading ? "text-white" : "bg-white/5 text-slate-600 cursor-not-allowed"}`} onClick={analyze} disabled={!canAnalyze || loading}>
-               {canAnalyze && !loading && <div className={`absolute inset-0 bg-gradient-to-br from-cyan-600 to-indigo-600 opacity-80 group-hover:opacity-100 transition-opacity`}></div>}
-               {canAnalyze && !loading && <div className="absolute inset-0 animate-pulse bg-white/20"></div>}
+            <button className={`col-start-4 row-start-3 row-span-2 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 ${G.accentVivid} border-b-4 border-indigo-700 active:border-b-0 active:translate-y-1 ${canAnalyze && !loading ? "" : "bg-slate-200 border-slate-300 text-slate-400 cursor-not-allowed bg-none shadow-none"}`} onClick={analyze} disabled={!canAnalyze || loading}>
                <div className="relative z-10 flex flex-col items-center">
                  {loading ? <IconRefresh className="animate-spin" /> : <IconArrowRight />}
-                 <span className="text-[10px] font-bold mt-1 text-center leading-tight">判定</span>
+                 <span className="text-[10px] font-bold mt-1 text-center leading-tight">判定！</span>
                </div>
             </button>
 
             {/* Row 4: Ask AI */}
-            <button onClick={focusInput} className={`col-start-1 col-span-3 row-start-4 h-14 rounded-2xl border border-white/10 font-bold shadow-lg shadow-purple-500/5 active:scale-95 flex items-center justify-center gap-2 relative overflow-hidden group bg-white/5 hover:bg-white/10`}>
-               <div className="relative z-10 text-cyan-300"><IconSparkles /></div>
-               <span className={`text-xs font-bold text-slate-200 relative z-10`}>Cadencia AI にきく</span>
+            <button onClick={focusInput} className={`col-start-1 col-span-3 row-start-4 h-14 rounded-2xl border-2 border-indigo-100 font-bold shadow-sm active:scale-95 flex items-center justify-center gap-2 relative overflow-hidden group bg-white text-indigo-600`}>
+               <IconSparkles className="w-4 h-4" />
+               <span className={`text-xs font-bold`}>Cadencia AI にきく</span>
             </button>
 
           </div>
