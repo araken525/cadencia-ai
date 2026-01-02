@@ -9,7 +9,10 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  * - 「判定(engineChord)」「候補(candidates)」「考察(analysis)」「信頼度(confidence)」をAIで生成
  * - 入力表記は絶対に尊重
  * - keyHint / rootHint / bassHint をAIに明示的に渡す
- * - 保険ロジック: bassHint優先 → rootHint優先 でリストを並べ替える
+ * - 保険ロジック:
+ * 1. bassHintがあれば、ベース音が一致するものを最優先
+ * 2. rootHintがあれば、ルート音が一致するものを最優先
+ * 3. どちらもなければ、スラッシュ(/)を含まない「基本形」を強制的に最優先
  */
 
 // -------------------- Gemini --------------------
@@ -119,7 +122,7 @@ function buildSystemPrompt() {
 - 押された順番は意味を持たない
 - rootHint がある場合は「根音候補として強く尊重」する
 - bassHint がある場合は「最低音（バス）候補として強く尊重」し、転回形や分数コード表記に反映する
-- **bassHint の指定がない場合は、原則として「基本形」（分数コードでない形）を最優先の候補として扱ってください。勝手に転回形を上位にしないこと。**
+- **bassHint の指定がない場合は、原則として「基本形」（分数コードでない形）を最優先の候補として扱ってください。**
 - keyHint がある場合は、機能（TDS）と和音記号を必ず算出する
 - 3音未満なら status="insufficient"
 
@@ -215,11 +218,11 @@ export async function POST(req: Request) {
     })).filter((c: CandidateObj) => !!c.chord);
 
     // --------------------
-    // 順位の保険（修正済み：除外せず並び替え）
+    // 順位の保険（修正済み）
     // --------------------
     if (candidates.length > 0) {
       if (bassHint) {
-        // bassHintがある場合: 実際にベース音が一致するものを最優先にソート
+        // bassHintがある場合: ベース音が一致するものを最優先
         candidates.sort((a, b) => {
           const aMatch = getChordBass(a.chord) === bassHint;
           const bMatch = getChordBass(b.chord) === bassHint;
@@ -228,7 +231,7 @@ export async function POST(req: Request) {
           return 0; 
         });
       } else if (rootHint) {
-        // rootHintがある場合: ルート音が一致するものを最優先にソート
+        // rootHintがある場合: ルート音が一致するものを最優先
         candidates.sort((a, b) => {
           const aMatch = getChordRoot(a.chord) === rootHint;
           const bMatch = getChordRoot(b.chord) === rootHint;
@@ -236,8 +239,19 @@ export async function POST(req: Request) {
           if (!aMatch && bMatch) return 1;
           return 0;
         });
+      } else {
+        // ★ここを追加しました
+        // どちらのヒントも無い場合: 「/」を含まないもの（基本形）を強制的に最優先
+        candidates.sort((a, b) => {
+          const aHasSlash = a.chord.includes("/");
+          const bHasSlash = b.chord.includes("/");
+          // aが基本形、bが転回形なら、aを優先(-1)
+          if (!aHasSlash && bHasSlash) return -1;
+          // aが転回形、bが基本形なら、bを優先(1)
+          if (aHasSlash && !bHasSlash) return 1;
+          return 0; // 両方基本形、または両方転回形ならAIの順序に従う
+        });
       }
-      // ヒントがない場合は、AIの出した順序（プロンプトで「基本形優先」と指示済み）を尊重
     }
 
     const top = candidates[0];
