@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 
 // --- Design Constants ---
 const G = {
-  // Apple Intelligence風 究極のオーロラグラデーション
+  // Apple Intelligence風 オーロラグラデーション
   aurora: "bg-gradient-to-r from-blue-500 via-purple-500 via-pink-500 to-amber-400 bg-[length:300%_300%] animate-aurora-shift",
   auroraText: "bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 animate-aurora-text",
   // 透明感のある極薄ガラス
@@ -12,6 +12,10 @@ const G = {
   glassHigh: "bg-white/60 backdrop-blur-3xl border border-white/50 shadow-2xl shadow-purple-500/10",
   // キーボード用（さらに透明度を高く）
   glassKey: "bg-white/30 backdrop-blur-xl border border-white/20 shadow-sm active:bg-white/50 transition-all",
+  // 汎用メインカラー
+  main: "bg-gradient-to-tr from-indigo-500 via-purple-500 to-fuchsia-500",
+  textMain: "bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600",
+  glassActive: "bg-white/90 backdrop-blur-2xl border border-white/60 shadow-xl",
 };
 
 const NOTE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
@@ -79,7 +83,7 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// 1. Mini Piano (Integrated Design)
+// 1. Mini Piano
 const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassHint: string | null, rootHint: string | null }) => {
   const keys = [
     { idx: 0, type: "white", x: 0 }, { idx: 1, type: "black", x: 10 },
@@ -97,7 +101,6 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   return (
     <div className="h-16 w-full relative select-none pointer-events-none">
        <svg viewBox="0 0 100 50" className="w-full h-full drop-shadow-md">
-         {/* Keys are drawn directly without borders to blend into the card */}
          {keys.filter(k => k.type === "white").map((k) => (
            <path key={k.idx} d={`M${k.x},0 h14.28 v46 a4,4 0 0 1 -4,4 h-6.28 a4,4 0 0 1 -4,-4 z`}
              className={`transition-all duration-300 ${
@@ -119,7 +122,7 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   );
 };
 
-// 2. Flick Key (Translucent Design)
+// 2. Flick Key
 const FlickKey = ({ 
   noteBase, currentSelection, isBass, isRoot, onInput, className
 }: { 
@@ -191,7 +194,7 @@ const FlickKey = ({
   );
 };
 
-// 3. Result Card (Updated)
+// 3. Result Card
 const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, isTop: boolean, isKeySet: boolean }) => {
   const isProvisional = isTop && (candidate.provisional || candidate.score < 50);
   const percent = candidate.score;
@@ -280,7 +283,7 @@ const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, i
   );
 };
 
-// 4. Insight Card (AI Thinking)
+// 4. Insight Card
 const InsightCard = ({ text }: { text: string }) => (
   <div className="relative rounded-[32px] p-[2px] overflow-hidden group">
     <div className={`absolute inset-0 ${G.aurora} opacity-30 group-hover:opacity-50 transition-opacity`}></div>
@@ -297,8 +300,8 @@ const InsightCard = ({ text }: { text: string }) => (
   </div>
 );
 
-// 5. Ask Card
-const AskCard = ({ question, setQuestion, ask, isThinking, loading }: any) => (
+// 5. Ask Card (Revised to accept ref)
+const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp }: any) => (
   <div className={`relative rounded-[32px] overflow-hidden ${G.glassBase} p-1 transition-all`}>
     <div className="bg-white/60 backdrop-blur-xl rounded-[30px] p-6">
       <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -306,6 +309,7 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading }: any) => (
       </h3>
       <div className="relative group">
         <input 
+          ref={inputRefProp}
           className="w-full bg-white/80 border border-indigo-100/50 rounded-2xl py-4 pl-5 pr-14 text-base focus:outline-none focus:ring-2 focus:ring-purple-400/30 transition-all shadow-inner placeholder:text-slate-400 text-slate-700" 
           placeholder="例：なぜこの機能になるの？" 
           value={question} 
@@ -325,7 +329,6 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading }: any) => (
 const LoadingOverlay = () => (
   <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/30 backdrop-blur-md animate-in fade-in duration-300">
     <div className="relative w-32 h-32">
-      {/* Orb */}
       <div className={`absolute inset-0 rounded-full ${G.aurora} blur-2xl animate-pulse`}></div>
       <div className="absolute inset-2 bg-white/80 rounded-full backdrop-blur-xl flex items-center justify-center shadow-inner">
          <IconSparkles className="w-10 h-10 text-indigo-500 animate-spin-slow" />
@@ -365,6 +368,14 @@ export default function CadenciaPage() {
   const sortedSelected = useMemo(() => {
     return [...selected].sort((a, b) => SORT_ORDER.indexOf(a) - SORT_ORDER.indexOf(b));
   }, [selected]);
+
+  // Focus Input Function
+  const focusInput = () => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
 
   const handleKeyInput = (inputNote: string, type: "flick" | "tap") => {
     const base = inputNote.charAt(0);
@@ -437,7 +448,6 @@ export default function CadenciaPage() {
     setLoading(true); setAnswer(""); setInfoText("");
     const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
     try {
-      // 演出のためのウェイト（AI感）
       await new Promise(r => setTimeout(r, 1200));
       const res = await fetch("/api/analyze", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -546,7 +556,6 @@ export default function CadenciaPage() {
                 <IconKeyboard className="w-4 h-4" /> Cadencia AIに分析させる和音を入力
               </h3>
               
-              {/* Selected Notes Chips */}
               <div className="flex flex-wrap gap-2 mb-4 min-h-[2rem]">
                 {selected.length === 0 ? (
                   <span className="text-xs text-slate-400 italic pl-1">鍵盤を弾いて音を追加...</span>
@@ -567,7 +576,6 @@ export default function CadenciaPage() {
                 )}
               </div>
 
-              {/* Integrated Piano */}
               <div className="pt-2 border-t border-white/30">
                  <MiniPiano selected={selected} bassHint={bassHint} rootHint={rootHint} />
               </div>
@@ -578,19 +586,15 @@ export default function CadenciaPage() {
         {hasResult && (
           <div ref={resultRef} className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
              
-             {/* Title */}
              <div className="flex items-center gap-2 px-2">
                <div className={`w-1.5 h-6 rounded-full ${G.aurora}`}></div>
                <h2 className="text-lg font-bold text-slate-800">Cadencia AIの分析結果</h2>
              </div>
 
-             {/* Top Result */}
              {topCandidate && <ResultCard candidate={topCandidate} isTop={true} isKeySet={isKeySet} />}
 
-             {/* Insight */}
              {infoText && <InsightCard text={infoText} />}
 
-             {/* Other Candidates */}
              {otherCandidates.length > 0 && (
                <div className="space-y-3">
                  <div className="flex items-center gap-3 px-2 py-2">
@@ -602,7 +606,6 @@ export default function CadenciaPage() {
                </div>
              )}
 
-             {/* Ask AI */}
              <div className="pt-4 pb-8">
                {answer && (
                  <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -612,7 +615,14 @@ export default function CadenciaPage() {
                    </div>
                  </div>
                )}
-               <AskCard question={question} setQuestion={setQuestion} ask={ask} isThinking={isThinking} loading={loading} />
+               <AskCard 
+                 question={question} 
+                 setQuestion={setQuestion} 
+                 ask={ask} 
+                 isThinking={isThinking} 
+                 loading={loading}
+                 inputRefProp={inputRef}
+               />
              </div>
           </div>
         )}
