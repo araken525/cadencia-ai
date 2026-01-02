@@ -120,71 +120,41 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   );
 };
 
-// 2. Flick Key (Context Menu Optimized)
+// 2. Flick Key (Simple Mode)
 const FlickKey = ({ 
-  noteBase, currentSelection, isBass, isRoot, onInput, onBassSet, onRootSet, className
+  noteBase, currentSelection, isBass, isRoot, onInput, className
 }: { 
   noteBase: string, currentSelection: string | undefined, isBass: boolean, isRoot: boolean,
-  onInput: (n: string) => void, onBassSet: (n: string) => void, onRootSet: (n: string) => void, className?: string
+  onInput: (n: string, type: "flick" | "tap") => void, className?: string
 }) => {
   const [startY, setStartY] = useState<number | null>(null);
   const [offsetY, setOffsetY] = useState(0);
-  const isLongPressedRef = useRef(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const THRESHOLD = 15;
-  const [showMenu, setShowMenu] = useState(false);
 
   const isActive = !!currentSelection;
   const displayLabel = currentSelection || noteBase;
 
-  // Pointer Events
   const handlePointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
-    if (showMenu) { setShowMenu(false); return; }
-    
     try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch {}
     setStartY(e.clientY);
-    isLongPressedRef.current = false;
-
-    // Long Press Timer (500ms)
-    timerRef.current = setTimeout(() => {
-      isLongPressedRef.current = true;
-      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50);
-      setShowMenu(true); 
-      setStartY(null); // Cancel flick tracking
-    }, 500);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (startY === null || showMenu) return;
+    if (startY === null) return;
     const delta = e.clientY - startY;
-    
-    // Cancel long press if moved significantly
-    if (Math.abs(delta) > 5 && timerRef.current) { 
-      clearTimeout(timerRef.current); 
-      timerRef.current = null; 
-    }
     setOffsetY(Math.max(-30, Math.min(30, delta)));
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (showMenu) return; 
-    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
-
-    if (startY !== null && !isLongPressedRef.current) {
+    if (startY !== null) {
       const delta = e.clientY - startY;
-      if (delta < -THRESHOLD) onInput(`${noteBase}#`);
-      else if (delta > THRESHOLD) onInput(`${noteBase}b`);
-      else onInput(noteBase);
+      if (delta < -THRESHOLD) onInput(`${noteBase}#`, "flick");
+      else if (delta > THRESHOLD) onInput(`${noteBase}b`, "flick");
+      else onInput(noteBase, "tap");
     }
-    setStartY(null); setOffsetY(0); isLongPressedRef.current = false;
+    setStartY(null); setOffsetY(0);
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
-  };
-
-  const handleMenuSelect = (type: "root" | "bass") => {
-    setShowMenu(false);
-    if (type === "root") onRootSet(noteBase);
-    if (type === "bass") onBassSet(noteBase);
   };
 
   const isUp = offsetY < -10;
@@ -201,20 +171,6 @@ const FlickKey = ({
     `}
     onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       
-      {/* Context Menu (Speech Bubble Style) */}
-      {showMenu && (
-        <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-50 flex gap-2 animate-in zoom-in slide-in-from-bottom-2 duration-200 w-max pointer-events-auto">
-           {/* Triangle */}
-           <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-800 rotate-45"></div>
-           
-           <div className="bg-slate-800 rounded-xl p-1.5 flex gap-2 shadow-xl items-center">
-             <button onPointerUp={(e) => {e.stopPropagation(); handleMenuSelect("root");}} className="px-3 py-2 bg-rose-500 text-white text-xs font-bold rounded-lg active:scale-95 transition-transform">根音</button>
-             <div className="w-[1px] h-4 bg-white/20"></div>
-             <button onPointerUp={(e) => {e.stopPropagation(); handleMenuSelect("bass");}} className="px-3 py-2 bg-amber-500 text-white text-xs font-bold rounded-lg active:scale-95 transition-transform">最低音</button>
-           </div>
-        </div>
-      )}
-
       {/* Guide Indicators (Gray #/b) */}
       <div className={`absolute top-1.5 left-0 right-0 flex justify-center transition-opacity ${isUp ? "opacity-100 -translate-y-1 text-white" : "opacity-30 text-slate-400"}`}>
         <span className="text-[9px] font-medium leading-none">♯</span>
@@ -236,7 +192,7 @@ const FlickKey = ({
   );
 };
 
-// 3. Result Card (Maintained)
+// 3. Result Card
 const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, isTop: boolean, isKeySet: boolean }) => {
   const isProvisional = isTop && (candidate.provisional || candidate.score < 50);
   const percent = candidate.score;
@@ -301,11 +257,11 @@ const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, i
           </div>
         ) : (
           <div className="text-center py-3 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 mt-1">
-            <span className="text-[10px] font-bold text-slate-400">🔑 Keyを指定すると機能分析を表示</span>
+            <span className="text-[10px] font-bold text-slate-400">🔑 Keyを指定すると機能分析(TDS)が表示されます</span>
           </div>
         )}
         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-1">
-          <div className={`h-full transition-all duration-1000 ease-out ${isTop ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500" : "bg-slate-300"}`} style={{ width: `${percent}%` }} />
+          <div className={`h-full transition-all duration-1000 ease-out ${isTop ? G.main : "bg-slate-300"}`} style={{ width: `${percent}%` }} />
         </div>
       </div>
     </div>
@@ -316,7 +272,6 @@ const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, i
 export default function CadenciaPage() {
   const resultRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [showGuide, setShowGuide] = useState(true);
 
   // State
   const [selected, setSelected] = useState<string[]>([]);
@@ -324,6 +279,9 @@ export default function CadenciaPage() {
   const [keyType, setKeyType] = useState<string>("Major"); 
   const [bassHint, setBassHint] = useState<string | null>(null); 
   const [rootHint, setRootHint] = useState<string | null>(null);
+  
+  // Mode: "normal" | "root" | "bass"
+  const [inputMode, setInputMode] = useState<"normal" | "root" | "bass">("normal");
 
   const [candidates, setCandidates] = useState<CandidateObj[]>([]);
   const [infoText, setInfoText] = useState<string>("");
@@ -340,61 +298,85 @@ export default function CadenciaPage() {
     return [...selected].sort((a, b) => SORT_ORDER.indexOf(a) - SORT_ORDER.indexOf(b));
   }, [selected]);
 
-  const handleNoteInput = (inputNote: string) => {
+  const handleKeyInput = (inputNote: string, type: "flick" | "tap") => {
     const base = inputNote.charAt(0);
     const existingIndex = selected.findIndex(s => s.startsWith(base));
     let nextSelected = [...selected];
 
-    if (existingIndex !== -1) {
-      if (selected[existingIndex] === inputNote) {
-        nextSelected.splice(existingIndex, 1);
-        if (bassHint?.startsWith(base)) setBassHint(null);
-        if (rootHint?.startsWith(base)) setRootHint(null);
+    // 入力処理（通常）
+    const updateSelection = () => {
+      if (existingIndex !== -1) {
+        // 既に同音名がある場合
+        if (selected[existingIndex] === inputNote && type === "tap") {
+          // タップかつ同じ音なら削除
+          nextSelected.splice(existingIndex, 1);
+          if (bassHint?.startsWith(base)) setBassHint(null);
+          if (rootHint?.startsWith(base)) setRootHint(null);
+        } else {
+          // 入れ替え（フリックでの変更など）
+          nextSelected[existingIndex] = inputNote;
+          if (bassHint?.startsWith(base)) setBassHint(inputNote);
+          if (rootHint?.startsWith(base)) setRootHint(inputNote);
+        }
       } else {
-        nextSelected[existingIndex] = inputNote;
-        if (bassHint?.startsWith(base)) setBassHint(inputNote);
-        if (rootHint?.startsWith(base)) setRootHint(inputNote);
+        // 新規追加
+        nextSelected.push(inputNote);
       }
-    } else {
-      nextSelected.push(inputNote);
-    }
-    
-    if (JSON.stringify(nextSelected) !== JSON.stringify(selected)) {
       setSelected(nextSelected);
       setJustUpdated(true);
       setTimeout(() => setJustUpdated(false), 300);
-    }
-  };
+    };
 
-  const handleBassSet = (noteBase: string) => {
-    const existing = selected.find(s => s.startsWith(noteBase));
-    const targetNote = existing || noteBase;
-    if (!existing) handleNoteInput(targetNote);
-    
-    if (bassHint?.startsWith(noteBase)) {
-      setBassHint(null); 
+    // モード別処理
+    if (inputMode === "root") {
+      // 選択になければ追加
+      if (existingIndex === -1) {
+        nextSelected.push(inputNote);
+        setSelected(nextSelected);
+      } else {
+        // 既にある場合はその音をRootにする（入力された変位に従う）
+        nextSelected[existingIndex] = inputNote;
+        setSelected(nextSelected);
+      }
+      
+      // Root設定
+      if (rootHint === inputNote) {
+        setRootHint(null); // 解除
+      } else {
+        setRootHint(inputNote);
+        if (bassHint === inputNote) setBassHint(null); // Bassなら解除
+      }
+      setInputMode("normal"); // 1回で戻る仕様にするか？今回は維持か戻るか選べるが、使い勝手重視で戻さない方が連続指定しやすい？いや、誤爆防ぐなら戻すべき。
+      // ここでは「モードON→選択→モードOFF」の挙動にする（安全のため）
+      setInputMode("normal");
+
+    } else if (inputMode === "bass") {
+      if (existingIndex === -1) {
+        nextSelected.push(inputNote);
+        setSelected(nextSelected);
+      } else {
+        nextSelected[existingIndex] = inputNote;
+        setSelected(nextSelected);
+      }
+
+      // Bass設定
+      if (bassHint === inputNote) {
+        setBassHint(null);
+      } else {
+        setBassHint(inputNote);
+        if (rootHint === inputNote) setRootHint(null);
+      }
+      setInputMode("normal");
+
     } else {
-      setBassHint(targetNote);
-      if (rootHint?.startsWith(noteBase)) setRootHint(null); 
-    }
-  };
-
-  const handleRootSet = (noteBase: string) => {
-    const existing = selected.find(s => s.startsWith(noteBase));
-    const targetNote = existing || noteBase;
-    if (!existing) handleNoteInput(targetNote);
-
-    if (rootHint?.startsWith(noteBase)) {
-      setRootHint(null); 
-    } else {
-      setRootHint(targetNote);
-      if (bassHint?.startsWith(noteBase)) setBassHint(null); 
+      // 通常モード
+      updateSelection();
     }
   };
 
   const reset = () => {
     setSelected([]); setCandidates([]); setBassHint(null); setRootHint(null);
-    setInfoText(""); setQuestion(""); setAnswer(""); setLoading(false);
+    setInfoText(""); setQuestion(""); setAnswer(""); setLoading(false); setInputMode("normal");
   };
 
   const focusInput = () => {
@@ -473,7 +455,7 @@ export default function CadenciaPage() {
           <div className="flex flex-col justify-center leading-none">
             <span className="text-[9px] font-bold text-indigo-400 tracking-[0.15em] mb-0.5">カデンツィア</span>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 drop-shadow-sm">Cadencia AI</span>
+              <span className={`text-lg font-black tracking-tight ${G.textMain} drop-shadow-sm`}>Cadencia AI</span>
               <FeedbackLink className="bg-indigo-50 border border-indigo-100 text-[8px] font-bold text-indigo-500 px-1.5 py-0.5 rounded-md hover:bg-indigo-100 transition-colors flex items-center gap-1">
                 <span>BETA</span><IconTwitter />
               </FeedbackLink>
@@ -489,30 +471,12 @@ export default function CadenciaPage() {
           <section className="text-center space-y-3 animate-in fade-in zoom-in duration-700">
             <div className="inline-block relative mt-4">
                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold text-indigo-400/80 tracking-[0.3em] whitespace-nowrap">音楽理論AIアシスタント</span>
-               <h1 className="text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 drop-shadow-sm pb-1">Cadencia</h1>
+               <h1 className={`text-5xl font-black tracking-tighter ${G.textMain} drop-shadow-sm pb-1`}>Cadencia</h1>
             </div>
             <p className="text-sm font-bold text-slate-500 flex items-center justify-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse"></span>
               ポケットに、専属の音楽理論家を。
             </p>
-          </section>
-        )}
-
-        {/* Guide */}
-        {showGuide && !hasResult && (
-          <section className="relative rounded-[28px] p-0.5 animate-in slide-in-from-bottom-4 duration-500 bg-gradient-to-br from-indigo-200 via-purple-200 to-fuchsia-200 shadow-xl shadow-indigo-100/50">
-            <div className="bg-white/95 backdrop-blur-xl rounded-[26px] p-6 relative overflow-hidden">
-              <button onClick={() => setShowGuide(false)} className="absolute top-3 right-3 text-slate-300 active:text-slate-500 active:bg-slate-100 p-2 rounded-full transition-colors"><IconX /></button>
-              <h2 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2"><span className="text-xl">🎓</span> はじめての方へ</h2>
-              <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 mb-4 flex justify-between items-center text-[10px] font-bold text-slate-500">
-                 <div className="flex flex-col items-center gap-1"><span>🎹 選ぶ</span></div>
-                 <div className="h-[1px] w-8 bg-slate-200"></div>
-                 <div className="flex flex-col items-center gap-1"><span className="text-purple-600">✨ 判定</span></div>
-                 <div className="h-[1px] w-8 bg-slate-200"></div>
-                 <div className="flex flex-col items-center gap-1"><span>💬 対話</span></div>
-              </div>
-              <button onClick={() => setShowGuide(false)} className={`w-full py-3.5 rounded-xl text-white text-xs font-bold tracking-wide shadow-lg shadow-indigo-200 bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 active:scale-95 transition-transform`}>はじめる 🚀</button>
-            </div>
           </section>
         )}
 
@@ -565,6 +529,14 @@ export default function CadenciaPage() {
            </div>
         </section>
 
+        {/* Other Candidates List */}
+        {otherCandidates.length > 1 && (
+          <section className="space-y-3 pt-2 pb-2">
+            <div className="flex items-center gap-2 px-1"><span className="h-[1px] flex-1 bg-slate-200"></span><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">更に他の候補</span><span className="h-[1px] flex-1 bg-slate-200"></span></div>
+            <div className="grid gap-3">{otherCandidates.slice(1).map((c) => (<ResultCard key={c.chord} candidate={c} isTop={false} isKeySet={isKeySet} />))}</div>
+          </section>
+        )}
+
         {/* Ask AI Input Area */}
         <section className={`${G.glass} rounded-[32px] p-1 overflow-hidden mt-6`}>
            <div className="bg-white/40 rounded-[28px] p-5">
@@ -596,21 +568,28 @@ export default function CadenciaPage() {
           <div className="grid grid-cols-4 grid-rows-4 gap-2 h-full">
             
             {/* Row 1: C, D, E, Trash */}
-            <FlickKey className="col-start-1 row-start-1" noteBase="C" currentSelection={selected.find(s=>s.startsWith("C"))} isBass={bassHint?.startsWith("C")??false} isRoot={rootHint?.startsWith("C")??false} onInput={handleNoteInput} onBassSet={handleBassSet} onRootSet={handleRootSet} />
-            <FlickKey className="col-start-2 row-start-1" noteBase="D" currentSelection={selected.find(s=>s.startsWith("D"))} isBass={bassHint?.startsWith("D")??false} isRoot={rootHint?.startsWith("D")??false} onInput={handleNoteInput} onBassSet={handleBassSet} onRootSet={handleRootSet} />
-            <FlickKey className="col-start-3 row-start-1" noteBase="E" currentSelection={selected.find(s=>s.startsWith("E"))} isBass={bassHint?.startsWith("E")??false} isRoot={rootHint?.startsWith("E")??false} onInput={handleNoteInput} onBassSet={handleBassSet} onRootSet={handleRootSet} />
+            <FlickKey className="col-start-1 row-start-1" noteBase="C" currentSelection={selected.find(s=>s.startsWith("C"))} isBass={bassHint?.startsWith("C")??false} isRoot={rootHint?.startsWith("C")??false} onInput={handleKeyInput} />
+            <FlickKey className="col-start-2 row-start-1" noteBase="D" currentSelection={selected.find(s=>s.startsWith("D"))} isBass={bassHint?.startsWith("D")??false} isRoot={rootHint?.startsWith("D")??false} onInput={handleKeyInput} />
+            <FlickKey className="col-start-3 row-start-1" noteBase="E" currentSelection={selected.find(s=>s.startsWith("E"))} isBass={bassHint?.startsWith("E")??false} isRoot={rootHint?.startsWith("E")??false} onInput={handleKeyInput} />
             <button className="col-start-4 row-start-1 h-14 rounded-2xl bg-white/60 border border-white/60 text-slate-400 active:text-red-500 active:bg-red-50 transition-all flex items-center justify-center shadow-sm active:scale-95 hover:bg-red-50" onClick={reset}><IconTrash /></button>
 
             {/* Row 2: F, G, A, B */}
-            <FlickKey className="col-start-1 row-start-2" noteBase="F" currentSelection={selected.find(s=>s.startsWith("F"))} isBass={bassHint?.startsWith("F")??false} isRoot={rootHint?.startsWith("F")??false} onInput={handleNoteInput} onBassSet={handleBassSet} onRootSet={handleRootSet} />
-            <FlickKey className="col-start-2 row-start-2" noteBase="G" currentSelection={selected.find(s=>s.startsWith("G"))} isBass={bassHint?.startsWith("G")??false} isRoot={rootHint?.startsWith("G")??false} onInput={handleNoteInput} onBassSet={handleBassSet} onRootSet={handleRootSet} />
-            <FlickKey className="col-start-3 row-start-2" noteBase="A" currentSelection={selected.find(s=>s.startsWith("A"))} isBass={bassHint?.startsWith("A")??false} isRoot={rootHint?.startsWith("A")??false} onInput={handleNoteInput} onBassSet={handleBassSet} onRootSet={handleRootSet} />
-            <FlickKey className="col-start-4 row-start-2" noteBase="B" currentSelection={selected.find(s=>s.startsWith("B"))} isBass={bassHint?.startsWith("B")??false} isRoot={rootHint?.startsWith("B")??false} onInput={handleNoteInput} onBassSet={handleBassSet} onRootSet={handleRootSet} />
+            <FlickKey className="col-start-1 row-start-2" noteBase="F" currentSelection={selected.find(s=>s.startsWith("F"))} isBass={bassHint?.startsWith("F")??false} isRoot={rootHint?.startsWith("F")??false} onInput={handleKeyInput} />
+            <FlickKey className="col-start-2 row-start-2" noteBase="G" currentSelection={selected.find(s=>s.startsWith("G"))} isBass={bassHint?.startsWith("G")??false} isRoot={rootHint?.startsWith("G")??false} onInput={handleKeyInput} />
+            <FlickKey className="col-start-3 row-start-2" noteBase="A" currentSelection={selected.find(s=>s.startsWith("A"))} isBass={bassHint?.startsWith("A")??false} isRoot={rootHint?.startsWith("A")??false} onInput={handleKeyInput} />
+            <FlickKey className="col-start-4 row-start-2" noteBase="B" currentSelection={selected.find(s=>s.startsWith("B"))} isBass={bassHint?.startsWith("B")??false} isRoot={rootHint?.startsWith("B")??false} onInput={handleKeyInput} />
 
-            {/* Row 3: Key Selector Group (Native Select) */}
-            <div className="col-start-1 col-span-3 row-start-3 h-14 bg-white/60 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm flex items-center overflow-hidden">
+            {/* Row 3: Mode Buttons, Key Selector, Analyze */}
+            {/* Col 1: Mode Switch (Split) */}
+            <div className="col-start-1 row-start-3 h-14 flex flex-col gap-1">
+               <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border ${inputMode === "root" ? "bg-rose-500 text-white border-rose-600 shadow-inner" : "bg-white/60 text-slate-500 border-white/60 shadow-sm"}`}>根音</button>
+               <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border ${inputMode === "bass" ? "bg-amber-500 text-white border-amber-600 shadow-inner" : "bg-white/60 text-slate-500 border-white/60 shadow-sm"}`}>最低音</button>
+            </div>
+
+            {/* Col 2-3: Key Selector */}
+            <div className="col-start-2 col-span-2 row-start-3 h-14 bg-white/60 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm flex items-center overflow-hidden">
                 <div className="flex-[0.8] flex items-center justify-center border-r-2 border-dotted border-slate-300/50 h-full px-1">
-                   <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap leading-tight text-center">調性は...</span>
+                   <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap leading-tight text-center">調性は</span>
                 </div>
                 <div className="flex-1 relative h-full border-r-2 border-dotted border-slate-300/50 group active:bg-black/5 transition-colors">
                    <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyRoot} onChange={(e) => setKeyRoot(e.target.value)}>{KEYS_ROOT.map(k => <option key={k} value={k}>{k === "none" ? "なし" : k}</option>)}</select>
@@ -623,7 +602,7 @@ export default function CadenciaPage() {
             </div>
             
             {/* Analyze Button */}
-            <button className={`col-start-4 row-start-3 row-span-2 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20 ${canAnalyze && !loading ? "bg-gradient-to-tr from-indigo-500 via-purple-500 to-fuchsia-500 text-white shadow-indigo-300/50" : "bg-slate-100 text-slate-300 cursor-not-allowed"}`} onClick={analyze} disabled={!canAnalyze || loading}>{loading ? <IconRefresh /> : <IconArrowRight />}<span className="text-[10px] font-bold mt-1 text-center leading-tight">判定</span></button>
+            <button className={`col-start-4 row-start-3 row-span-2 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20 ${canAnalyze && !loading ? `${G.main} text-white shadow-indigo-300/50` : "bg-slate-100 text-slate-300 cursor-not-allowed"}`} onClick={analyze} disabled={!canAnalyze || loading}>{loading ? <IconRefresh /> : <IconArrowRight />}<span className="text-[10px] font-bold mt-1 text-center leading-tight">判定</span></button>
 
             {/* Row 4: Ask AI (Apple Style) */}
             <button onClick={focusInput} className={`col-start-1 col-span-3 row-start-4 h-14 rounded-2xl border border-white/40 font-bold shadow-lg shadow-purple-500/10 active:scale-95 flex items-center justify-center gap-2 relative overflow-hidden group ${G.glassActive}`}>
