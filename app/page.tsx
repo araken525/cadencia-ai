@@ -5,7 +5,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 // --- Design Constants: Harmonic Grimoire (Harry Potter Style) ---
 const G = {
   // 背景: 古びた羊皮紙（エイジド・パーチメント）のテクスチャ感
-  bgMain: "bg-[#F2EFE5]", //bg-[url('/parchment-bg.jpg')] のように画像を入れるとなお良い
+  bgMain: "bg-[#F2EFE5]", 
   
   // テキスト: 魔法使いのインク（セピアがかった深いブラウンブラック）
   textMain: "text-[#3E3229]",
@@ -260,7 +260,7 @@ const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, i
             <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 mix-blend-overlay pointer-events-none"></div>
             {/* Function (TDS) */}
             <div className="col-span-4 bg-[#FDFBF7] rounded-[2px] border border-[#E6DECA] flex flex-col items-center justify-center py-2 shadow-sm relative">
-              <span className="text-[9px] font-bold text-[#8C7B70] uppercase tracking-widest mb-0.5">機能</span>
+              <span className="text-[9px] font-bold text-[#8C7B70] uppercase tracking-widest mb-0.5">和音の機能</span>
               <span className={`text-3xl font-serif font-black leading-none drop-shadow-sm ${
                 candidate.tds === "T" ? "text-teal-700" : 
                 candidate.tds === "D" ? "text-rose-700" : 
@@ -272,11 +272,11 @@ const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, i
             {/* Details */}
             <div className="col-span-8 flex flex-col gap-2">
                <div className="flex-1 bg-[#FDFBF7] rounded-[2px] border border-[#E6DECA] flex items-center justify-between px-4 shadow-sm">
-                  <span className="text-[10px] font-serif font-bold text-[#8C7B70]">記号 📜</span>
+                  <span className="text-[10px] font-serif font-bold text-[#8C7B70]">和音記号</span>
                   <span className="text-xl font-serif font-bold text-[#3E3229]">{candidate.romanNumeral || "―"}</span>
                </div>
                <div className="flex-1 bg-[#FDFBF7] rounded-[2px] border border-[#E6DECA] flex items-center justify-between px-4 shadow-sm">
-                  <span className="text-[10px] font-serif font-bold text-[#8C7B70]">転回 🎻</span>
+                  <span className="text-[10px] font-serif font-bold text-[#8C7B70]">転回形</span>
                   <span className="text-xs font-bold text-[#6D5E52]">{invJp}</span>
                </div>
             </div>
@@ -284,7 +284,7 @@ const ResultCard = ({ candidate, isTop, isKeySet }: { candidate: CandidateObj, i
         ) : (
           <div className="text-center py-4 bg-[#E8E4D9]/30 rounded-[4px] border-2 border-dashed border-[#DBCAB0]">
             <span className="text-[11px] font-serif font-bold text-[#8C7B70] flex items-center justify-center gap-2">
-              <span>🗝️</span> Keyを設定して魔導書を解読
+              <span>🗝️</span> Keyを設定して機能分析(TDS)が表示されます
             </span>
           </div>
         )}
@@ -305,9 +305,9 @@ const InsightCard = ({ text }: { text: string }) => (
   <div className={`relative rounded-[8px] overflow-hidden bg-[#FDFBF7] border-l-4 border-[#B48E43] shadow-md p-6`}>
     <div className="flex items-center gap-3 mb-3">
       <div className="w-10 h-10 rounded-full bg-[#3E3229] text-[#B48E43] flex items-center justify-center text-2xl shadow-sm border-2 border-[#B48E43]">
-         🧙
+         🧙‍♂️
       </div>
-      <h3 className="text-sm font-serif font-bold text-[#3E3229]">賢者の考察</h3>
+      <h3 className="text-sm font-serif font-bold text-[#3E3229]">Cadencia AI の考察</h3>
     </div>
     <p className="text-sm leading-relaxed text-[#4A403A] whitespace-pre-wrap font-serif font-medium relative z-10">{text}</p>
     <div className="absolute right-0 bottom-0 opacity-10 text-6xl pointer-events-none">📜</div>
@@ -318,13 +318,13 @@ const InsightCard = ({ text }: { text: string }) => (
 const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp }: any) => (
   <div className={`relative rounded-[8px] overflow-hidden bg-gradient-to-br from-[#FDFBF7] to-[#F2EFE5] border-2 border-[#DBCAB0] p-6 shadow-sm`}>
     <h3 className="text-sm font-serif font-bold text-[#3E3229] mb-4 flex items-center gap-2">
-      <span className="text-2xl">✨</span> 賢者に質問する
+      <span className="text-xl">💬</span> Cadencia AIにこの和音について質問する
     </h3>
     <div className="relative group">
       <input 
         ref={inputRefProp}
         className="w-full bg-[#FDFBF7] border-2 border-[#C5B498] rounded-md py-4 pl-5 pr-14 text-base font-serif focus:outline-none focus:ring-2 focus:ring-[#B48E43]/50 focus:border-[#B48E43] transition-all shadow-inner placeholder:text-[#9C8B7A] text-[#3E3229]" 
-        placeholder="例：この響きの秘密は？" 
+        placeholder="例：なぜこの機能になるの？" 
         value={question} 
         onChange={(e) => setQuestion(e.target.value)} 
         onKeyDown={(e) => e.key === 'Enter' && ask()} 
@@ -349,11 +349,11 @@ const LoadingOverlay = () => (
        <div className="absolute -top-2 -right-2 text-3xl animate-bounce">✨</div>
     </div>
     <div className="mt-8 text-center space-y-3">
-      <h2 className="text-2xl font-serif font-black text-[#FDFBF7] tracking-wider drop-shadow-md">
-        <span className="text-[#B48E43]">解読の儀</span>、執り行い中...
+      <h2 className="text-xl font-serif font-black text-[#FDFBF7] tracking-wider drop-shadow-md">
+        <span className="text-[#B48E43]">Analyzing Harmony...</span>
       </h2>
       <p className="text-sm font-serif text-teal-200/80 flex items-center justify-center gap-2">
-        <IconSparkles className="w-4 h-4" /> 古代の文献を検索しています
+        <IconSparkles className="w-4 h-4" /> 音楽理論AIが解析中
       </p>
     </div>
   </div>
@@ -475,7 +475,7 @@ export default function CadenciaPage() {
         body: JSON.stringify({ selectedNotes: selected, keyHint, bassHint, rootHint }),
       });
       const data = res.headers.get("content-type")?.includes("json") ? await res.json() : { error: await res.text() };
-      if (!res.ok) { setCandidates([]); setInfoText(`魔法エラー: ${data?.error}`); return; }
+      if (!res.ok) { setCandidates([]); setInfoText(`システムエラー: ${data?.error}`); return; }
       setCandidates(normalizeCandidates(data.candidates));
       setInfoText((data.analysis ?? data.reason ?? "").trim());
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
@@ -485,7 +485,7 @@ export default function CadenciaPage() {
   async function ask() {
     const q = question.trim();
     if (!q || loading || isThinking) return;
-    if (!canAnalyze || candidates.length === 0) { setAnswer("（まずは和音を確定させてから質問してください）"); return; }
+    if (!canAnalyze || candidates.length === 0) { setAnswer("（コードを確定させてから質問してね）"); return; }
     setIsThinking(true); setAnswer("");
     const topChord = candidates[0].chord;
     const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
@@ -520,7 +520,7 @@ export default function CadenciaPage() {
 
       {/* Background Texture & Magic Particles */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-5 mix-blend-multiply"></div> {/* ノイズ画像があれば */}
+        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-5 mix-blend-multiply"></div> 
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-50/20 via-transparent to-transparent"></div>
         <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-amber-50/20 via-transparent to-transparent"></div>
       </div>
@@ -534,7 +534,7 @@ export default function CadenciaPage() {
              🧙‍♂️
           </div>
           <div className="flex flex-col justify-center leading-none">
-            <span className="text-[9px] font-serif font-bold text-[#6D5E52] tracking-widest mb-0.5 uppercase">Harmonic Grimoire</span>
+            <span className="text-[9px] font-serif font-bold text-[#6D5E52] tracking-widest mb-0.5 uppercase">音楽理論AIアシスタント</span>
             <div className="flex items-center gap-2">
               <span className={`text-lg font-serif font-black tracking-tight text-[#3E3229] drop-shadow-sm`}>Cadencia AI</span>
               <FeedbackLink className="bg-[#E8E4D9] border border-[#C5B498] text-[9px] font-serif font-bold text-[#6D5E52] px-2 py-0.5 rounded-sm hover:bg-[#DBCAB0] transition-colors flex items-center gap-1">
@@ -565,7 +565,7 @@ export default function CadenciaPage() {
             <p className="text-base font-serif font-bold text-[#6D5E52] flex items-center justify-center gap-3 tracking-wide">
               <span className="h-px w-8 bg-[#B48E43]/50"></span>
               <span className="relative">
-                ポケットに、専属の音楽理論家を。
+                ポケットに、専属音楽理論家を。
                 <span className="absolute -bottom-1 left-0 w-full h-1 bg-[#B48E43]/30 -skew-x-12"></span>
               </span>
               <span className="h-px w-8 bg-[#B48E43]/50"></span>
@@ -585,7 +585,7 @@ export default function CadenciaPage() {
               <h3 className="text-xs font-serif font-bold text-[#6D5E52] uppercase tracking-wider flex items-center gap-2">
                 <IconKeyboard className="w-4 h-4" /> Input Monitor
               </h3>
-              <span className="text-[10px] font-serif font-bold text-[#3E3229] bg-[#E8E4D9] px-2 py-1 rounded-sm border border-[#C5B498] shadow-sm">{selected.length} Runes</span>
+              <span className="text-[10px] font-serif font-bold text-[#3E3229] bg-[#E8E4D9] px-2 py-1 rounded-sm border border-[#C5B498] shadow-sm">{selected.length} NOTES</span>
            </div>
            
            <div className="flex flex-wrap gap-2 mb-4 min-h-[2.5rem] relative z-10">
@@ -603,8 +603,8 @@ export default function CadenciaPage() {
                        : "bg-[#FDFBF7] border-[#C5B498] text-[#3E3229]"
                  }`}>
                    {note}
-                   {rootHint === note && <span className="ml-1 text-[9px] opacity-70 font-sans">R</span>}
-                   {bassHint === note && <span className="ml-1 text-[9px] opacity-70 font-sans">B</span>}
+                   {rootHint === note && <span className="ml-1 text-[9px] opacity-70 font-sans">根音</span>}
+                   {bassHint === note && <span className="ml-1 text-[9px] opacity-70 font-sans">最低音</span>}
                  </span>
                ))
              )}
@@ -691,35 +691,35 @@ export default function CadenciaPage() {
 
             {/* Row 3: Mode & Key */}
             <div className="col-start-1 row-start-3 h-14 flex flex-col gap-1.5">
-               <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`flex-1 rounded-[6px] text-[10px] font-serif font-bold transition-all border-2 shadow-sm ${inputMode === "root" ? G.accentRed : "bg-[#FDFBF7] text-[#6D5E52] border-[#C5B498]"}`}>Root</button>
-               <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`flex-1 rounded-[6px] text-[10px] font-serif font-bold transition-all border-2 shadow-sm ${inputMode === "bass" ? "bg-amber-100 border-amber-400 text-amber-900" : "bg-[#FDFBF7] text-[#6D5E52] border-[#C5B498]"}`}>Bass</button>
+               <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`flex-1 rounded-[6px] text-[10px] font-serif font-bold transition-all border-2 shadow-sm ${inputMode === "root" ? G.accentRed : "bg-[#FDFBF7] text-[#6D5E52] border-[#C5B498]"}`}>根音</button>
+               <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`flex-1 rounded-[6px] text-[10px] font-serif font-bold transition-all border-2 shadow-sm ${inputMode === "bass" ? "bg-amber-100 border-amber-400 text-amber-900" : "bg-[#FDFBF7] text-[#6D5E52] border-[#C5B498]"}`}>最低音</button>
             </div>
 
             <div className="col-start-2 col-span-2 row-start-3 h-14 bg-[#FDFBF7] rounded-[6px] border-2 border-[#C5B498] shadow-inner flex items-center overflow-hidden">
                 <div className="flex-[0.8] flex items-center justify-center border-r-2 border-dashed border-[#C5B498] h-full px-1 bg-[#F2EFE5]">
-                   <span className="text-[10px] font-serif font-bold text-[#8C7B70] leading-tight text-center">Key</span>
+                   <span className="text-[10px] font-serif font-bold text-[#8C7B70] leading-tight text-center">調性は</span>
                 </div>
                 <div className="flex-1 relative h-full border-r-2 border-dashed border-[#C5B498] group active:bg-[#E8E4D9] transition-colors">
                    <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyRoot} onChange={(e) => setKeyRoot(e.target.value)}>{KEYS_ROOT.map(k => <option key={k} value={k}>{k === "none" ? "None" : k}</option>)}</select>
-                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-serif font-bold ${keyRoot === "none" ? "text-[#C5B498]" : "text-[#3E3229]"}`}>{keyRoot === "none" ? "-" : keyRoot}</span></div>
+                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-serif font-bold ${keyRoot === "none" ? "text-[#C5B498]" : "text-[#3E3229]"}`}>{keyRoot === "none" ? "なし" : keyRoot}</span></div>
                 </div>
                 <div className={`flex-1 relative h-full active:bg-[#E8E4D9] transition-colors ${keyRoot === "none" ? "opacity-30" : ""}`}>
-                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={keyRoot === "none"}>{KEYS_TYPE.map(k => <option key={k} value={k}>{k === "Major" ? "Maj" : "min"}</option>)}</select>
-                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-[10px] font-serif font-bold ${keyRoot === "none" ? "text-[#C5B498]" : "text-[#6D5E52]"}`}>{keyType === "Major" ? "Maj" : "min"}</span></div>
+                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={keyRoot === "none"}>{KEYS_TYPE.map(k => <option key={k} value={k}>{k === "Major" ? "メジャー" : "マイナー"}</option>)}</select>
+                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-[10px] font-serif font-bold ${keyRoot === "none" ? "text-[#C5B498]" : "text-[#5D524A]"}`}>{keyType === "Major" ? "メジャー" : "マイナー"}</span></div>
                 </div>
             </div>
             
             <button className={`col-start-4 row-start-3 row-span-2 rounded-[6px] flex flex-col items-center justify-center shadow-[4px_4px_0px_#3E3229] transition-all border-2 active:translate-y-[2px] active:shadow-[2px_2px_0px_#3E3229] border-[#3E3229] ${canAnalyze && !loading ? "bg-[#3E3229] text-[#B48E43]" : "bg-[#C5B498] border-[#B0A080] text-[#F2EFE5] cursor-not-allowed shadow-none"}`} onClick={analyze} disabled={!canAnalyze || loading}>
                <div className="relative z-10 flex flex-col items-center">
                  {loading ? <IconRefresh className="animate-spin" /> : <IconArrowRight />}
-                 <span className="text-[10px] font-serif font-bold mt-1 text-center leading-tight">解読</span>
+                 <span className="text-[10px] font-serif font-bold mt-1 text-center leading-tight">判定</span>
                </div>
             </button>
 
             {/* Row 4: Ask AI */}
             <button onClick={focusInput} className={`col-start-1 col-span-3 row-start-4 h-14 rounded-[6px] border-2 border-[#B48E43] font-serif font-bold shadow-sm active:scale-95 flex items-center justify-center gap-3 relative overflow-hidden group bg-[#FDFBF7] text-[#3E3229] hover:bg-[#E8E4D9]`}>
                <span className="text-xl">🪄</span>
-               <span className={`text-xs font-bold`}>賢者に尋ねる</span>
+               <span className={`text-xs font-bold`}>Cadencia AI にきく</span>
             </button>
 
           </div>
