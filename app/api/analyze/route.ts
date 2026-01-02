@@ -197,7 +197,13 @@ export async function POST(req: Request) {
     const notesSorted = uniq(onlyNotes).sort(sortSpelling);
 
     const keyHint = (keyHintRaw || "none").trim();
-    const rootHint = rootHintRaw ? normalizeAccidentals(rootHintRaw).trim() : null;
+    
+    // rootHintも正規化し、かつ「選択音に含まれているか」をチェック
+    // （選択音にない音をルート指定された場合、無視しないとAIが混乱するため）
+    const rootHintNormalized = rootHintRaw ? normalizeAccidentals(rootHintRaw).trim() : null;
+    const rootHint = (rootHintNormalized && notesSorted.includes(rootHintNormalized)) 
+      ? rootHintNormalized 
+      : null;
 
     // AI未接続でも落とさない
     if (!model) {
@@ -215,7 +221,7 @@ export async function POST(req: Request) {
       return NextResponse.json(res);
     }
 
-    // 3音未満：ただし「常に最有力表示」したいので暫定ラベルは作る
+    // 3音未満
     if (notesSorted.length < 3) {
       const label = notesSorted.length ? `${notesSorted.join("-")}(暫定)` : "判定不能";
       const res: AnalyzeResponse = {
@@ -247,9 +253,9 @@ export async function POST(req: Request) {
     const text = result.response.text();
     const json = parseJsonSafely(text) as Partial<AnalyzeResponse>;
 
-    // candidates 整形（壊れても落ちない）
+    // candidates 整形
     const rawCandidates = Array.isArray((json as any).candidates) ? (json as any).candidates : [];
-    const candidates: CandidateObj[] = rawCandidates
+    let candidates: CandidateObj[] = rawCandidates
       .slice(0, 10)
       .map((c: any): CandidateObj => ({
         chord: safeStr(c?.chord, "判定不能"),
@@ -263,32 +269,40 @@ export async function POST(req: Request) {
       }))
       .filter((c) => !!c.chord);
 
+    // ★追加: rootHintがある場合、そのルートで始まるコードを強制的に1位に持ってくる（保険）
+    if (rootHint && candidates.length > 0) {
+      const startsWithRoot = (ch: string) => ch.startsWith(rootHint);
+      // ルートが一致するものを前へ、それ以外を後ろへ
+      candidates = [
+        ...candidates.filter(c => startsWithRoot(c.chord)),
+        ...candidates.filter(c => !startsWithRoot(c.chord)),
+      ];
+    }
+
     // --------------------
     // 「常に最有力候補を表示」補正
-    // - engineChord が空/判定不能なら candidates[0] を採用
-    // - candidates が無い場合は notesSorted から暫定ラベル
     // --------------------
     const top = candidates[0];
     let engineChord = safeStr((json as any).engineChord, "").trim();
     if (!engineChord || engineChord === "判定不能") {
       engineChord = top?.chord || `${notesSorted.join("-")}(暫定)`;
+    } else if (top && rootHint && engineChord !== top.chord && top.chord.startsWith(rootHint)) {
+      // AIがengineChordには別候補を入れたが、rootHint指定があるのでcandidates[0]を優先採用する
+      engineChord = top.chord;
     }
 
-    // 最有力の種類もトップに寄せる（あれば）
     const chordType = (safeStr((json as any).chordType, "").trim() || top?.chordType || "情報不足").trim();
 
-    // status: AIの返しを尊重（ただし最低限）
     const statusRaw = safeStr((json as any).status, "ambiguous") as any;
     const status: AnalyzeResponse["status"] =
       statusRaw === "ok" || statusRaw === "ambiguous" || statusRaw === "insufficient"
         ? statusRaw
         : "ambiguous";
 
-    // 最有力のconfidence: engineChord由来が怪しければ top.confidence を採用
     let confidence = clamp01((json as any).confidence, 0);
     if ((!confidence || confidence === 0) && top) confidence = clamp01(top.confidence, 0.3);
 
-    // 暫定バッジ用：AIが曖昧と言ってる、または信頼度が低いなら provisional
+    // 暫定バッジ用
     if (top) {
       const prov = status !== "ok" || confidence < 0.5;
       top.provisional = top.provisional || prov;
