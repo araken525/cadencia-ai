@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 
 // --- Design Constants (Suno-like Dark Mode) ---
 const G = {
-  // 背景: 深い漆黒とサイバーなオーロラ
+  // 背景: 深い漆黒
   bgMain: "bg-[#0A0A0C]",
   // ネオンオーロラ（暗闇で光る）
   aurora: "bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 bg-[length:300%_300%] animate-aurora-shift",
@@ -15,13 +15,15 @@ const G = {
   glassHigh: "bg-[#27272A]/60 backdrop-blur-3xl border border-white/15 shadow-[0_0_30px_rgba(0,0,0,0.5)]",
   // キーボード（指紋がつかないマットな黒ガラス）
   glassKey: "bg-[#27272A]/80 backdrop-blur-md border border-white/5 shadow-md active:bg-[#3F3F46] transition-all",
-  // アクティブなガラス（光る）
-  glassActive: "bg-[#3F3F46]/90 backdrop-blur-2xl border border-white/20 shadow-[0_0_20px_rgba(255,255,255,0.1)]",
   
   // アクセントカラー（ネオン）
   neonPink: "text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]",
   neonYellow: "text-amber-300 drop-shadow-[0_0_8px_rgba(252,211,77,0.6)]",
-  neonBlue: "text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]",
+  
+  // 互換性維持のための定義（エラー回避）
+  main: "bg-gradient-to-r from-violet-600 to-fuchsia-600", 
+  glassActive: "bg-[#3F3F46]/90 backdrop-blur-2xl border border-white/20 shadow-[0_0_20px_rgba(255,255,255,0.1)]",
+  textMain: "text-white" 
 };
 
 const NOTE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
@@ -306,7 +308,7 @@ const InsightCard = ({ text }: { text: string }) => (
   </div>
 );
 
-// 5. Ask Card
+// 5. Ask Card (Ref fixed)
 const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp }: any) => (
   <div className={`relative rounded-[32px] overflow-hidden ${G.glassBase} p-1 transition-all`}>
     <div className="bg-[#18181B]/90 backdrop-blur-xl rounded-[30px] p-6">
@@ -331,7 +333,7 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
   </div>
 );
 
-// 6. Loading Overlay (Cyber Style)
+// 6. Loading Overlay
 const LoadingOverlay = () => (
   <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 backdrop-blur-lg animate-in fade-in duration-300">
     <div className="relative w-32 h-32">
@@ -369,6 +371,12 @@ export default function CadenciaPage() {
 
   const canAnalyze = selected.length >= 3;
   const isKeySet = keyRoot !== "none";
+
+  // ↓↓↓ 修正ポイント：ここが抜けていました ↓↓↓
+  const hasResult = candidates.length > 0;
+  const topCandidate = hasResult ? candidates[0] : null;
+  const otherCandidates = hasResult ? candidates.slice(1) : [];
+  // ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
 
   const sortedSelected = useMemo(() => {
     return [...selected].sort((a, b) => SORT_ORDER.indexOf(a) - SORT_ORDER.indexOf(b));
@@ -691,7 +699,7 @@ export default function CadenciaPage() {
 }
 
 // Icons
-const IconSparkles = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/></svg>;
+const IconSparkles = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
 const IconSend = ({className}: {className?: string}) => <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
 const IconRefresh = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>;
 const IconTrash = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
