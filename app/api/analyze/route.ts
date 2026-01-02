@@ -102,15 +102,15 @@ type CandidateObj = {
 
 type AnalyzeResponse = {
   status: "ok" | "ambiguous" | "insufficient";
-  engineChord: string;       // 最有力表示（最終的に candidates[0] に補正）
-  chordType?: string;        // 最有力の種類（あれば）
-  confidence: number;        // 0..1（最有力）
-  analysis: string;          // 人間向け文章
+  engineChord: string;     // 最有力表示（最終的に candidates[0] に補正）
+  chordType?: string;      // 最有力の種類（あれば）
+  confidence: number;      // 0..1（最有力）
+  analysis: string;        // 人間向け文章
   candidates: CandidateObj[];
-  notes: string[];           // 正規化・表記ソート後
-  keyHint: string;           // 受け取った keyHint（整形）
-  rootHint: string | null;   // 受け取った rootHint（整形）
-  bassHint: string | null;   // 受け取った bassHint（整形）
+  notes: string[];         // 正規化・表記ソート後
+  keyHint: string;         // 受け取った keyHint（整形）
+  rootHint: string | null; // 受け取った rootHint（整形）
+  bassHint: string | null; // 受け取った bassHint（整形）
 };
 
 // -------------------- Prompt --------------------
@@ -281,12 +281,10 @@ export async function POST(req: Request) {
         reason: safeStr(c?.reason, ""),
         provisional: typeof c?.provisional === "boolean" ? c.provisional : false,
       }))
-      .filter((c) => !!c.chord);
+      .filter((c: CandidateObj) => !!c.chord); // ★ここを修正しました！ (c: CandidateObj) と型指定
 
     // --------------------
     // 順位の保険（重要）
-    // 1) bassHint があるなら「/bassHint」を含む候補を先頭へ（転回形を最優先）
-    // 2) それが無ければ rootHint があるなら「rootで始まる」候補を先頭へ
     // --------------------
     if (candidates.length > 0 && bassHint) {
       const hasSlashBass = (ch: string) => ch.includes(`/${bassHint}`);
@@ -304,7 +302,6 @@ export async function POST(req: Request) {
 
     // --------------------
     // 「常に最有力候補を表示」補正
-    // engineChord は最終的に candidates[0] を採用（空/判定不能対策）
     // --------------------
     const top = candidates[0];
     let engineChord = safeStr((json as any).engineChord, "").trim();
