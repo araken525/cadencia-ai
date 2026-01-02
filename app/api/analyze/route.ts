@@ -269,6 +269,8 @@ export async function POST(req: Request) {
 
     // candidates 整形
     const rawCandidates = Array.isArray((json as any).candidates) ? (json as any).candidates : [];
+    
+    // ★ここを修正しました！ mapの結果を一旦変数に受け、型を明示してから filter します
     let candidates: CandidateObj[] = rawCandidates
       .slice(0, 10)
       .map((c: any): CandidateObj => ({
@@ -281,8 +283,7 @@ export async function POST(req: Request) {
         reason: safeStr(c?.reason, ""),
         provisional: typeof c?.provisional === "boolean" ? c.provisional : false,
       }))
-      // ↓ ここで型エラーが出ていたので修正しました（CandidateObj型を明示）
-      .filter((c: CandidateObj) => !!c.chord);
+      .filter((c: CandidateObj) => !!c.chord); // ★型指定を追加
 
     // --------------------
     // 順位の保険（重要）
