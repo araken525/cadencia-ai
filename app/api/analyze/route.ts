@@ -99,6 +99,8 @@ type CandidateObj = {
 type AnalyzeResponse = {
   status: "ok" | "ambiguous" | "insufficient";
   engineChord: string;
+  chordType?: string; // ★ここを追加しました
+  confidence?: number; // ★ここを追加しました
   candidates: CandidateObj[];
   analysis: string;
   notes: string[];
