@@ -6,13 +6,14 @@ import { useMemo, useRef, useState, useEffect } from "react";
 const G = {
   // メインの青基調テーマ
   heroGradient: "bg-gradient-to-r from-blue-600 via-cyan-500 to-sky-400",
-  heroText: "bg-clip-text text-transparent bg-gradient-to-r from-blue-700 via-cyan-600 to-sky-500",
+  // 光が流れるアニメーション用のテキスト背景
+  heroTextShine: "bg-clip-text text-transparent bg-[linear-gradient(110deg,#0ea5e9,45%,#e0f2fe,55%,#0ea5e9)] bg-[length:250%_100%] animate-text-shine",
   
   // カード共通
   cardBase: "bg-white rounded-[32px] shadow-xl shadow-blue-900/5 border border-white overflow-hidden relative",
   
   // ガラス質感（キーボード用）
-  glassKey: "bg-white/60 backdrop-blur-xl border-t border-white/50 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]",
+  glassKey: "bg-white/80 backdrop-blur-xl border-t border-white/50 shadow-[0_-4px_30px_rgba(0,0,0,0.08)]",
 };
 
 const NOTE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
@@ -80,7 +81,7 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// 1. Mini Piano (Resized to be taller)
+// 1. Mini Piano (Visualizer)
 const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassHint: string | null, rootHint: string | null }) => {
   const keys = [
     { idx: 0, type: "white", x: 0 }, { idx: 1, type: "black", x: 10 },
@@ -96,23 +97,22 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   const isRoot = (keyIdx: number) => rootHint ? getKeyIndex(rootHint) === keyIdx : false;
 
   return (
-    // Height changed to h-40 (approx half of card visual weight)
-    <div className="h-40 w-full relative select-none pointer-events-none bg-gradient-to-b from-slate-50 to-white">
+    <div className="h-24 w-full relative select-none pointer-events-none">
        <svg viewBox="0 0 100 50" className="w-full h-full" preserveAspectRatio="none">
          {keys.filter(k => k.type === "white").map((k) => (
            <path key={k.idx} d={`M${k.x},0 h14.28 v46 a4,4 0 0 1 -4,4 h-6.28 a4,4 0 0 1 -4,-4 z`}
              className={`transition-all duration-300 ${
                isActive(k.idx) 
                  ? (isRoot(k.idx) ? "fill-rose-400" : isBass(k.idx) ? "fill-amber-400" : "fill-cyan-400") 
-                 : "fill-white"
-             } stroke-slate-200 stroke-[0.5]`} />
+                 : "fill-slate-100"
+             } stroke-white stroke-[1]`} />
          ))}
          {keys.filter(k => k.type === "black").map((k) => (
            <path key={k.idx} d={`M${k.x},0 h8 v30 a2,2 0 0 1 -2,2 h-4 a2,2 0 0 1 -2,-2 z`}
              className={`transition-all duration-300 ${
                isActive(k.idx) 
                  ? (isRoot(k.idx) ? "fill-rose-600" : isBass(k.idx) ? "fill-amber-600" : "fill-cyan-600") 
-                 : "fill-slate-800"
+                 : "fill-slate-200"
              }`} />
          ))}
        </svg>
@@ -188,7 +188,7 @@ const FlickKey = ({
   );
 };
 
-// 3. Result Card (Modified to always show specs)
+// 3. Result Card
 const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: CandidateObj, isTop: boolean, isKeySet: boolean, rank: number }) => {
   const isProvisional = isTop && (candidate.provisional || candidate.score < 50);
   const percent = candidate.score;
@@ -203,10 +203,8 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
         {String(rank).padStart(2, '0')}
       </div>
 
-      {/* Main Content */}
       <div className="relative z-10 p-6 flex flex-col gap-6">
-        
-        {/* Header: Chord Name & Confidence */}
+        {/* Header */}
         <div className="flex justify-between items-start">
           <div className="flex flex-col gap-1">
              {isTop && isProvisional && (
@@ -225,10 +223,8 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
           </div>
         </div>
 
-        {/* Unified Specs Bar (Always Visible) */}
+        {/* Specs Bar */}
         <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 shadow-inner flex items-center justify-between divide-x divide-slate-200/60">
-            
-            {/* Function (Depend on Key) */}
             <div className={`flex-1 flex flex-col items-center justify-center px-1 ${!isKeySet ? "opacity-30 grayscale" : ""}`}>
                 <span className="text-[9px] font-bold text-slate-400 mb-1">機能</span>
                 <span className={`text-2xl font-black leading-none ${
@@ -239,38 +235,31 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
                   {!isKeySet ? "―" : (candidate.tds === "?" ? "―" : candidate.tds === "SD" ? "S" : candidate.tds)}
                 </span>
             </div>
-
-            {/* Roman (Depend on Key) */}
             <div className={`flex-1 flex flex-col items-center justify-center px-1 ${!isKeySet ? "opacity-30 grayscale" : ""}`}>
                 <span className="text-[9px] font-bold text-slate-400 mb-1">記号</span>
                 <span className="text-xl font-serif font-black text-slate-700 leading-none">
                   {!isKeySet ? "―" : (candidate.romanNumeral || "―")}
                 </span>
             </div>
-
-            {/* Inversion (Always Show) */}
             <div className="flex-1 flex flex-col items-center justify-center px-1">
                 <span className="text-[9px] font-bold text-slate-400 mb-1">転回形</span>
                 <span className="text-xs font-bold text-slate-600 leading-none text-center">{invJp}</span>
             </div>
-
-            {/* Type (Always Show) */}
             <div className="flex-1 flex flex-col items-center justify-center px-1">
                 <span className="text-[9px] font-bold text-slate-400 mb-1">種類</span>
                 <span className="text-xs font-bold text-slate-600 leading-none text-center">{candidate.chordType || "―"}</span>
             </div>
-
         </div>
       </div>
     </div>
   );
 };
 
-// 4. Insight Card (Book Icon)
+// 4. Insight Card (Bold Watermark)
 const InsightCard = ({ text }: { text: string }) => (
-  <div className={`${G.cardBase} p-6 overflow-hidden`}>
-    {/* Watermark */}
-    <div className="absolute -right-2 top-8 text-6xl font-black text-slate-50 pointer-events-none select-none z-0 transform rotate-[-5deg] opacity-60">
+  <div className={`${G.cardBase} p-6 overflow-hidden bg-gradient-to-br from-white to-slate-50`}>
+    {/* Bold Watermark */}
+    <div className="absolute -right-4 top-2 text-[5rem] font-black text-slate-900/5 pointer-events-none select-none z-0 transform rotate-[-5deg] tracking-tighter leading-none whitespace-nowrap">
        Cadencia AI
     </div>
 
@@ -281,7 +270,7 @@ const InsightCard = ({ text }: { text: string }) => (
         </div>
         <h3 className="text-sm font-bold text-slate-800">Cadencia AI の考察</h3>
       </div>
-      <p className="text-sm leading-relaxed text-slate-600 whitespace-pre-wrap font-medium">{text}</p>
+      <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap font-medium">{text}</p>
     </div>
   </div>
 );
@@ -290,16 +279,12 @@ const InsightCard = ({ text }: { text: string }) => (
 const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp, answer }: any) => {
   return (
     <div className={`${G.cardBase} p-0 flex flex-col overflow-hidden`}>
-      
       <div className="p-5 border-b border-slate-100 bg-slate-50/50">
         <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
           <span className="text-xl">💬</span> Cadencia AIに質問しよう！
         </h3>
       </div>
-
       <div className="p-5 bg-slate-50/30 flex flex-col gap-4 min-h-[120px]">
-        
-        {/* Answer Bubble */}
         {answer && (
            <div className="flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shrink-0 shadow-sm mt-1">
@@ -310,8 +295,6 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
               </div>
            </div>
         )}
-
-        {/* Thinking Indicator */}
         {isThinking && (
            <div className="flex gap-3 animate-in fade-in duration-300">
               <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-white shrink-0 mt-1">
@@ -322,15 +305,12 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
               </div>
            </div>
         )}
-
-        {/* Empty State */}
         {!answer && !isThinking && (
            <div className="text-center py-6 text-slate-300 text-xs font-bold">
               気になったことを入力してみよう
            </div>
         )}
       </div>
-
       <div className="p-3 bg-white border-t border-slate-100">
          <div className="relative flex items-center gap-2">
             <input 
@@ -355,7 +335,7 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
   );
 }
 
-// 6. Loading Overlay (Updated Text)
+// 6. Loading Overlay
 const LoadingOverlay = () => (
   <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/60 backdrop-blur-md animate-in fade-in duration-300 px-6">
     <div className="relative w-20 h-20 mb-6">
@@ -384,6 +364,7 @@ export default function CadenciaPage() {
   const [bassHint, setBassHint] = useState<string | null>(null); 
   const [rootHint, setRootHint] = useState<string | null>(null);
   const [inputMode, setInputMode] = useState<"normal" | "root" | "bass">("normal");
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(true);
 
   const [candidates, setCandidates] = useState<CandidateObj[]>([]);
   const [infoText, setInfoText] = useState<string>("");
@@ -395,6 +376,7 @@ export default function CadenciaPage() {
 
   const canAnalyze = selected.length >= 3;
   const isKeySet = keyRoot !== "none";
+  const hasResult = candidates.length > 0;
 
   const sortedSelected = useMemo(() => {
     return [...selected].sort((a, b) => SORT_ORDER.indexOf(a) - SORT_ORDER.indexOf(b));
@@ -433,35 +415,19 @@ export default function CadenciaPage() {
     };
 
     if (inputMode === "root") {
-      if (existingIndex === -1) {
-        nextSelected.push(inputNote);
-      } else {
-        nextSelected[existingIndex] = inputNote;
-      }
+      if (existingIndex === -1) nextSelected.push(inputNote);
+      else nextSelected[existingIndex] = inputNote;
       setSelected(nextSelected);
-      if (rootHint === inputNote) {
-        setRootHint(null);
-      } else {
-        setRootHint(inputNote);
-        if (bassHint === inputNote) setBassHint(null);
-      }
+      if (rootHint === inputNote) setRootHint(null);
+      else { setRootHint(inputNote); if (bassHint === inputNote) setBassHint(null); }
       setInputMode("normal");
-
     } else if (inputMode === "bass") {
-      if (existingIndex === -1) {
-        nextSelected.push(inputNote);
-      } else {
-        nextSelected[existingIndex] = inputNote;
-      }
+      if (existingIndex === -1) nextSelected.push(inputNote);
+      else nextSelected[existingIndex] = inputNote;
       setSelected(nextSelected);
-      if (bassHint === inputNote) {
-        setBassHint(null);
-      } else {
-        setBassHint(inputNote);
-        if (rootHint === inputNote) setRootHint(null);
-      }
+      if (bassHint === inputNote) setBassHint(null);
+      else { setBassHint(inputNote); if (rootHint === inputNote) setRootHint(null); }
       setInputMode("normal");
-
     } else {
       updateSelection();
     }
@@ -509,19 +475,20 @@ export default function CadenciaPage() {
     } catch (e: any) { setAnswer(`通信エラー: ${e?.message}`); } finally { setIsThinking(false); setQuestion(""); }
   }
 
-  // --- Render ---
-  const hasResult = candidates.length > 0;
-  const topCandidate = hasResult ? candidates[0] : null;
-  const otherCandidates = hasResult ? candidates.slice(1) : [];
-
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans pb-[420px] selection:bg-cyan-100 overflow-x-hidden">
+      <style jsx global>{`
+        @keyframes text-shine {
+          0% { background-position: 250% 50%; }
+          100% { background-position: -150% 50%; }
+        }
+        .animate-text-shine { animation: text-shine 6s linear infinite; }
+      `}</style>
       
-      {/* Loading Overlay */}
       {loading && <LoadingOverlay />}
 
       {/* Header */}
-      <header className="fixed top-0 inset-x-0 z-50 h-16 bg-white/80 backdrop-blur-md border-b border-white/50 flex items-center justify-between px-5 transition-all">
+      <header className="fixed top-0 inset-x-0 z-40 h-16 bg-white/80 backdrop-blur-md border-b border-white/50 flex items-center justify-between px-5 transition-all">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 flex items-center justify-center text-slate-800">
              <IconBook className="w-6 h-6" />
@@ -540,12 +507,12 @@ export default function CadenciaPage() {
 
       <main className="pt-24 px-5 max-w-md mx-auto space-y-8 relative z-10">
         
-        {/* Hero */}
+        {/* Hero with Shine Effect */}
         <section className="text-center space-y-2 py-2">
           <div className="inline-block relative">
              <h1 className="text-5xl font-black tracking-tighter pb-2 leading-none flex flex-col items-center">
                 <span className="text-[10px] font-bold text-cyan-500 tracking-widest mb-1">カデンツィア</span>
-                <span className={G.heroText}>Cadencia AI</span>
+                <span className={G.heroTextShine}>Cadencia AI</span>
              </h1>
           </div>
           <p className="text-sm font-bold text-slate-400">
@@ -553,44 +520,54 @@ export default function CadenciaPage() {
           </p>
         </section>
 
-        {/* Input Card */}
-        <section className={`${G.cardBase} bg-gradient-to-b from-white to-slate-50 border-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
-           <div className="p-5">
-              <h3 className="text-xs font-bold text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
+        {/* Input Card (Start Screen Style) */}
+        <section className={`${G.cardBase} bg-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
+           <div className="p-5 flex flex-col min-h-[240px]">
+              <h3 className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
                  Cadencia AIに分析と解説をさせよう
               </h3>
-              
-              {/* Note Display Area */}
-              <div className="flex flex-wrap gap-2 mb-6 min-h-[3.5rem] items-center p-3 rounded-2xl bg-slate-100/50 border border-slate-200/50 shadow-inner">
-                {selected.length === 0 ? (
-                  <span className="text-xs text-slate-400 font-bold w-full text-center py-2">下のキーボードから入力しよう！</span>
-                ) : (
-                  sortedSelected.map((note) => (
-                    <div key={note} className={`relative group animate-in zoom-in duration-200`}>
-                      <div className={`px-4 py-2.5 rounded-xl text-xl font-black shadow-sm flex items-center justify-center min-w-[3rem] ${
-                        rootHint === note 
-                          ? "bg-rose-500 text-white shadow-rose-200" 
-                          : bassHint === note 
-                            ? "bg-amber-400 text-white shadow-amber-200" 
-                            : "bg-white text-slate-700 shadow-slate-200"
-                      }`}>
-                        {note}
-                      </div>
-                      
-                      {/* Floating Badges */}
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex flex-col gap-1 items-center w-full">
-                        {rootHint === note && <span className="text-[8px] bg-rose-600 text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm whitespace-nowrap z-20">Root</span>}
-                        {bassHint === note && <span className="text-[8px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm whitespace-nowrap z-10">Bass</span>}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-           </div>
 
-           {/* Seamless Piano */}
-           <div className="border-t border-slate-100">
-              <MiniPiano selected={selected} bassHint={bassHint} rootHint={rootHint} />
+              {/* Dynamic Content Area */}
+              <div className="flex-1 flex flex-col items-center justify-center">
+                 {selected.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-4 animate-in fade-in zoom-in duration-500 py-6">
+                       <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 shadow-inner">
+                          <IconKeyboard className="w-8 h-8" />
+                       </div>
+                       <div className="text-center space-y-1">
+                         <p className="text-sm font-bold text-slate-500">和音を入力してスタート</p>
+                         <p className="text-[10px] text-slate-400">下のキーボードから音を選んでください</p>
+                       </div>
+                    </div>
+                 ) : (
+                    <div className="w-full">
+                       <div className="flex flex-wrap justify-center gap-3 mb-4">
+                          {sortedSelected.map((note) => (
+                            <div key={note} className={`relative group animate-in zoom-in duration-300`}>
+                              <div className={`w-14 h-14 rounded-2xl text-2xl font-black shadow-lg flex items-center justify-center border transition-transform hover:scale-105 ${
+                                rootHint === note 
+                                  ? "bg-rose-500 border-rose-400 text-white shadow-rose-200" 
+                                  : bassHint === note 
+                                    ? "bg-amber-400 border-amber-300 text-white shadow-amber-200" 
+                                    : "bg-white border-slate-100 text-slate-700 shadow-slate-200"
+                              }`}>
+                                {note}
+                              </div>
+                              {/* Japanese Badges */}
+                              <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex flex-col gap-1 items-center w-max pointer-events-none">
+                                {rootHint === note && <span className="text-[9px] bg-rose-600 text-white px-2 py-0.5 rounded-full font-bold shadow-sm z-20">根音</span>}
+                                {bassHint === note && <span className="text-[9px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold shadow-sm z-10">最低音</span>}
+                              </div>
+                            </div>
+                          ))}
+                       </div>
+                       {/* Subtle Piano Visualization */}
+                       <div className="opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                          <MiniPiano selected={selected} bassHint={bassHint} rootHint={rootHint} />
+                       </div>
+                    </div>
+                 )}
+              </div>
            </div>
         </section>
 
@@ -603,18 +580,17 @@ export default function CadenciaPage() {
                 <h2 className="text-lg font-bold text-slate-800">Cadencia AIの分析 📖</h2>
               </div>
 
-              {topCandidate && <ResultCard candidate={topCandidate} isTop={true} isKeySet={isKeySet} rank={1} />}
-
+              {candidates[0] && <ResultCard candidate={candidates[0]} isTop={true} isKeySet={isKeySet} rank={1} />}
               {infoText && <InsightCard text={infoText} />}
 
-              {otherCandidates.length > 0 && (
+              {candidates.length > 1 && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 px-2 py-4">
                     <div className="h-[1px] flex-1 bg-slate-200"></div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">その他の候補</span>
                     <div className="h-[1px] flex-1 bg-slate-200"></div>
                   </div>
-                  {otherCandidates.map((c, i) => (<ResultCard key={c.chord} candidate={c} isTop={false} isKeySet={isKeySet} rank={i + 2} />))}
+                  {candidates.slice(1).map((c, i) => (<ResultCard key={c.chord} candidate={c} isTop={false} isKeySet={isKeySet} rank={i + 2} />))}
                 </div>
               )}
 
@@ -635,8 +611,14 @@ export default function CadenciaPage() {
       </main>
 
       {/* --- Floating Glass Keyboard --- */}
-      <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glassKey} rounded-t-[36px] pt-5 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] transition-transform duration-300`}>
-        <div className="max-w-md mx-auto px-4">
+      <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glassKey} rounded-t-[36px] transition-transform duration-500 ease-in-out ${isKeyboardOpen ? "translate-y-0" : "translate-y-[calc(100%-30px)]"}`}>
+        
+        {/* Handle / Toggle */}
+        <div className="h-8 flex items-center justify-center cursor-pointer active:opacity-50" onClick={() => setIsKeyboardOpen(!isKeyboardOpen)}>
+           <div className="w-12 h-1 bg-slate-300 rounded-full"></div>
+        </div>
+
+        <div className="max-w-md mx-auto px-4 pb-8 pt-2">
           <div className="grid grid-cols-4 grid-rows-4 gap-2.5 h-full">
             
             {/* Row 1 */}
@@ -671,19 +653,29 @@ export default function CadenciaPage() {
                 </div>
             </div>
             
+            {/* Analyze Button (Simple Arrow) */}
             <button className={`col-start-4 row-start-3 row-span-2 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20 relative overflow-hidden group ${canAnalyze && !loading ? "bg-cyan-500 text-white" : "bg-slate-100 text-slate-300 cursor-not-allowed"}`} onClick={analyze} disabled={!canAnalyze || loading}>
-               <div className="relative z-10 flex flex-col items-center px-1">
-                 <span className="text-[9px] font-bold text-center leading-tight">Cadencia AIに<br/>分析させる</span>
+               <div className="relative z-10 flex flex-col items-center gap-1">
+                 {loading ? <IconRefresh className="animate-spin w-5 h-5" /> : <IconArrowRight className="w-5 h-5" />}
+                 <span className="text-[10px] font-bold leading-tight">分析</span>
                </div>
             </button>
 
-            {/* Row 4: Ask AI */}
-            <button onClick={focusInput} className={`col-start-1 col-span-3 row-start-4 h-14 rounded-2xl border border-white/40 font-bold shadow-lg shadow-cyan-500/10 active:scale-95 flex items-center justify-center gap-2 relative overflow-hidden group bg-white/60`}>
-               <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-cyan-400`}></div>
-               <div className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-white text-[10px] shadow-sm relative z-10 bg-cyan-500`}>
+            {/* Row 4: Ask AI (Disabled when no result) */}
+            <button 
+              onClick={focusInput} 
+              disabled={!hasResult}
+              className={`col-start-1 col-span-3 row-start-4 h-14 rounded-2xl border font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 relative overflow-hidden group 
+                ${!hasResult 
+                   ? "bg-slate-100 border-slate-200 text-slate-300 shadow-none cursor-default" 
+                   : "bg-white/60 border-white/40 shadow-cyan-500/10 text-cyan-600 hover:bg-white/80"
+                }`}
+            >
+               {hasResult && <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-cyan-400`}></div>}
+               <div className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-[10px] shadow-sm relative z-10 ${!hasResult ? "bg-slate-200 text-white" : "bg-cyan-500 text-white"}`}>
                   <IconBook className="w-3 h-3" />
                </div>
-               <span className={`text-xs font-bold text-cyan-600 relative z-10`}>Cadencia AI にきく</span>
+               <span className={`text-xs font-bold relative z-10`}>Cadencia AI にきく</span>
             </button>
 
           </div>
@@ -697,6 +689,9 @@ export default function CadenciaPage() {
 const IconBook = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>;
 const IconSparkles = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/></svg>;
 const IconSend = ({className}: {className?: string}) => <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
+const IconRefresh = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>;
 const IconTrash = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
 const IconTwitter = ({className}: {className?: string}) => <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>;
+const IconArrowRight = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>;
 const IconRobot = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="12" cy="5" r="2" /><path d="M12 7v4" /><line x1="8" y1="16" x2="8" y2="16" /><line x1="16" y1="16" x2="16" y2="16" /></svg>;
+const IconKeyboard = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="M6 8h.001"/><path d="M10 8h.001"/><path d="M14 8h.001"/><path d="M18 8h.001"/><path d="M6 12h.001"/><path d="M10 12h.001"/><path d="M14 12h.001"/><path d="M18 12h.001"/><path d="M7 16h10"/></svg>;
