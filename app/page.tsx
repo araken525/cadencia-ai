@@ -5,7 +5,6 @@ import { useMemo, useRef, useState, useEffect } from "react";
 // --- Design Constants ---
 const G = {
   heroGradient: "bg-gradient-to-r from-blue-600 via-cyan-500 to-sky-400",
-  // 修正点1: アニメーション時間を5sから8sに変更してゆっくりに
   heroTextShine: "bg-clip-text text-transparent bg-[linear-gradient(110deg,#0ea5e9,45%,#e0f2fe,50%,#0ea5e9)] bg-[length:250%_100%] animate-text-shine drop-shadow-sm",
   cardBase: "bg-white rounded-[32px] shadow-xl shadow-blue-900/5 border border-white overflow-hidden relative",
   glassKey: "bg-white/90 backdrop-blur-2xl border-t border-white/60 shadow-[0_-8px_30px_rgba(0,0,0,0.06)]",
@@ -16,14 +15,14 @@ const KEYS_ROOT = ["none", "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb
 const KEYS_TYPE = ["Major", "Minor"];
 const SORT_ORDER = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
 
+// 修正: ショートカット質問の更新
 const SHORTCUT_QUESTIONS = [
-  "詳しく説明して",
-  "他の解釈はある？",
-  "なぜこの機能になるの？",
+  "もっと詳しく説明して",
+  "なぜこの機能に分類されるの？",
+  "この町においてこの和音はどんな役割で使われることが多い？",
 ];
 
 // --- Types ---
-// (略: 以前と同じ)
 type CandidateObj = {
   chord: string;
   chordType?: string;
@@ -48,7 +47,6 @@ type AnalyzeRes = {
 };
 
 // --- Helper Functions ---
-// (略: 以前と同じ)
 function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateObj[] {
   const arr = (input ?? []).filter(Boolean);
   return arr.map((c, idx) => {
@@ -77,7 +75,6 @@ const getKeyIndex = (note: string): number => {
 };
 
 // --- Components ---
-// (略: Icon, FeedbackLink, WelcomeModal, MiniPiano, ResultCard, InsightCard, LoadingOverlay は以前と同じ)
 
 const FeedbackLink = ({ className, children }: { className?: string, children: React.ReactNode }) => (
   <a href="https://x.com/araken525_toho?s=21" target="_blank" rel="noopener noreferrer" className={className}>
@@ -154,7 +151,6 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-// 修正点2: キーボード操作ガイドカードコンポーネントを追加
 const KeyboardGuideCard = ({ onClose }: { onClose: () => void }) => (
   <div className={`${G.cardBase} bg-blue-50/50 border-blue-100 shadow-sm mb-6 animate-in fade-in slide-in-from-bottom-2`}>
     <button onClick={onClose} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 p-1">
@@ -220,7 +216,6 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   );
 };
 
-// 修正点4: ♯と♭のガイドを常時薄く表示するよう変更
 const FlickKey = ({ 
   noteBase, currentSelection, isBass, isRoot, onInput, className
 }: { 
@@ -271,7 +266,6 @@ const FlickKey = ({
     `}
     onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       
-      {/* 修正点4: ガイドを常時薄く表示し、操作時に濃く、位置を移動させる */}
       <div className={`absolute top-1 left-0 right-0 flex justify-center transition-all duration-300 ${isUp ? "opacity-100 -translate-y-1 text-cyan-500 scale-125" : "opacity-30 text-slate-400"}`}>
         <span className="text-[8px] font-bold leading-none">♯</span>
       </div>
@@ -373,77 +367,125 @@ const InsightCard = ({ text }: { text: string }) => (
   </div>
 );
 
-// 修正点6: 質問カードにショートカットボタンを追加
+// 修正: チャットUIに刷新されたAskCard
 const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp, answer }: any) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // 回答が更新されたらスクロール
+  useEffect(() => {
+    if (answer || isThinking) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      }, 100);
+    }
+  }, [answer, isThinking]);
+
   return (
-    <div className={`${G.cardBase} p-0 flex flex-col overflow-hidden`}>
-      <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+    <div className={`${G.cardBase} flex flex-col overflow-hidden h-[420px] ring-1 ring-slate-100`}>
+      {/* 1. Header Area */}
+      <div className="px-5 py-4 border-b border-slate-100 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-between shadow-sm">
         <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <span className="text-xl">💬</span> Cadencia AIに質問しよう！
+          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+          AIチャット解説
         </h3>
+        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+          BETA
+        </span>
       </div>
-      <div className="p-5 bg-slate-50/30 flex flex-col gap-4 min-h-[120px]">
-        {/* 修正点6: ショートカットボタンエリアを追加 */}
+
+      {/* 2. Chat History Area */}
+      <div 
+        ref={scrollRef}
+        className="flex-1 bg-slate-50/50 p-4 overflow-y-auto space-y-6 scroll-smooth"
+      >
+        {/* Initial Greeting (Answerがない時のみ表示) */}
         {!answer && !isThinking && (
-           <div className="flex flex-wrap gap-2 mb-2">
-              {SHORTCUT_QUESTIONS.map((q) => (
-                <button 
-                  key={q} 
-                  onClick={() => { setQuestion(q); setTimeout(ask, 0); }}
-                  disabled={loading || isThinking}
-                  className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-full hover:bg-blue-100 active:scale-95 transition-all"
-                >
-                  {q}
-                </button>
-              ))}
-           </div>
+          <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3 opacity-60">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center">
+              <IconRobot className="w-6 h-6 text-slate-300" />
+            </div>
+            <p className="text-xs font-bold">知りたいことを入力してください</p>
+          </div>
         )}
 
+        {/* AI Answer Bubble */}
         {answer && (
-           <div className="flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shrink-0 shadow-sm mt-1">
-                 <IconRobot className="w-4 h-4" />
-              </div>
-              <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm text-sm text-slate-700 leading-relaxed max-w-[90%]">
-                 {answer}
-              </div>
-           </div>
+          <div className="flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500 items-start">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shrink-0 shadow-md mt-1 ring-2 ring-white">
+              <IconRobot className="w-4 h-4" />
+            </div>
+            <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] text-sm text-slate-700 leading-relaxed max-w-[90%]">
+              <p className="whitespace-pre-wrap">{answer}</p>
+            </div>
+          </div>
         )}
+
+        {/* Thinking State Bubble */}
         {isThinking && (
-           <div className="flex gap-3 animate-in fade-in duration-300">
-              <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-white shrink-0 mt-1">
-                 <IconSparkles className="w-4 h-4 animate-spin" />
-              </div>
-              <div className="bg-slate-100 p-3 rounded-2xl rounded-tl-none text-xs font-bold text-slate-400 flex items-center gap-1">
-                 AIが考え中<span className="animate-pulse">...</span>
-              </div>
-           </div>
-        )}
-        {!answer && !isThinking && SHORTCUT_QUESTIONS.length === 0 && (
-           <div className="text-center py-6 text-slate-300 text-xs font-bold">
-              気になったことを入力してみよう
-           </div>
+          <div className="flex gap-3 animate-in fade-in duration-300 items-start">
+            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-white shrink-0 mt-1 ring-2 ring-white">
+              <IconSparkles className="w-4 h-4 animate-spin" />
+            </div>
+            <div className="bg-slate-100 p-3 rounded-2xl rounded-tl-none text-xs font-bold text-slate-500 flex items-center gap-2 shadow-inner">
+              <span>考え中</span>
+              <span className="flex gap-1">
+                <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce"></span>
+              </span>
+            </div>
+          </div>
         )}
       </div>
-      <div className="p-3 bg-white border-t border-slate-100">
-         <div className="relative flex items-center gap-2">
-            <input 
+
+      {/* 3. Input & Shortcuts Area */}
+      <div className="bg-white border-t border-slate-100 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] z-10">
+        
+        {/* Persistent Shortcuts (Horizontal Scroll) */}
+        <div className="px-4 pt-3 pb-2 overflow-x-auto no-scrollbar flex gap-2 w-full mask-linear-fade">
+          {SHORTCUT_QUESTIONS.map((q) => (
+            <button 
+              key={q} 
+              onClick={() => { setQuestion(q); setTimeout(ask, 0); }}
+              disabled={loading || isThinking}
+              className="whitespace-nowrap flex-shrink-0 text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 hover:border-blue-100 px-3 py-1.5 rounded-full transition-all active:scale-95 disabled:opacity-50"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+
+        {/* Input Field */}
+        <div className="p-3 pt-1">
+          <div className="relative flex items-end gap-2 bg-slate-100 rounded-[24px] p-1.5 ring-1 ring-slate-200 transition-shadow focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-white">
+            <textarea 
               ref={inputRefProp}
-              className="flex-1 bg-slate-100 hover:bg-slate-50 focus:bg-white border-transparent focus:border-blue-200 rounded-full py-3 pl-5 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all text-slate-700 placeholder:text-slate-400" 
-              placeholder="例：なぜこの機能になるの？" 
+              className="flex-1 bg-transparent border-none rounded-2xl py-2.5 pl-3.5 pr-2 text-sm focus:outline-none focus:ring-0 text-slate-700 placeholder:text-slate-400 resize-none max-h-24 min-h-[44px] leading-relaxed" 
+              placeholder="質問を入力..." 
               value={question} 
+              rows={1}
               onChange={(e) => setQuestion(e.target.value)} 
-              onKeyDown={(e) => e.key === 'Enter' && ask()} 
-              disabled={isThinking} 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  ask();
+                }
+              }}
+              disabled={isThinking}
             />
             <button 
               onClick={ask} 
               disabled={loading || isThinking || !question.trim()} 
-              className={`w-10 h-10 rounded-full flex items-center justify-center text-white transition-all shadow-md active:scale-90 ${!question.trim() ? "bg-slate-200 shadow-none text-slate-400 cursor-default" : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:shadow-lg hover:shadow-cyan-500/20"}`}
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-white shrink-0 mb-1 transition-all shadow-md active:scale-90 ${
+                !question.trim() 
+                  ? "bg-slate-300 shadow-none text-slate-50 cursor-default" 
+                  : "bg-gradient-to-tr from-blue-600 to-cyan-500 hover:shadow-lg hover:shadow-cyan-500/30"
+              }`}
             >
               <IconSend className="w-4 h-4 ml-0.5" />
             </button>
-         </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -484,7 +526,6 @@ export default function CadenciaPage() {
   const [inputMode, setInputMode] = useState<"normal" | "root" | "bass">("normal");
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(true);
   const [showWelcome, setShowWelcome] = useState(true);
-  // 修正点2: ガイド表示用の状態を追加
   const [showGuide, setShowGuide] = useState(true);
 
   const [candidates, setCandidates] = useState<CandidateObj[]>([]);
@@ -499,7 +540,6 @@ export default function CadenciaPage() {
   const isKeySet = keyRoot !== "none";
   const hasResult = candidates.length > 0;
 
-  // 修正点5: キーボードスワイプ用の状態変数
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
 
@@ -600,7 +640,6 @@ export default function CadenciaPage() {
     } catch (e: any) { setAnswer(`通信エラー: ${e?.message}`); } finally { setIsThinking(false); setQuestion(""); }
   }
 
-  // 修正点5: キーボードスワイプ操作のハンドラ
   const handleDragStart = (e: React.PointerEvent) => {
     if (!isKeyboardOpen) return;
     setDragStartY(e.clientY);
@@ -631,10 +670,12 @@ export default function CadenciaPage() {
         @keyframes float-note-1 { 0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.2; } 50% { transform: translateY(-20px) rotate(10deg); opacity: 0.5; } }
         @keyframes float-note-2 { 0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.3; } 50% { transform: translateY(-15px) rotate(-10deg); opacity: 0.6; } }
         
-        /* 修正点1: アニメーション時間を8sに変更 */
         .animate-text-shine { animation: text-shine 8s linear infinite; }
         .animate-float-1 { animation: float-note-1 6s ease-in-out infinite; }
         .animate-float-2 { animation: float-note-2 8s ease-in-out infinite; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .mask-linear-fade { mask-image: linear-gradient(to right, transparent, black 10px, black 90%, transparent); }
       `}</style>
       
       {showWelcome && <WelcomeModal onClose={() => setShowWelcome(false)} />}
@@ -672,18 +713,17 @@ export default function CadenciaPage() {
              </h1>
           </div>
           <p className="text-sm font-bold text-slate-400 relative z-10">
-             ポケットに、専属音楽理論家を。
+              ポケットに、専属音楽理論家を。
           </p>
         </section>
 
-        {/* 修正点2: キーボード操作ガイドカードを表示 */}
         {showGuide && <KeyboardGuideCard onClose={() => setShowGuide(false)} />}
 
         {/* Input Card */}
         <section className={`${G.cardBase} bg-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
            <div className="p-5 flex flex-col min-h-[240px]">
               <h3 className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
-                 Cadencia AIに分析と解説をさせよう
+                  Cadencia AIに分析と解説をさせよう
               </h3>
               <div className="flex-1 flex flex-col items-center justify-center">
                  {selected.length === 0 ? (
@@ -761,7 +801,6 @@ export default function CadenciaPage() {
       </main>
 
       {/* --- Floating Glass Keyboard --- */}
-      {/* 修正点5: スワイプ操作のためにtransformを動的に制御し、イベントハンドラを追加 */}
       <div 
         className={`fixed bottom-0 inset-x-0 z-50 ${G.glassKey} rounded-t-[36px] transition-transform duration-300 ease-out touch-none ${isKeyboardOpen ? "translate-y-0" : "translate-y-[calc(100%-30px)]"}`}
         style={{ transform: isKeyboardOpen ? `translateY(${keyboardOffset}px)` : undefined }}
@@ -791,7 +830,7 @@ export default function CadenciaPage() {
             <FlickKey className="col-start-3 row-start-2" noteBase="A" currentSelection={selected.find(s=>s.startsWith("A"))} isBass={bassHint?.startsWith("A")??false} isRoot={rootHint?.startsWith("A")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-4 row-start-2" noteBase="B" currentSelection={selected.find(s=>s.startsWith("B"))} isBass={bassHint?.startsWith("B")??false} isRoot={rootHint?.startsWith("B")??false} onInput={handleKeyInput} />
 
-            {/* Row 3: Mode & Key (修正点3: デザインを元の3分割に戻す) */}
+            {/* Row 3: Mode & Key */}
             <div className="col-start-1 row-start-3 h-14 flex flex-col gap-1.5">
                <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border ${inputMode === "root" ? "bg-rose-500 text-white border-rose-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>根音</button>
                <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border ${inputMode === "bass" ? "bg-amber-500 text-white border-amber-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>最低音</button>
@@ -825,8 +864,8 @@ export default function CadenciaPage() {
               disabled={!hasResult}
               className={`col-start-1 col-span-3 row-start-4 h-14 rounded-2xl border font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 relative overflow-hidden group 
                 ${!hasResult 
-                   ? "bg-slate-100 border-slate-200 text-slate-300 shadow-none cursor-default" 
-                   : "bg-white/60 border-white/40 shadow-cyan-500/10 text-cyan-600 hover:bg-white/80"
+                  ? "bg-slate-100 border-slate-200 text-slate-300 shadow-none cursor-default" 
+                  : "bg-white/60 border-white/40 shadow-cyan-500/10 text-cyan-600 hover:bg-white/80"
                 }`}
             >
                {hasResult && <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-cyan-400`}></div>}
@@ -843,7 +882,7 @@ export default function CadenciaPage() {
   );
 }
 
-// Icons (IconXを追加)
+// Icons
 const IconBook = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>;
 const IconSparkles = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/></svg>;
 const IconSend = ({className}: {className?: string}) => <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
