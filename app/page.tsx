@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 
 // --- Design Constants ---
 const G = {
-  // 修正1: タイトルは光らせず、静かでマットな質感に
-  heroTextMatte: "text-slate-700 drop-shadow-sm tracking-tight",
+  heroGradient: "bg-gradient-to-r from-blue-600 via-cyan-500 to-sky-400",
+  heroTextShine: "bg-clip-text text-transparent bg-[linear-gradient(110deg,#0ea5e9,45%,#e0f2fe,50%,#0ea5e9)] bg-[length:250%_100%] animate-text-shine drop-shadow-sm",
   cardBase: "bg-white rounded-[32px] shadow-xl shadow-blue-900/5 border border-white overflow-hidden relative",
   glassKey: "bg-white/90 backdrop-blur-2xl border-t border-white/60 shadow-[0_-8px_30px_rgba(0,0,0,0.06)]",
 };
@@ -15,10 +15,11 @@ const KEYS_ROOT = ["none", "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb
 const KEYS_TYPE = ["Major", "Minor"];
 const SORT_ORDER = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
 
+// 修正: ショートカット質問の更新
 const SHORTCUT_QUESTIONS = [
   "もっと詳しく説明して",
-  "なぜこの機能になるの？",
-  "代理コードの可能性は？",
+  "なぜこの機能に分類されるの？",
+  "この町においてこの和音はどんな役割で使われることが多い？",
 ];
 
 // --- Types ---
@@ -43,11 +44,6 @@ type AnalyzeRes = {
   analysis?: string;
   reason?: string;
   error?: string;
-};
-
-type ChatMessage = {
-  role: 'user' | 'assistant';
-  content: string;
 };
 
 // --- Helper Functions ---
@@ -86,24 +82,16 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// 修正2: 閉じる時にフェードアウト＆縮小のアニメーションを追加
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
-  const [isClosing, setIsClosing] = useState(false);
-
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(onClose, 300); // アニメーション時間に合わせて待機
-  };
-
   return (
-    <div className={`fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xl flex items-center justify-center p-5 transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'animate-in fade-in opacity-100'}`}>
-      <div className={`${G.cardBase} w-full max-w-sm max-h-[90vh] overflow-y-auto bg-gradient-to-b from-white to-slate-50 flex flex-col shadow-2xl shadow-blue-900/20 transform transition-all duration-300 ${isClosing ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}`}>
+    <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xl flex items-center justify-center p-5 animate-in fade-in duration-500">
+      <div className={`${G.cardBase} w-full max-w-sm max-h-[90vh] overflow-y-auto bg-gradient-to-b from-white to-slate-50 flex flex-col shadow-2xl shadow-blue-900/20`}>
         <div className="pt-8 pb-4 px-6 text-center relative">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-cyan-500/30 mx-auto mb-4 transform -rotate-3">
              <IconBook className="w-7 h-7" />
           </div>
           <h2 className="text-xs font-bold text-slate-400 tracking-widest uppercase mb-1">MUSIC THEORY AI</h2>
-          <div className={`text-3xl font-black ${G.heroTextMatte} mb-2`}>Cadencia AI</div>
+          <div className={`text-3xl font-black tracking-tight ${G.heroTextShine} mb-2`}>Cadencia AI</div>
           <p className="text-xs font-bold text-slate-500">ポケットに、専属音楽理論家を。</p>
         </div>
         <div className="px-6 space-y-3">
@@ -134,9 +122,25 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
           </div>
         </div>
         <div className="mt-auto px-6 py-6 space-y-4">
+          <div className="bg-slate-900 rounded-2xl p-4 shadow-lg flex items-start gap-3 relative overflow-hidden group">
+             <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all"></div>
+             <div className="text-2xl pt-1 relative z-10">💻</div>
+             <div className="relative z-10 flex-1">
+                <div className="flex justify-between items-center mb-1">
+                  <h3 className="text-xs font-bold text-white">現在ベータ版です</h3>
+                  <span className="text-[9px] font-bold bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-600">v0.1.0</span>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  まだ開発途中ですが、PCやスマホで自由に使えます。バグ報告や機能要望は大歓迎！
+                </p>
+                <FeedbackLink className="inline-flex items-center gap-1 mt-2 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors">
+                   <IconTwitter className="w-3 h-3" /> 開発者(@araken525_toho)
+                </FeedbackLink>
+             </div>
+          </div>
           <button 
-            onClick={handleClose}
-            className="w-full py-3.5 rounded-xl bg-gray-900 text-white font-bold text-sm shadow-lg hover:bg-gray-800 hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2"
+            onClick={onClose}
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2"
           >
             <span>分析をはじめる</span>
             <IconArrowRight className="w-4 h-4" />
@@ -160,6 +164,8 @@ const KeyboardGuideCard = ({ onClose }: { onClose: () => void }) => (
         <GuideItem icon="👆" text={<>キーを<span className="font-bold">タップ</span>して入力しよう</>} />
         <GuideItem icon="↕️" text={<>キーを<span className="font-bold">上にフリックで♯</span>、<span className="font-bold">下にフリックで♭</span>がつきます</>} />
         <GuideItem icon="🎛️" text={<><span className="font-bold">根音</span>または<span className="font-bold">最低音</span>は専用のキーで指定できます</>} />
+        <GuideItem icon="🔑" text={<><span className="font-bold">調性(Key)</span>は専用のエリアで指定できます</>} />
+        <GuideItem icon="🤖" text={<><span className="font-bold">3つ以上の音</span>を選択し、<span className="font-bold">分析ボタン</span>でAIの分析開始！</>} />
       </ul>
     </div>
   </div>
@@ -275,7 +281,6 @@ const FlickKey = ({
   );
 };
 
-// 修正5: 候補一覧をデザインに馴染ませる（ResultCardはそのまま、表示コンテナを修正）
 const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: CandidateObj, isTop: boolean, isKeySet: boolean, rank: number }) => {
   const isProvisional = isTop && (candidate.provisional || candidate.score < 50);
   const percent = candidate.score;
@@ -283,86 +288,73 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
   const invJp = invMap[candidate.inversion || "unknown"] || "―";
 
   return (
-    <div className={`relative overflow-hidden transition-all duration-700 group ${G.cardBase} p-0 ${!isTop && "border-none shadow-none bg-transparent"}`}>
-      {isTop && (
-         <div className={`absolute -right-4 -bottom-6 font-black select-none pointer-events-none z-0 tracking-tighter leading-none text-slate-50 text-[10rem]`}>
-           {String(rank).padStart(2, '0')}
-         </div>
-      )}
-      
-      {/* Top Candidate Design */}
-      {isTop ? (
-        <div className="relative z-10 p-6 flex flex-col gap-6">
-          <div className="flex justify-between items-start">
-            <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border shadow-sm ${
+    <div className={`relative overflow-hidden transition-all duration-700 group ${G.cardBase} p-0`}>
+      <div className={`absolute -right-4 -bottom-6 font-black select-none pointer-events-none z-0 tracking-tighter leading-none ${isTop ? "text-slate-100 text-[10rem]" : "text-slate-50 text-[6rem]"}`}>
+        {String(rank).padStart(2, '0')}
+      </div>
+      <div className="relative z-10 p-6 flex flex-col gap-6">
+        <div className="flex justify-between items-start">
+          <div className="flex flex-col gap-2">
+             {isTop && (
+               <div className="flex items-center gap-2">
+                 <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border shadow-sm ${
                     isProvisional 
                     ? "bg-amber-50 text-amber-600 border-amber-100" 
                     : "bg-gradient-to-r from-yellow-50 to-amber-50 text-amber-600 border-amber-100"
-                  }`}>
-                    {isProvisional ? "⚠️ 暫定判定" : "👑 最有力候補"}
-                  </span>
-                </div>
-                <h2 className="text-5xl font-black text-slate-800 tracking-tighter leading-none">
-                  {candidate.chord}
-                </h2>
-            </div>
-            <div className="text-right">
-                <div className="flex items-baseline justify-end gap-1">
-                  <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-500 to-cyan-400">{percent}</span>
-                  <span className="text-sm font-bold text-slate-300">%</span>
-                </div>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">CONFIDENCE</span>
-            </div>
+                 }`}>
+                   {isProvisional ? "⚠️ 暫定判定" : "👑 最有力候補"}
+                 </span>
+               </div>
+             )}
+             <h2 className="text-5xl font-black text-slate-800 tracking-tighter leading-none">
+               {candidate.chord}
+             </h2>
           </div>
-          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 shadow-inner flex items-stretch justify-between divide-x divide-slate-200/60 h-24">
-              <div className={`flex-1 flex flex-col items-center justify-center px-1`}>
-                  <span className="text-[9px] font-bold text-slate-400 mb-1">機能</span>
-                  <span className={`text-2xl font-black leading-none ${
-                    !isKeySet ? "text-slate-200" :
-                    candidate.tds === "T" ? "text-cyan-500" : 
-                    candidate.tds === "D" ? "text-rose-500" : 
-                    candidate.tds === "S" || candidate.tds === "SD" ? "text-emerald-500" : "text-slate-300"
-                  }`}>
-                    {!isKeySet ? "―" : (candidate.tds === "?" ? "―" : candidate.tds === "SD" ? "S" : candidate.tds)}
-                  </span>
-              </div>
-              <div className={`flex-1 flex flex-col items-center justify-center px-1`}>
-                  <span className="text-[9px] font-bold text-slate-400 mb-1">記号</span>
-                  <span className={`text-xl font-serif font-black leading-none ${!isKeySet ? "text-slate-200" : "text-slate-700"}`}>
-                    {!isKeySet ? "―" : (candidate.romanNumeral || "―")}
-                  </span>
-              </div>
-              <div className="flex-1 flex flex-col items-center justify-center px-1">
-                  <span className="text-[9px] font-bold text-slate-400 mb-1">転回形</span>
-                  <span className="text-xs font-bold text-slate-600 leading-none text-center">{invJp}</span>
-              </div>
-              <div className="flex-1 flex flex-col items-center justify-center px-1">
-                  <span className="text-[9px] font-bold text-slate-400 mb-1">種類</span>
-                  <span className="text-xs font-bold text-slate-600 leading-none text-center">{candidate.chordType || "―"}</span>
-              </div>
+          <div className="text-right">
+             <div className="flex items-baseline justify-end gap-1">
+               <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-500 to-cyan-400">{percent}</span>
+               <span className="text-sm font-bold text-slate-300">%</span>
+             </div>
+             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">CONFIDENCE</span>
           </div>
         </div>
-      ) : (
-        // List Item Design (More minimal)
-        <div className="flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-slate-100 hover:bg-white transition-colors">
-          <div className="flex items-center gap-4">
-            <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-400">{rank}</span>
-            <div className="flex flex-col">
-              <span className="text-lg font-black text-slate-700 leading-none mb-0.5">{candidate.chord}</span>
-              <span className="text-[10px] text-slate-400">{invJp} / {candidate.romanNumeral || "-"}</span>
+        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 shadow-inner flex items-stretch justify-between divide-x divide-slate-200/60 h-24">
+            <div className={`flex-1 flex flex-col items-center justify-center px-1`}>
+                <span className="text-[9px] font-bold text-slate-400 mb-1">機能</span>
+                <span className={`text-2xl font-black leading-none ${
+                  !isKeySet ? "text-slate-200" :
+                  candidate.tds === "T" ? "text-cyan-500" : 
+                  candidate.tds === "D" ? "text-rose-500" : 
+                  candidate.tds === "S" || candidate.tds === "SD" ? "text-emerald-500" : "text-slate-300"
+                }`}>
+                  {!isKeySet ? "―" : (candidate.tds === "?" ? "―" : candidate.tds === "SD" ? "S" : candidate.tds)}
+                </span>
             </div>
-          </div>
-          <span className="text-xs font-bold text-slate-300">{percent}%</span>
+            <div className={`flex-1 flex flex-col items-center justify-center px-1`}>
+                <span className="text-[9px] font-bold text-slate-400 mb-1">記号</span>
+                <span className={`text-xl font-serif font-black leading-none ${!isKeySet ? "text-slate-200" : "text-slate-700"}`}>
+                  {!isKeySet ? "―" : (candidate.romanNumeral || "―")}
+                </span>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center px-1">
+                <span className="text-[9px] font-bold text-slate-400 mb-1">転回形</span>
+                <span className="text-xs font-bold text-slate-600 leading-none text-center">{invJp}</span>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center px-1">
+                <span className="text-[9px] font-bold text-slate-400 mb-1">種類</span>
+                <span className="text-xs font-bold text-slate-600 leading-none text-center">{candidate.chordType || "―"}</span>
+            </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
 
 const InsightCard = ({ text }: { text: string }) => (
   <div className={`${G.cardBase} p-6 overflow-hidden bg-gradient-to-br from-white to-slate-50`}>
+    <div className="absolute -right-4 top-2 text-[5rem] font-black text-slate-900/5 pointer-events-none select-none z-0 transform rotate-[-5deg] tracking-tighter leading-none whitespace-nowrap">
+       Cadencia AI
+    </div>
     <div className="relative z-10">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md">
@@ -375,92 +367,100 @@ const InsightCard = ({ text }: { text: string }) => (
   </div>
 );
 
-// 修正7,8,9,10: チャットUIの大幅刷新（LINE風、ロボットアイコン、ショートカット、タイトル）
-const ChatWidget = ({ messages, question, setQuestion, ask, isThinking, loading, inputRefProp }: any) => {
+// 修正: チャットUIに刷新されたAskCard
+const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp, answer }: any) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // 回答が更新されたらスクロール
   useEffect(() => {
-    if (scrollRef.current) {
+    if (answer || isThinking) {
       setTimeout(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
       }, 100);
     }
-  }, [messages, isThinking]);
+  }, [answer, isThinking]);
 
   return (
-    <div className={`${G.cardBase} flex flex-col overflow-hidden h-[500px] ring-1 ring-slate-100`}>
-      {/* 修正7: タイトル変更 */}
-      <div className="px-5 py-4 border-b border-slate-100 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-between shadow-sm sticky top-0">
+    <div className={`${G.cardBase} flex flex-col overflow-hidden h-[420px] ring-1 ring-slate-100`}>
+      {/* 1. Header Area */}
+      <div className="px-5 py-4 border-b border-slate-100 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-between shadow-sm">
         <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <IconSparkles className="w-4 h-4 text-purple-500" />
-          Cadencia AIのチャット
+          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+          AIチャット解説
         </h3>
         <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
           BETA
         </span>
       </div>
 
-      {/* 修正9: チャット履歴（LINE風） */}
-      <div ref={scrollRef} className="flex-1 bg-slate-50/50 p-4 overflow-y-auto space-y-6 scroll-smooth">
-        {messages.length === 0 && !isThinking && (
+      {/* 2. Chat History Area */}
+      <div 
+        ref={scrollRef}
+        className="flex-1 bg-slate-50/50 p-4 overflow-y-auto space-y-6 scroll-smooth"
+      >
+        {/* Initial Greeting (Answerがない時のみ表示) */}
+        {!answer && !isThinking && (
           <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3 opacity-60">
             <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center">
-              <span className="text-2xl">🤖</span>
+              <IconRobot className="w-6 h-6 text-slate-300" />
             </div>
             <p className="text-xs font-bold">知りたいことを入力してください</p>
           </div>
         )}
 
-        {messages.map((msg: ChatMessage, idx: number) => (
-          <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-             <div className={`flex max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} gap-2`}>
-                {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-lg shadow-sm shrink-0">
-                    🤖
-                  </div>
-                )}
-                <div className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${
-                  msg.role === 'user' 
-                    ? 'bg-blue-500 text-white rounded-tr-none' 
-                    : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
-                }`}>
-                  {msg.content}
-                </div>
-             </div>
+        {/* AI Answer Bubble */}
+        {answer && (
+          <div className="flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500 items-start">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shrink-0 shadow-md mt-1 ring-2 ring-white">
+              <IconRobot className="w-4 h-4" />
+            </div>
+            <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] text-sm text-slate-700 leading-relaxed max-w-[90%]">
+              <p className="whitespace-pre-wrap">{answer}</p>
+            </div>
           </div>
-        ))}
+        )}
 
-        {/* 修正8: 思考中アイコンはロボット */}
+        {/* Thinking State Bubble */}
         {isThinking && (
-          <div className="flex justify-start w-full animate-pulse">
-            <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm">
-              <span className="text-lg">🤖</span>
-              <span className="text-xs text-slate-400 font-bold">考え中...</span>
+          <div className="flex gap-3 animate-in fade-in duration-300 items-start">
+            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-white shrink-0 mt-1 ring-2 ring-white">
+              <IconSparkles className="w-4 h-4 animate-spin" />
+            </div>
+            <div className="bg-slate-100 p-3 rounded-2xl rounded-tl-none text-xs font-bold text-slate-500 flex items-center gap-2 shadow-inner">
+              <span>考え中</span>
+              <span className="flex gap-1">
+                <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce"></span>
+              </span>
             </div>
           </div>
         )}
       </div>
 
-      {/* 修正10: 入力エリアとショートカットの洗練 */}
+      {/* 3. Input & Shortcuts Area */}
       <div className="bg-white border-t border-slate-100 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] z-10">
+        
+        {/* Persistent Shortcuts (Horizontal Scroll) */}
         <div className="px-4 pt-3 pb-2 overflow-x-auto no-scrollbar flex gap-2 w-full mask-linear-fade">
           {SHORTCUT_QUESTIONS.map((q) => (
             <button 
               key={q} 
               onClick={() => { setQuestion(q); setTimeout(ask, 0); }}
               disabled={loading || isThinking}
-              className="whitespace-nowrap flex-shrink-0 text-[10px] font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-full transition-all active:scale-95 disabled:opacity-50"
+              className="whitespace-nowrap flex-shrink-0 text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 hover:border-blue-100 px-3 py-1.5 rounded-full transition-all active:scale-95 disabled:opacity-50"
             >
               {q}
             </button>
           ))}
         </div>
 
+        {/* Input Field */}
         <div className="p-3 pt-1">
-          <div className="relative flex items-center gap-2 bg-slate-100 rounded-full p-1.5 ring-1 ring-slate-200 transition-all focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-white focus-within:shadow-md">
+          <div className="relative flex items-end gap-2 bg-slate-100 rounded-[24px] p-1.5 ring-1 ring-slate-200 transition-shadow focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-white">
             <textarea 
               ref={inputRefProp}
-              className="flex-1 bg-transparent border-none rounded-full py-2.5 pl-4 pr-2 text-sm focus:outline-none focus:ring-0 text-slate-700 placeholder:text-slate-400 resize-none h-[44px] leading-[24px]" 
+              className="flex-1 bg-transparent border-none rounded-2xl py-2.5 pl-3.5 pr-2 text-sm focus:outline-none focus:ring-0 text-slate-700 placeholder:text-slate-400 resize-none max-h-24 min-h-[44px] leading-relaxed" 
               placeholder="質問を入力..." 
               value={question} 
               rows={1}
@@ -476,10 +476,10 @@ const ChatWidget = ({ messages, question, setQuestion, ask, isThinking, loading,
             <button 
               onClick={ask} 
               disabled={loading || isThinking || !question.trim()} 
-              className={`w-9 h-9 rounded-full flex items-center justify-center text-white shrink-0 transition-all shadow-sm active:scale-90 ${
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-white shrink-0 mb-1 transition-all shadow-md active:scale-90 ${
                 !question.trim() 
                   ? "bg-slate-300 shadow-none text-slate-50 cursor-default" 
-                  : "bg-gray-900 hover:bg-gray-700 hover:shadow-lg"
+                  : "bg-gradient-to-tr from-blue-600 to-cyan-500 hover:shadow-lg hover:shadow-cyan-500/30"
               }`}
             >
               <IconSend className="w-4 h-4 ml-0.5" />
@@ -491,21 +491,22 @@ const ChatWidget = ({ messages, question, setQuestion, ask, isThinking, loading,
   );
 }
 
-// 修正4 & 6: 分析中画面を絵文字で可愛く、親しみやすく
 const LoadingOverlay = () => (
-  <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-50/90 backdrop-blur-xl animate-in fade-in duration-500 px-6">
-    <div className="relative mb-8 text-center">
-      <div className="text-8xl animate-bounce duration-[2000ms] drop-shadow-xl filter grayscale-[0.2]">
-        🤔
+  <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/20 backdrop-blur-lg animate-in fade-in duration-500 px-6">
+    <div className="relative w-24 h-24 mb-8">
+      <div className="absolute inset-0 rounded-full bg-cyan-400/20 animate-ping"></div>
+      <div className="absolute inset-0 rounded-full border-[3px] border-white/10 border-t-cyan-400 animate-spin"></div>
+      <div className="absolute inset-4 rounded-full bg-white/90 shadow-[0_0_30px_rgba(34,211,238,0.5)] flex items-center justify-center">
+         <IconSparkles className="w-8 h-8 text-cyan-500 animate-pulse" />
       </div>
-      <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-16 h-2 bg-black/10 rounded-[100%] blur-sm animate-pulse"></div>
     </div>
     <div className="text-center space-y-4 max-w-xs relative z-10">
-      <h2 className="text-xl font-bold text-slate-800 drop-shadow-sm leading-tight">
-        考え中...
+      <h2 className="text-lg font-black text-slate-800 drop-shadow-sm leading-tight">
+        Cadencia AIが和音を分析し、<br/>解説の生成をしています…
       </h2>
-      <p className="text-xs font-bold text-slate-500 leading-relaxed max-w-[200px] mx-auto opacity-80">
-        最適な解釈を探しています🕵️<br/>もう少し待ってね
+      <div className="h-1 w-12 bg-cyan-400/50 rounded-full mx-auto animate-pulse"></div>
+      <p className="text-[10px] font-bold text-slate-500 leading-relaxed max-w-[200px] mx-auto opacity-80">
+        複雑な和音や、たくさんの解釈がある組み合わせの場合、あらゆる可能性を考慮するため、時間がかかる場合があります。
       </p>
     </div>
   </div>
@@ -531,8 +532,7 @@ export default function CadenciaPage() {
   const [infoText, setInfoText] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [question, setQuestion] = useState("");
-  // 修正9: Chat messages history
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [answer, setAnswer] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [justUpdated, setJustUpdated] = useState(false);
 
@@ -600,12 +600,12 @@ export default function CadenciaPage() {
 
   const reset = () => {
     setSelected([]); setCandidates([]); setBassHint(null); setRootHint(null);
-    setInfoText(""); setQuestion(""); setChatMessages([]); setLoading(false); setInputMode("normal");
+    setInfoText(""); setQuestion(""); setAnswer(""); setLoading(false); setInputMode("normal");
   };
 
   async function analyze() {
     if (!canAnalyze || loading) return;
-    setLoading(true); setChatMessages([]); setInfoText("");
+    setLoading(true); setAnswer(""); setInfoText("");
     const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
     try {
       await new Promise(r => setTimeout(r, 1200));
@@ -624,16 +624,10 @@ export default function CadenciaPage() {
   async function ask() {
     const q = question.trim();
     if (!q || loading || isThinking) return;
-    if (!canAnalyze || candidates.length === 0) return;
-    
-    // Add User Message
-    setChatMessages(prev => [...prev, { role: 'user', content: q }]);
-    setQuestion("");
-    setIsThinking(true);
-    
+    if (!canAnalyze || candidates.length === 0) { setAnswer("（コードを確定させてから質問してね）"); return; }
+    setIsThinking(true); setAnswer("");
     const topChord = candidates[0].chord;
     const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
-    
     try {
       const res = await fetch("/api/ask", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -642,13 +636,8 @@ export default function CadenciaPage() {
           bassHint, rootHint, keyHint, candidates: candidates.slice(0,5) 
         }),
       });
-      const text = res.ok ? await res.text() : `エラー: ${await res.text()}`;
-      setChatMessages(prev => [...prev, { role: 'assistant', content: text }]);
-    } catch (e: any) { 
-      setChatMessages(prev => [...prev, { role: 'assistant', content: `通信エラー: ${e?.message}` }]);
-    } finally { 
-      setIsThinking(false); 
-    }
+      setAnswer(res.ok ? await res.text() : `エラー: ${await res.text()}`);
+    } catch (e: any) { setAnswer(`通信エラー: ${e?.message}`); } finally { setIsThinking(false); setQuestion(""); }
   }
 
   const handleDragStart = (e: React.PointerEvent) => {
@@ -674,8 +663,14 @@ export default function CadenciaPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans pb-[420px] selection:bg-cyan-100 overflow-x-hidden">
       <style jsx global>{`
+        @keyframes text-shine {
+          0% { background-position: 250% 50%; }
+          100% { background-position: -150% 50%; }
+        }
         @keyframes float-note-1 { 0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.2; } 50% { transform: translateY(-20px) rotate(10deg); opacity: 0.5; } }
         @keyframes float-note-2 { 0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.3; } 50% { transform: translateY(-15px) rotate(-10deg); opacity: 0.6; } }
+        
+        .animate-text-shine { animation: text-shine 8s linear infinite; }
         .animate-float-1 { animation: float-note-1 6s ease-in-out infinite; }
         .animate-float-2 { animation: float-note-2 8s ease-in-out infinite; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -692,28 +687,30 @@ export default function CadenciaPage() {
           <div className="w-8 h-8 flex items-center justify-center text-slate-800">
              <IconBook className="w-6 h-6" />
           </div>
-          <h1 className="text-lg font-black tracking-tight text-slate-700">Cadencia AI</h1>
-        </div>
-        {/* 修正3: 右側に黒でBETA版表記 */}
-        <div className="flex items-center">
-            <span className="px-2 py-0.5 text-[10px] font-medium tracking-widest text-black border border-black rounded-sm opacity-70">
-              BETA
-            </span>
+          <div className="flex flex-col justify-center leading-none">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-lg font-black tracking-tight text-slate-800">Cadencia AI</span>
+              <FeedbackLink className="bg-slate-100 border border-slate-200 text-[8px] font-bold text-slate-500 px-1.5 py-0.5 rounded-md hover:bg-slate-200 transition-colors flex items-center gap-1">
+                <span>BETA</span><IconTwitter />
+              </FeedbackLink>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400 tracking-wide">ポケットに、専属音楽理論家を。</span>
+          </div>
         </div>
       </header>
 
       <main className="pt-24 px-5 max-w-md mx-auto space-y-8 relative z-10">
         
-        {/* 1. Hero with Floating Notes Animation (修正1: 静かなタイトル) */}
+        {/* 1. Hero with Floating Notes Animation */}
         <section className="text-center space-y-2 py-4 relative">
           <div className="absolute top-0 left-10 text-4xl text-cyan-200 animate-float-1 pointer-events-none select-none">♪</div>
           <div className="absolute bottom-0 right-10 text-3xl text-blue-200 animate-float-2 pointer-events-none select-none">♫</div>
           <div className="absolute top-1/2 right-0 text-xl text-purple-200 animate-float-1 pointer-events-none select-none" style={{animationDelay: '1s'}}>♭</div>
           <div className="inline-block relative z-10">
-             <h2 className="text-5xl font-black tracking-tighter pb-2 leading-none flex flex-col items-center">
-                <span className="text-[10px] font-bold text-slate-400 tracking-widest mb-1">カデンツィア</span>
-                <span className={G.heroTextMatte}>Cadencia AI</span>
-             </h2>
+             <h1 className="text-5xl font-black tracking-tighter pb-2 leading-none flex flex-col items-center">
+                <span className="text-[10px] font-bold text-cyan-500 tracking-widest mb-1">カデンツィア</span>
+                <span className={G.heroTextShine}>Cadencia AI</span>
+             </h1>
           </div>
           <p className="text-sm font-bold text-slate-400 relative z-10">
               ポケットに、専属音楽理論家を。
@@ -776,37 +773,27 @@ export default function CadenciaPage() {
                 <IconBook className="text-slate-800 w-5 h-5" />
                 <h2 className="text-lg font-bold text-slate-800">Cadencia AIの分析結果 📖</h2>
               </div>
-              
-              {/* Top Candidate */}
               {candidates[0] && <ResultCard candidate={candidates[0]} isTop={true} isKeySet={isKeySet} rank={1} />}
-              
-              {/* Insight */}
               {infoText && <InsightCard text={infoText} />}
-              
-              {/* Other Candidates (修正5: デザインに馴染ませる) */}
               {candidates.length > 1 && (
-                <div className="space-y-3 px-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="h-px bg-slate-200 flex-1"></div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      その他の候補
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center py-2">
+                    <span className="bg-slate-100 px-4 py-1.5 rounded-full text-[10px] font-bold text-slate-500 uppercase tracking-widest border border-slate-200 shadow-sm">
+                      その他の候補一覧
                     </span>
-                    <div className="h-px bg-slate-200 flex-1"></div>
                   </div>
                   {candidates.slice(1).map((c, i) => (<ResultCard key={c.chord} candidate={c} isTop={false} isKeySet={isKeySet} rank={i + 2} />))}
                 </div>
               )}
-              
-              {/* Chat Widget */}
               <div className="pt-4 pb-8">
-                <ChatWidget 
-                  messages={chatMessages}
+                <AskCard 
                   question={question} 
                   setQuestion={setQuestion} 
                   ask={ask} 
                   isThinking={isThinking} 
                   loading={loading}
                   inputRefProp={inputRef}
+                  answer={answer}
                 />
               </div>
           </div>
@@ -903,5 +890,6 @@ const IconRefresh = ({className}: {className?: string}) => <svg className={class
 const IconTrash = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
 const IconTwitter = ({className}: {className?: string}) => <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>;
 const IconArrowRight = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>;
+const IconRobot = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="12" cy="5" r="2" /><path d="M12 7v4" /><line x1="8" y1="16" x2="8" y2="16" /><line x1="16" y1="16" x2="16" y2="16" /></svg>;
 const IconKeyboard = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="M6 8h.001"/><path d="M10 8h.001"/><path d="M14 8h.001"/><path d="M18 8h.001"/><path d="M6 12h.001"/><path d="M10 12h.001"/><path d="M14 12h.001"/><path d="M18 12h.001"/><path d="M7 16h10"/></svg>;
 const IconX = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
