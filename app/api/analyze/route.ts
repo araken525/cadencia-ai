@@ -90,27 +90,30 @@ function safeArrStr(a: any) {
 
 // -------------------- Types --------------------
 type CandidateObj = {
-  chord: string;           // 表示用コード名（ただし断定しすぎない運用OK）
-  chordType?: string;      // 例: "属七の和音" / "長三和音" / "短三和音" / "半減七" など
-  score: number;           // 0..100（AI基準）
-  confidence: number;      // 0..1（AI基準）
-  chordTones: string[];    // 入力表記ベース
-  extraTones: string[];    // 入力表記ベース
-  reason: string;          // 短い根拠
-  provisional?: boolean;   // 暫定判定フラグ（AIまたは補正で付与）
+  chord: string;           // 表示用コード名
+  chordType?: string;      // 日本語の和音名
+  inversion?: string;      // root, 1st, 2nd, 3rd, unknown
+  romanNumeral?: string;   // I, V7 etc
+  tds?: "T" | "D" | "S" | "SD" | "?";
+  score: number;           // 0..100
+  confidence: number;      // 0..1
+  chordTones: string[];
+  extraTones: string[];
+  reason: string;
+  provisional?: boolean;
 };
 
 type AnalyzeResponse = {
   status: "ok" | "ambiguous" | "insufficient";
-  engineChord: string;     // 最有力表示（最終的に candidates[0] に補正）
-  chordType?: string;      // 最有力の種類（あれば）
-  confidence: number;      // 0..1（最有力）
-  analysis: string;        // 人間向け文章
+  engineChord: string;
+  chordType?: string;
+  confidence: number;
+  analysis: string;
   candidates: CandidateObj[];
-  notes: string[];         // 正規化・表記ソート後
-  keyHint: string;         // 受け取った keyHint（整形）
-  rootHint: string | null; // 受け取った rootHint（整形）
-  bassHint: string | null; // 受け取った bassHint（整形）
+  notes: string[];
+  keyHint: string;
+  rootHint: string | null;
+  bassHint: string | null;
 };
 
 // -------------------- Prompt --------------------
@@ -122,12 +125,16 @@ function buildSystemPrompt() {
 - 入力された音名表記をそのまま使う（異名同音を勝手に統合しない：A#とBb、CbとBを同一視しない）
 - 押された順番は意味を持たない（こちらで既に表記順に整列済み）
 - rootHint が与えられている場合は「根音候補として強く尊重」する（ただし絶対視はせず、矛盾があれば reason に書く）
-- bassHint が与えられている場合は「最低音（バス）候補として強く尊重」し、転回形/分数コードの表記に反映してよい（矛盾があれば reason に書く）
-- keyHint が与えられている場合は、機能（主/属/下属など）の説明に必ず反映する
-- 文脈が無い限り sus4 / add9 などを断定しない（「可能性」か「情報不足」と言う）
+- bassHint が与えられている場合は「最低音（バス）候補として強く尊重」し、転回形/分数コードの表記に反映してよい
+- keyHint が与えられている場合は、機能（TDS）と和音記号を必ず算出する
 - 3音未満なら status="insufficient"
-- 無理にコード名を決めない。曖昧なら status="ambiguous"（ただし candidates は必ず出す）
-- 「半音」「ピッチクラス」「実音高」などの語を出さない（説明は音名と機能和声の言葉で）
+
+【用語と言語の指定：重要】
+- **chordType（和音の種類）は必ず日本語の伝統的な名称で答えてください。**
+  例：長三和音、短三和音、増三和音、減三和音、属七の和音、長七の和音、短七の和音、減七の和音、半減七の和音など。
+- **tds（機能）は必ず大文字一文字 "T", "D", "S" のいずれか（不明なら "?"）で答えてください。**
+  ※準固有和音などで迷う場合は最も近い機能を選んでください。
+- **inversion（転回形）は "root", "1st", "2nd", "3rd", "unknown" のいずれかで返してください。**
 
 【出力はJSONのみ】（説明文やコードブロック禁止）
 必ず次の形で返す：
@@ -142,6 +149,9 @@ function buildSystemPrompt() {
     {
       "chord": string,
       "chordType": string,
+      "inversion": "root" | "1st" | "2nd" | "3rd" | "unknown",
+      "tds": "T" | "D" | "S" | "?",
+      "romanNumeral": string,  // 例: I, V7, ii6, Ger+6
       "score": number,        // 0..100
       "confidence": number,   // 0..1
       "chordTones": string[],
@@ -155,7 +165,6 @@ function buildSystemPrompt() {
 【candidatesの条件】
 - 最大10件、上から有力順
 - chordTones/extraTones は入力表記をそのまま使う
-- 断定できない候補は provisional=true にして reason に「文脈不足」等を書く
 `.trim();
 }
 
@@ -182,10 +191,10 @@ ${bassHint || "none"}
 
 依頼:
 - candidates を必ず返して（最大10）
-- candidates[0] は「現時点で最有力」として扱える形で（ただし曖昧なら provisional=true でOK）
+- candidates[0] は「現時点で最有力」として扱える形で
 - bassHint がある場合、転回形/分数コードの候補（例: C/G など）を上位に置いてよい
 - analysis は「1行結論 → 根拠 → 次に分かると強い情報」
-- 機能和声の言い方で（主/属/下属、導音、倚音・掛留など）
+- chordType は必ず日本語で（例: 長三和音）
 `.trim();
 }
 
@@ -270,12 +279,14 @@ export async function POST(req: Request) {
     // candidates 整形
     const rawCandidates = Array.isArray((json as any).candidates) ? (json as any).candidates : [];
     
-    // ★ここを修正しました！ mapの結果を一旦変数に受け、型を明示してから filter します
     let candidates: CandidateObj[] = rawCandidates
       .slice(0, 10)
       .map((c: any): CandidateObj => ({
         chord: safeStr(c?.chord, "判定不能"),
         chordType: safeStr(c?.chordType, ""),
+        inversion: safeStr(c?.inversion, "unknown"),
+        romanNumeral: safeStr(c?.romanNumeral, ""),
+        tds: (["T", "D", "S"].includes(c?.tds) ? c.tds : "?") as any,
         score: clampScore(c?.score, 0),
         confidence: clamp01(c?.confidence, 0),
         chordTones: safeArrStr(c?.chordTones),
@@ -283,7 +294,7 @@ export async function POST(req: Request) {
         reason: safeStr(c?.reason, ""),
         provisional: typeof c?.provisional === "boolean" ? c.provisional : false,
       }))
-      .filter((c: CandidateObj) => !!c.chord); // ★型指定を追加
+      .filter((c: CandidateObj) => !!c.chord);
 
     // --------------------
     // 順位の保険（重要）
@@ -308,12 +319,9 @@ export async function POST(req: Request) {
     const top = candidates[0];
     let engineChord = safeStr((json as any).engineChord, "").trim();
 
-    // まずAIのengineChordが弱い/空ならtopに寄せる
     if (!engineChord || engineChord === "判定不能") {
       engineChord = top?.chord || `${notesSorted.join("-")}(暫定)`;
     }
-
-    // 最終的な表示は「topを正」とする（UI方針：常に最有力候補）
     if (top?.chord) engineChord = top.chord;
 
     const chordType = (safeStr((json as any).chordType, "").trim() || top?.chordType || "情報不足").trim();
@@ -327,7 +335,6 @@ export async function POST(req: Request) {
     let confidence = clamp01((json as any).confidence, 0);
     if ((!confidence || confidence === 0) && top) confidence = clamp01(top.confidence, 0.3);
 
-    // 暫定バッジ用
     if (top) {
       const prov = status !== "ok" || confidence < 0.5;
       top.provisional = top.provisional || prov;
