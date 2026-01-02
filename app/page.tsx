@@ -4,15 +4,10 @@ import { useMemo, useRef, useState, useEffect } from "react";
 
 // --- Design Constants ---
 const G = {
-  // メインの青基調テーマ
   heroGradient: "bg-gradient-to-r from-blue-600 via-cyan-500 to-sky-400",
-  // 強化されたヒーローテキスト（オーロラ＋立体感）
+  // 修正点1: アニメーション時間を5sから8sに変更してゆっくりに
   heroTextShine: "bg-clip-text text-transparent bg-[linear-gradient(110deg,#0ea5e9,45%,#e0f2fe,50%,#0ea5e9)] bg-[length:250%_100%] animate-text-shine drop-shadow-sm",
-  
-  // カード共通
   cardBase: "bg-white rounded-[32px] shadow-xl shadow-blue-900/5 border border-white overflow-hidden relative",
-  
-  // ガラス質感（キーボード用）
   glassKey: "bg-white/90 backdrop-blur-2xl border-t border-white/60 shadow-[0_-8px_30px_rgba(0,0,0,0.06)]",
 };
 
@@ -21,7 +16,14 @@ const KEYS_ROOT = ["none", "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb
 const KEYS_TYPE = ["Major", "Minor"];
 const SORT_ORDER = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
 
+const SHORTCUT_QUESTIONS = [
+  "詳しく説明して",
+  "他の解釈はある？",
+  "なぜこの機能になるの？",
+];
+
 // --- Types ---
+// (略: 以前と同じ)
 type CandidateObj = {
   chord: string;
   chordType?: string;
@@ -46,6 +48,7 @@ type AnalyzeRes = {
 };
 
 // --- Helper Functions ---
+// (略: 以前と同じ)
 function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateObj[] {
   const arr = (input ?? []).filter(Boolean);
   return arr.map((c, idx) => {
@@ -74,6 +77,7 @@ const getKeyIndex = (note: string): number => {
 };
 
 // --- Components ---
+// (略: Icon, FeedbackLink, WelcomeModal, MiniPiano, ResultCard, InsightCard, LoadingOverlay は以前と同じ)
 
 const FeedbackLink = ({ className, children }: { className?: string, children: React.ReactNode }) => (
   <a href="https://x.com/araken525_toho?s=21" target="_blank" rel="noopener noreferrer" className={className}>
@@ -81,14 +85,10 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// Welcome Modal (Revised per request)
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   return (
     <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xl flex items-center justify-center p-5 animate-in fade-in duration-500">
-      {/* Container */}
       <div className={`${G.cardBase} w-full max-w-sm max-h-[90vh] overflow-y-auto bg-gradient-to-b from-white to-slate-50 flex flex-col shadow-2xl shadow-blue-900/20`}>
-        
-        {/* 1. Hero / Title */}
         <div className="pt-8 pb-4 px-6 text-center relative">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-cyan-500/30 mx-auto mb-4 transform -rotate-3">
              <IconBook className="w-7 h-7" />
@@ -97,11 +97,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
           <div className={`text-3xl font-black tracking-tight ${G.heroTextShine} mb-2`}>Cadencia AI</div>
           <p className="text-xs font-bold text-slate-500">ポケットに、専属音楽理論家を。</p>
         </div>
-
-        {/* 2. Features Cards */}
         <div className="px-6 space-y-3">
-          
-          {/* Feature: Pro Analysis */}
           <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
                <span className="text-lg">🎹</span>
@@ -113,8 +109,6 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
                </p>
              </div>
           </div>
-
-          {/* Feature: AI Powered */}
           <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-2xl border border-blue-100 shadow-sm flex items-center gap-4 relative overflow-hidden">
              <div className="absolute right-0 top-0 w-20 h-20 bg-blue-400/10 rounded-full blur-xl pointer-events-none"></div>
              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-blue-500 shrink-0 shadow-sm z-10">
@@ -129,16 +123,10 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
                </p>
              </div>
           </div>
-
         </div>
-
-        {/* 3. Beta Status (Dark Theme) */}
         <div className="mt-auto px-6 py-6 space-y-4">
-          
           <div className="bg-slate-900 rounded-2xl p-4 shadow-lg flex items-start gap-3 relative overflow-hidden group">
-             {/* Subtle Glow */}
              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all"></div>
-             
              <div className="text-2xl pt-1 relative z-10">💻</div>
              <div className="relative z-10 flex-1">
                 <div className="flex justify-between items-center mb-1">
@@ -153,7 +141,6 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
                 </FeedbackLink>
              </div>
           </div>
-
           <button 
             onClick={onClose}
             className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2"
@@ -162,14 +149,39 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
             <IconArrowRight className="w-4 h-4" />
           </button>
         </div>
-
       </div>
     </div>
   );
 };
 
+// 修正点2: キーボード操作ガイドカードコンポーネントを追加
+const KeyboardGuideCard = ({ onClose }: { onClose: () => void }) => (
+  <div className={`${G.cardBase} bg-blue-50/50 border-blue-100 shadow-sm mb-6 animate-in fade-in slide-in-from-bottom-2`}>
+    <button onClick={onClose} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 p-1">
+      <IconX className="w-4 h-4" />
+    </button>
+    <div className="p-5 pb-4">
+      <h3 className="text-xs font-bold text-blue-600 mb-3 flex items-center gap-2">
+        <IconKeyboard className="w-4 h-4" /> キーボードの操作方法
+      </h3>
+      <ul className="space-y-2.5">
+        <GuideItem icon="👆" text={<>キーを<span className="font-bold">タップ</span>して入力しよう</>} />
+        <GuideItem icon="↕️" text={<>キーを<span className="font-bold">上にフリックで♯</span>、<span className="font-bold">下にフリックで♭</span>がつきます</>} />
+        <GuideItem icon="🎛️" text={<><span className="font-bold">根音</span>または<span className="font-bold">最低音</span>は専用のキーで指定できます</>} />
+        <GuideItem icon="🔑" text={<><span className="font-bold">調性(Key)</span>は専用のエリアで指定できます</>} />
+        <GuideItem icon="🤖" text={<><span className="font-bold">3つ以上の音</span>を選択し、<span className="font-bold">分析ボタン</span>でAIの分析開始！</>} />
+      </ul>
+    </div>
+  </div>
+);
 
-// 1. Mini Piano
+const GuideItem = ({ icon, text }: { icon: string, text: React.ReactNode }) => (
+  <li className="flex items-start gap-3 text-[11px] text-slate-600 leading-tight">
+    <span className="text-sm shrink-0 relative top-[-1px]">{icon}</span>
+    <span>{text}</span>
+  </li>
+);
+
 const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassHint: string | null, rootHint: string | null }) => {
   const keys = [
     { idx: 0, type: "white", x: 0 }, { idx: 1, type: "black", x: 10 },
@@ -208,7 +220,7 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   );
 };
 
-// 2. Flick Key
+// 修正点4: ♯と♭のガイドを常時薄く表示するよう変更
 const FlickKey = ({ 
   noteBase, currentSelection, isBass, isRoot, onInput, className
 }: { 
@@ -259,15 +271,14 @@ const FlickKey = ({
     `}
     onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       
-      {/* Guide Indicators */}
-      <div className={`absolute top-1 left-0 right-0 flex justify-center transition-all duration-300 ${isUp ? "opacity-100 -translate-y-1 text-cyan-500 scale-125" : "opacity-0"}`}>
+      {/* 修正点4: ガイドを常時薄く表示し、操作時に濃く、位置を移動させる */}
+      <div className={`absolute top-1 left-0 right-0 flex justify-center transition-all duration-300 ${isUp ? "opacity-100 -translate-y-1 text-cyan-500 scale-125" : "opacity-30 text-slate-400"}`}>
         <span className="text-[8px] font-bold leading-none">♯</span>
       </div>
-      <div className={`absolute bottom-1 left-0 right-0 flex justify-center transition-all duration-300 ${isDown ? "opacity-100 translate-y-1 text-cyan-500 scale-125" : "opacity-0"}`}>
+      <div className={`absolute bottom-1 left-0 right-0 flex justify-center transition-all duration-300 ${isDown ? "opacity-100 translate-y-1 text-cyan-500 scale-125" : "opacity-30 text-slate-400"}`}>
         <span className="text-[8px] font-bold leading-none">♭</span>
       </div>
       
-      {/* Label */}
       <span className={`text-2xl font-medium tracking-tight transition-all duration-200 ${isRoot ? "text-rose-500" : isBass ? "text-amber-500" : isActive ? "text-cyan-600" : "text-slate-600"}`} 
         style={{ transform: `translateY(${offsetY * 0.4}px)` }}>
         {displayLabel}
@@ -276,7 +287,6 @@ const FlickKey = ({
   );
 };
 
-// 3. Result Card
 const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: CandidateObj, isTop: boolean, isKeySet: boolean, rank: number }) => {
   const isProvisional = isTop && (candidate.provisional || candidate.score < 50);
   const percent = candidate.score;
@@ -285,14 +295,10 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
 
   return (
     <div className={`relative overflow-hidden transition-all duration-700 group ${G.cardBase} p-0`}>
-      
-      {/* Translucent Rank Number */}
       <div className={`absolute -right-4 -bottom-6 font-black select-none pointer-events-none z-0 tracking-tighter leading-none ${isTop ? "text-slate-100 text-[10rem]" : "text-slate-50 text-[6rem]"}`}>
         {String(rank).padStart(2, '0')}
       </div>
-
       <div className="relative z-10 p-6 flex flex-col gap-6">
-        {/* Header */}
         <div className="flex justify-between items-start">
           <div className="flex flex-col gap-2">
              {isTop && (
@@ -318,11 +324,7 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">CONFIDENCE</span>
           </div>
         </div>
-
-        {/* Specs Bar (Uniform height & colors) */}
         <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 shadow-inner flex items-stretch justify-between divide-x divide-slate-200/60 h-24">
-            
-            {/* Function */}
             <div className={`flex-1 flex flex-col items-center justify-center px-1`}>
                 <span className="text-[9px] font-bold text-slate-400 mb-1">機能</span>
                 <span className={`text-2xl font-black leading-none ${
@@ -334,22 +336,16 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
                   {!isKeySet ? "―" : (candidate.tds === "?" ? "―" : candidate.tds === "SD" ? "S" : candidate.tds)}
                 </span>
             </div>
-            
-            {/* Roman */}
             <div className={`flex-1 flex flex-col items-center justify-center px-1`}>
                 <span className="text-[9px] font-bold text-slate-400 mb-1">記号</span>
                 <span className={`text-xl font-serif font-black leading-none ${!isKeySet ? "text-slate-200" : "text-slate-700"}`}>
                   {!isKeySet ? "―" : (candidate.romanNumeral || "―")}
                 </span>
             </div>
-            
-            {/* Inversion */}
             <div className="flex-1 flex flex-col items-center justify-center px-1">
                 <span className="text-[9px] font-bold text-slate-400 mb-1">転回形</span>
                 <span className="text-xs font-bold text-slate-600 leading-none text-center">{invJp}</span>
             </div>
-            
-            {/* Type */}
             <div className="flex-1 flex flex-col items-center justify-center px-1">
                 <span className="text-[9px] font-bold text-slate-400 mb-1">種類</span>
                 <span className="text-xs font-bold text-slate-600 leading-none text-center">{candidate.chordType || "―"}</span>
@@ -360,14 +356,11 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
   );
 };
 
-// 4. Insight Card
 const InsightCard = ({ text }: { text: string }) => (
   <div className={`${G.cardBase} p-6 overflow-hidden bg-gradient-to-br from-white to-slate-50`}>
-    {/* Bold Watermark */}
     <div className="absolute -right-4 top-2 text-[5rem] font-black text-slate-900/5 pointer-events-none select-none z-0 transform rotate-[-5deg] tracking-tighter leading-none whitespace-nowrap">
        Cadencia AI
     </div>
-
     <div className="relative z-10">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md">
@@ -380,7 +373,7 @@ const InsightCard = ({ text }: { text: string }) => (
   </div>
 );
 
-// 5. Ask Card
+// 修正点6: 質問カードにショートカットボタンを追加
 const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp, answer }: any) => {
   return (
     <div className={`${G.cardBase} p-0 flex flex-col overflow-hidden`}>
@@ -390,6 +383,22 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
         </h3>
       </div>
       <div className="p-5 bg-slate-50/30 flex flex-col gap-4 min-h-[120px]">
+        {/* 修正点6: ショートカットボタンエリアを追加 */}
+        {!answer && !isThinking && (
+           <div className="flex flex-wrap gap-2 mb-2">
+              {SHORTCUT_QUESTIONS.map((q) => (
+                <button 
+                  key={q} 
+                  onClick={() => { setQuestion(q); setTimeout(ask, 0); }}
+                  disabled={loading || isThinking}
+                  className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-full hover:bg-blue-100 active:scale-95 transition-all"
+                >
+                  {q}
+                </button>
+              ))}
+           </div>
+        )}
+
         {answer && (
            <div className="flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shrink-0 shadow-sm mt-1">
@@ -410,7 +419,7 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
               </div>
            </div>
         )}
-        {!answer && !isThinking && (
+        {!answer && !isThinking && SHORTCUT_QUESTIONS.length === 0 && (
            <div className="text-center py-6 text-slate-300 text-xs font-bold">
               気になったことを入力してみよう
            </div>
@@ -440,20 +449,15 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
   );
 }
 
-// 6. Loading Overlay (Enhanced with "Brain" Effect)
 const LoadingOverlay = () => (
   <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/20 backdrop-blur-lg animate-in fade-in duration-500 px-6">
     <div className="relative w-24 h-24 mb-8">
-      {/* Outer Pulse */}
       <div className="absolute inset-0 rounded-full bg-cyan-400/20 animate-ping"></div>
-      {/* Spinning Ring */}
       <div className="absolute inset-0 rounded-full border-[3px] border-white/10 border-t-cyan-400 animate-spin"></div>
-      {/* Inner Glow */}
       <div className="absolute inset-4 rounded-full bg-white/90 shadow-[0_0_30px_rgba(34,211,238,0.5)] flex items-center justify-center">
          <IconSparkles className="w-8 h-8 text-cyan-500 animate-pulse" />
       </div>
     </div>
-    
     <div className="text-center space-y-4 max-w-xs relative z-10">
       <h2 className="text-lg font-black text-slate-800 drop-shadow-sm leading-tight">
         Cadencia AIが和音を分析し、<br/>解説の生成をしています…
@@ -480,6 +484,8 @@ export default function CadenciaPage() {
   const [inputMode, setInputMode] = useState<"normal" | "root" | "bass">("normal");
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(true);
   const [showWelcome, setShowWelcome] = useState(true);
+  // 修正点2: ガイド表示用の状態を追加
+  const [showGuide, setShowGuide] = useState(true);
 
   const [candidates, setCandidates] = useState<CandidateObj[]>([]);
   const [infoText, setInfoText] = useState<string>("");
@@ -492,6 +498,10 @@ export default function CadenciaPage() {
   const canAnalyze = selected.length >= 3;
   const isKeySet = keyRoot !== "none";
   const hasResult = candidates.length > 0;
+
+  // 修正点5: キーボードスワイプ用の状態変数
+  const [dragStartY, setDragStartY] = useState<number | null>(null);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
 
   const sortedSelected = useMemo(() => {
     return [...selected].sort((a, b) => SORT_ORDER.indexOf(a) - SORT_ORDER.indexOf(b));
@@ -590,6 +600,27 @@ export default function CadenciaPage() {
     } catch (e: any) { setAnswer(`通信エラー: ${e?.message}`); } finally { setIsThinking(false); setQuestion(""); }
   }
 
+  // 修正点5: キーボードスワイプ操作のハンドラ
+  const handleDragStart = (e: React.PointerEvent) => {
+    if (!isKeyboardOpen) return;
+    setDragStartY(e.clientY);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleDragMove = (e: React.PointerEvent) => {
+    if (dragStartY === null) return;
+    const delta = e.clientY - dragStartY;
+    if (delta > 0) setKeyboardOffset(delta);
+  };
+
+  const handleDragEnd = (e: React.PointerEvent) => {
+    if (dragStartY === null) return;
+    if (keyboardOffset > 50) setIsKeyboardOpen(false);
+    setDragStartY(null);
+    setKeyboardOffset(0);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans pb-[420px] selection:bg-cyan-100 overflow-x-hidden">
       <style jsx global>{`
@@ -600,7 +631,8 @@ export default function CadenciaPage() {
         @keyframes float-note-1 { 0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.2; } 50% { transform: translateY(-20px) rotate(10deg); opacity: 0.5; } }
         @keyframes float-note-2 { 0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.3; } 50% { transform: translateY(-15px) rotate(-10deg); opacity: 0.6; } }
         
-        .animate-text-shine { animation: text-shine 5s linear infinite; }
+        /* 修正点1: アニメーション時間を8sに変更 */
+        .animate-text-shine { animation: text-shine 8s linear infinite; }
         .animate-float-1 { animation: float-note-1 6s ease-in-out infinite; }
         .animate-float-2 { animation: float-note-2 8s ease-in-out infinite; }
       `}</style>
@@ -630,11 +662,9 @@ export default function CadenciaPage() {
         
         {/* 1. Hero with Floating Notes Animation */}
         <section className="text-center space-y-2 py-4 relative">
-          {/* Floating Elements */}
           <div className="absolute top-0 left-10 text-4xl text-cyan-200 animate-float-1 pointer-events-none select-none">♪</div>
           <div className="absolute bottom-0 right-10 text-3xl text-blue-200 animate-float-2 pointer-events-none select-none">♫</div>
           <div className="absolute top-1/2 right-0 text-xl text-purple-200 animate-float-1 pointer-events-none select-none" style={{animationDelay: '1s'}}>♭</div>
-
           <div className="inline-block relative z-10">
              <h1 className="text-5xl font-black tracking-tighter pb-2 leading-none flex flex-col items-center">
                 <span className="text-[10px] font-bold text-cyan-500 tracking-widest mb-1">カデンツィア</span>
@@ -646,13 +676,15 @@ export default function CadenciaPage() {
           </p>
         </section>
 
+        {/* 修正点2: キーボード操作ガイドカードを表示 */}
+        {showGuide && <KeyboardGuideCard onClose={() => setShowGuide(false)} />}
+
         {/* Input Card */}
         <section className={`${G.cardBase} bg-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
            <div className="p-5 flex flex-col min-h-[240px]">
               <h3 className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
                  Cadencia AIに分析と解説をさせよう
               </h3>
-
               <div className="flex-1 flex flex-col items-center justify-center">
                  {selected.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-4 animate-in fade-in zoom-in duration-500 py-6">
@@ -697,15 +729,12 @@ export default function CadenciaPage() {
         {/* --- Results Section --- */}
         {hasResult && (
           <div ref={resultRef} className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-              
               <div className="flex items-center gap-2 px-1 py-2">
                 <IconBook className="text-slate-800 w-5 h-5" />
                 <h2 className="text-lg font-bold text-slate-800">Cadencia AIの分析結果 📖</h2>
               </div>
-
               {candidates[0] && <ResultCard candidate={candidates[0]} isTop={true} isKeySet={isKeySet} rank={1} />}
               {infoText && <InsightCard text={infoText} />}
-
               {candidates.length > 1 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-center py-2">
@@ -716,7 +745,6 @@ export default function CadenciaPage() {
                   {candidates.slice(1).map((c, i) => (<ResultCard key={c.chord} candidate={c} isTop={false} isKeySet={isKeySet} rank={i + 2} />))}
                 </div>
               )}
-
               <div className="pt-4 pb-8">
                 <AskCard 
                   question={question} 
@@ -730,14 +758,23 @@ export default function CadenciaPage() {
               </div>
           </div>
         )}
-
       </main>
 
       {/* --- Floating Glass Keyboard --- */}
-      <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glassKey} rounded-t-[36px] transition-transform duration-500 ease-in-out ${isKeyboardOpen ? "translate-y-0" : "translate-y-[calc(100%-30px)]"}`}>
-        
+      {/* 修正点5: スワイプ操作のためにtransformを動的に制御し、イベントハンドラを追加 */}
+      <div 
+        className={`fixed bottom-0 inset-x-0 z-50 ${G.glassKey} rounded-t-[36px] transition-transform duration-300 ease-out touch-none ${isKeyboardOpen ? "translate-y-0" : "translate-y-[calc(100%-30px)]"}`}
+        style={{ transform: isKeyboardOpen ? `translateY(${keyboardOffset}px)` : undefined }}
+      >
         {/* Handle */}
-        <div className="h-8 flex items-center justify-center cursor-pointer active:opacity-50" onClick={() => setIsKeyboardOpen(!isKeyboardOpen)}>
+        <div 
+          className="h-8 flex items-center justify-center cursor-grab active:cursor-grabbing active:opacity-50" 
+          onClick={() => setIsKeyboardOpen(!isKeyboardOpen)}
+          onPointerDown={handleDragStart}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+          onPointerCancel={handleDragEnd}
+        >
            <div className="w-12 h-1 bg-slate-300 rounded-full"></div>
         </div>
 
@@ -754,27 +791,23 @@ export default function CadenciaPage() {
             <FlickKey className="col-start-3 row-start-2" noteBase="A" currentSelection={selected.find(s=>s.startsWith("A"))} isBass={bassHint?.startsWith("A")??false} isRoot={rootHint?.startsWith("A")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-4 row-start-2" noteBase="B" currentSelection={selected.find(s=>s.startsWith("B"))} isBass={bassHint?.startsWith("B")??false} isRoot={rootHint?.startsWith("B")??false} onInput={handleKeyInput} />
 
-            {/* Row 3: Mode & Key */}
+            {/* Row 3: Mode & Key (修正点3: デザインを元の3分割に戻す) */}
             <div className="col-start-1 row-start-3 h-14 flex flex-col gap-1.5">
                <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border ${inputMode === "root" ? "bg-rose-500 text-white border-rose-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>根音</button>
                <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border ${inputMode === "bass" ? "bg-amber-500 text-white border-amber-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>最低音</button>
             </div>
 
-            <div className="col-start-2 col-span-2 row-start-3 h-14 bg-slate-100/50 backdrop-blur-md rounded-2xl border border-white/40 shadow-inner flex items-center p-1 gap-1">
-                <div className="w-12 h-full flex items-center justify-center rounded-xl bg-white/60 shadow-sm border border-white/50">
-                   <span className="text-[10px] font-bold text-slate-500 leading-tight text-center">Key</span>
+            <div className="col-start-2 col-span-2 row-start-3 h-14 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-sm flex items-center overflow-hidden">
+                <div className="flex-[0.8] flex items-center justify-center border-r-2 border-dotted border-slate-400/30 h-full px-1">
+                   <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap leading-tight text-center">調性は</span>
                 </div>
-                <div className="flex-1 relative h-full group">
-                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyRoot} onChange={(e) => setKeyRoot(e.target.value)}>{KEYS_ROOT.map(k => <option key={k} value={k}>{k === "none" ? "ー" : k}</option>)}</select>
-                   <div className={`w-full h-full flex items-center justify-center rounded-xl border transition-all ${keyRoot !== "none" ? "bg-white border-blue-200 shadow-sm" : "border-transparent"}`}>
-                     <span className={`text-xs font-black ${keyRoot === "none" ? "text-slate-400" : "text-blue-600"}`}>{keyRoot === "none" ? "ー" : keyRoot}</span>
-                   </div>
+                <div className="flex-1 relative h-full border-r-2 border-dotted border-slate-400/30 group active:bg-black/5 transition-colors">
+                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyRoot} onChange={(e) => setKeyRoot(e.target.value)}>{KEYS_ROOT.map(k => <option key={k} value={k}>{k === "none" ? "なし" : k}</option>)}</select>
+                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-400" : "text-cyan-600"}`}>{keyRoot === "none" ? "なし" : keyRoot}</span></div>
                 </div>
-                <div className={`flex-1 relative h-full transition-opacity ${keyRoot === "none" ? "opacity-40" : "opacity-100"}`}>
-                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={keyRoot === "none"}>{KEYS_TYPE.map(k => <option key={k} value={k}>{k}</option>)}</select>
-                   <div className={`w-full h-full flex items-center justify-center rounded-xl border transition-all ${keyRoot !== "none" ? "bg-white border-purple-200 shadow-sm" : "border-transparent"}`}>
-                     <span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-300" : "text-purple-600"}`}>{keyType}</span>
-                   </div>
+                <div className={`flex-1 relative h-full active:bg-black/5 transition-colors ${keyRoot === "none" ? "opacity-50" : ""}`}>
+                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={keyRoot === "none"}>{KEYS_TYPE.map(k => <option key={k} value={k}>{k === "Major" ? "Major" : "Minor"}</option>)}</select>
+                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-300" : "text-purple-600"}`}>{keyType === "Major" ? "Major" : "Minor"}</span></div>
                 </div>
             </div>
             
@@ -810,7 +843,7 @@ export default function CadenciaPage() {
   );
 }
 
-// Icons
+// Icons (IconXを追加)
 const IconBook = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>;
 const IconSparkles = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/></svg>;
 const IconSend = ({className}: {className?: string}) => <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
@@ -820,3 +853,4 @@ const IconTwitter = ({className}: {className?: string}) => <svg className={class
 const IconArrowRight = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>;
 const IconRobot = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="12" cy="5" r="2" /><path d="M12 7v4" /><line x1="8" y1="16" x2="8" y2="16" /><line x1="16" y1="16" x2="16" y2="16" /></svg>;
 const IconKeyboard = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="M6 8h.001"/><path d="M10 8h.001"/><path d="M14 8h.001"/><path d="M18 8h.001"/><path d="M6 12h.001"/><path d="M10 12h.001"/><path d="M14 12h.001"/><path d="M18 12h.001"/><path d="M7 16h10"/></svg>;
+const IconX = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
