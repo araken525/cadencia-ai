@@ -1,5 +1,6 @@
 // app/api/chat/route.ts
 export const runtime = "nodejs";
+export const maxDuration = 60; // ← ★これを追加！
 
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";

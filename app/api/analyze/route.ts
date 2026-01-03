@@ -1,5 +1,6 @@
 // app/api/analyze/route.ts
 export const runtime = "nodejs";
+export const maxDuration = 60; // ← ★これを追加！(最大60秒まで延長)
 
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
