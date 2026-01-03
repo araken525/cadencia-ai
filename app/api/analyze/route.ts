@@ -12,7 +12,12 @@ const model = genAI ? genAI.getGenerativeModel({ model: modelName }) : null;
 
 // -------------------- Utils --------------------
 function normalizeAccidentals(s: string) {
-  return (s ?? "").trim().replaceAll("♭", "b").replaceAll("♯", "#").replaceAll("𝄫", "bb").replaceAll("𝄪", "##");
+  return (s ?? "")
+    .trim()
+    .replaceAll("♭", "b")
+    .replaceAll("♯", "#")
+    .replaceAll("𝄫", "bb")
+    .replaceAll("𝄪", "##");
 }
 
 type Acc = "" | "#" | "##" | "b" | "bb";
@@ -42,70 +47,15 @@ function uniq<T>(arr: T[]) {
   return [...new Set(arr)];
 }
 
-function parseJsonSafely(text: string) {
-  const t = (text ?? "").trim();
-  try { return JSON.parse(t); } catch {}
-  const m = t.match(/\{[\s\S]*\}/);
-  if (m) { try { return JSON.parse(m[0]); } catch {} }
-  throw new Error("AIのJSONパースに失敗しました");
+function asNoteOrNull(x: any): string | null {
+  if (typeof x !== "string") return null;
+  const n = normalizeAccidentals(x);
+  if (!/^[A-G]((?:bb|b|##|#)?)$/.test(n)) return null;
+  return n;
 }
-
-function clamp01(n: any, fallback = 0) {
-  const x = typeof n === "number" ? n : Number(n);
-  return Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : fallback;
-}
-
-function clampScore(n: any, fallback = 0) {
-  const x = typeof n === "number" ? n : Number(n);
-  return Number.isFinite(x) ? Math.max(0, Math.min(100, Math.round(x))) : fallback;
-}
-
-function safeStr(s: any, fallback = "") { return typeof s === "string" ? s : fallback; }
-function safeArrStr(a: any) { return Array.isArray(a) ? a.filter((x) => typeof x === "string") : []; }
-
-function getChordRoot(chordName: string): string {
-  const core = chordName.split("/")[0];
-  const m = core.match(/^([A-G](?:bb|b|##|#)?)/);
-  return m ? normalizeAccidentals(m[1]) : "";
-}
-
-function getChordBass(chordName: string): string {
-  if (chordName.includes("/")) {
-    return normalizeAccidentals(chordName.split("/")[1]);
-  }
-  return getChordRoot(chordName);
-}
-
-// -------------------- Types --------------------
-type CandidateObj = {
-  chord: string;
-  chordType?: string;
-  inversion?: string;
-  romanNumeral?: string;
-  tds?: "T" | "D" | "S" | "SD" | "?";
-  score: number;
-  confidence: number;
-  chordTones: string[];
-  extraTones: string[];
-  reason: string;
-  provisional?: boolean;
-};
-
-type AnalyzeResponse = {
-  status: "ok" | "ambiguous" | "insufficient";
-  engineChord: string;
-  chordType?: string;
-  confidence?: number;
-  candidates: CandidateObj[];
-  analysis: string;
-  notes: string[];
-  keyHint: string;
-  rootHint: string | null;
-  bassHint: string | null;
-};
 
 // ============================================================
-// 1. 特殊和音ロジック（共通辞書）
+// 共通の特殊和音ロジック
 // ============================================================
 const SPECIAL_CHORD_RULES = `
 【特殊和音の判定辞書（優先度：高）】
@@ -117,7 +67,7 @@ const SPECIAL_CHORD_RULES = `
 4. **ナポリの六:** 短調でIIの根音を半音下げた長三和音の第1転回形。正式には「ナポリのII」または「II¹（根音変位）」だが、通称「ナポリの六（N⁶）」にも言及する。
 5. **ピカルディのI:** 短調の曲が長主和音で終わる場合。「ピカルディ終止」とする。
 6. **Iの第2転回形 (I²):** バスが属音の場合。「終止四六（D機能）」を基本とし、文脈により経過・補助四六とする。
-7. **準固有和音 (Moll-Dur):** 長調設定(keyHint=Major)で、同主短調の和音（IVm, bVIなど）が使われた場合。解説では「準固有和音（モル・ドゥア）」と言及し、記号は左上に○を付した形（本システムでは **°VI** 等）で扱う。長調の中に切ない響きをもたらす。
+7. **準固有和音 (Moll-Dur):** 長調設定(keyHint=Major)で、同主短調の和音（IVm, bVIなど）が使われた場合。解説では「準固有和音（モル・ドゥア）」と言及し、記号は左上に○を付した形（本システムでは **°VI** 等）で扱う。
 8. **ドッペル・ドミナント:** 属和音(V)の完全5度上に位置するII（長三和音またはII7）。「VのV」としての推進力に言及する。
 9. **根音省略の属九:** 減七の和音は、機能的には「根音省略の属九（V₉）」としてD機能を持つとみなす。
 10. **Iの付加6:** ポピュラーではI6だが、芸大和声ではVIの七の第1転回形（VI₇¹）として扱うことが多い。
@@ -125,38 +75,12 @@ const SPECIAL_CHORD_RULES = `
 `;
 
 // ============================================================
-// 2. 出力フォーマット（ここが抜けていたので共通化！）
+// 共通の表記ルール（ここを分離して確実に適用！）
 // ============================================================
-const OUTPUT_FORMAT_JSON = `
-【出力はJSONのみ】
-以下のJSONフォーマットを厳守してください。Markdownや他のテキストは含めないでください。
-
-{
-  "status": "ok" | "ambiguous" | "insufficient",
-  "engineChord": string, // 代表的なコード名（C, Cm/Ebなど）
-  "chordType": string, // 和音の種類（長三和音、属七の和音など許可された名称）
-  "confidence": number, // 0.0-1.0
-  "analysis": string, // 解説文
-  "candidates": [
-    {
-      "chord": string,
-      "chordType": string,
-      "inversion": "root" | "1st" | "2nd" | "3rd" | "unknown",
-      "tds": "T" | "D" | "S" | "?",
-      "romanNumeral": string,
-      "score": number, // 0-100
-      "confidence": number, // 0.0-1.0
-      "chordTones": string[],
-      "extraTones": string[],
-      "reason": string,
-      "provisional": boolean
-    }
-  ]
-}
-
-【candidatesの条件】
-- 最大10件、上から有力順
-- candidates[0] は現時点で最有力なものにする
+const NOTATION_RULES = `
+【和音記号表記】
+- 転回形は右上（I¹）、種類は右下（V₇）に記述。
+- 数字付き低音ではなく、芸大和声式の転回指数を使用すること。
 `;
 
 // ============================================================
@@ -168,7 +92,8 @@ function buildExpertSystemPrompt() {
 
 【回答のスタイル：最重要】
 - **Markdown記法は禁止です。プレーンテキストのみで出力してください。**
-- 挨拶や前置きは省略し、結論から**短く簡潔に**述べてください。
+- **「こんにちは」や「はい、解説します」等の挨拶・前置きは一切禁止です。**
+- 1文字目から結論（答え）を書き始めてください。
 - 口調は断定的で、アカデミックなトーンを維持してください。
 
 【先生としてのスタンス】
@@ -187,12 +112,12 @@ function buildExpertSystemPrompt() {
 - 減５短７の和音（導七の和音）, 増七の和音
 - 属九の和音, 属短九の和音, 増六の和音
 
-【和音記号表記】
-- 転回形は右上（I¹）、種類は右下（V₇）に記述。
-- TDS機能は大文字（T, D, S）。
-
 ${SPECIAL_CHORD_RULES}
-${OUTPUT_FORMAT_JSON}
+${NOTATION_RULES}
+
+【回答モード】
+- 一般論は定義を簡潔に。
+- 入力音については、属和音（D）や第7音の**「解決（進行方向）」**を必ず指摘すること。
 `.trim();
 }
 
@@ -202,37 +127,62 @@ ${OUTPUT_FORMAT_JSON}
 function buildBeginnerSystemPrompt() {
   return `
 あなたは吹奏楽部や合唱部の中高生にも分かりやすく和声（ハーモニー）を教える、親切な音楽の先生です。
-判定ロジックは「芸大和声」に基づいて正確に保ちつつ、解説（analysis）は優しく、噛み砕いて記述してください。
+専門的な判定は「芸大和声」に基づいて正確に保ちつつ、言葉選びは優しく、噛み砕いて説明してください。
 
-【絶対ルール】
-- 判定や記号（romanNumeral）は正確に芸大和声のルール（Expertと同じ）に従ってください。嘘は教えないこと。
-- **解説文（analysis）のみ、ターゲットを「中高生の初心者」に合わせる。**
-- Markdownは使用禁止。
+【回答のスタイル：最重要】
+- **Markdown記法は禁止です。プレーンテキストのみで出力してください。**
+- **「こんにちは」や「質問ありがとうございます」等の挨拶・前置きは一切禁止です。**
+- 1文字目から質問への回答を始めてください。
+- 口調は**「〜ですね」「〜ですよ」**といった丁寧語（です・ます調）を使ってください。
 
-【解説文（analysis）の書き方】
-- 口調は**「〜ですね」「〜ですよ」**といった丁寧語（です・ます調）。
-- **調の名前:** 「ハ長調（C-dur）」のように日本語とドイツ語を併記してあげるのが親切です。
-- **専門用語:** 「準固有和音」や「ナポリの六」などの用語は使ってOKですが、必ず簡単な説明を添えてください。
-  - 例: 「これは『ナポリの六』と呼ばれる、とても劇的な変化をもたらす和音ですね。」
-  - 例: 「『準固有和音』です。ちょっと切ない響きがしますね。」
-- **解決:** 「この音は不安定なので、次に〇〇に行きたがっています」と感覚的に伝える。
+【用語・言語の指定】
+- 調の名前は「ハ長調（C-dur）」「イ短調（a-moll）」のように、日本語をメインにしつつドイツ語も添えて慣れさせてあげてください。
+- 「Key」ではなく「調」と言ってください。
 
 ${SPECIAL_CHORD_RULES}
-${OUTPUT_FORMAT_JSON}
+${NOTATION_RULES}
+
+【わかりやすい解説のコツ】
+- **判定ロジックの適用:** 上記の「特殊和音判定辞書」に該当する場合は、ロジック自体はそれに従ってください（例: IV6ならII7の1転回形とみなす）。
+- **説明の変換:** ただし、説明する際は難しくなりすぎないようにしてください。
+  - **準固有和音:** 「切ない響きがする『準固有和音（モル・ドゥア）』ですね。専門的には左上に丸（°）をつけて表します」と伝える。
+  - **IVの付加6:** 「ポピュラーではIV6ですが、クラシックの理論では『IIの七』の仲間として扱うことが多いですよ」と教える。
+  - **解決:** 「この音は不安定なので、隣の〇〇の音に進みたがっています（解決）」のように表現する。
+  - **属七（V7）:** 「ドキドキする響き」「トニック（I）に戻りたくなる響き」と伝える。
 `.trim();
 }
 
-function buildUserPrompt(params: { notesSorted: string[]; keyHint: string; rootHint: string | null; bassHint: string | null; }) {
-  return `
-入力音: ${params.notesSorted.join(", ")}
-keyHint: ${params.keyHint}
-rootHint: ${params.rootHint || "none"}
-bassHint: ${params.bassHint || "none"}
+function buildUserPrompt(params: {
+  notes: string[];
+  question: string;
+  bassHint: string | null;
+  rootHint: string | null;
+  keyHint: string | null;
+  engineChord: string | null;
+  candidates: string[] | null;
+}) {
+  const keyLine = params.keyHint ? params.keyHint : "（指定なし）";
+  const bassLine = params.bassHint ? params.bassHint : "（指定なし）";
+  const rootLine = params.rootHint ? params.rootHint : "（指定なし）";
+  
+  const engineLine = params.engineChord ? params.engineChord : "（未提供）";
+  const candLine = params.candidates && params.candidates.length > 0 
+    ? params.candidates.join(", ") 
+    : "（なし）";
 
-依頼:
-- candidates[0] は現時点で最有力なものにしてください。
-- analysis は「1行結論 → 構成音の確認 → 響きの特徴や役割」の順で、指定された人格（先生）になりきって書いてください。
-- **Markdownは使用禁止です。**
+  return `
+【生徒の状況】
+- 音: ${params.notes.join(", ")}
+- 指定: Bass=${bassLine}, Root=${rootLine}, 調=${keyLine}
+- AI判定: ${engineLine} (他: ${candLine})
+
+【生徒の質問】
+${params.question}
+
+【回答への指示】
+- プレーンテキストで答えてください。
+- 和音名は「C」や「Cm」のように記述してください。
+- 挨拶は省略し、すぐに回答を始めてください。
 `.trim();
 }
 
@@ -244,144 +194,63 @@ export async function POST(req: Request) {
     // ★ モード判定
     const mode = (body?.mode === "beginner") ? "beginner" : "expert";
 
-    const selectedNotesRaw: string[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
-    const keyHintRaw = typeof body?.keyHint === "string" ? body.keyHint : "none";
-    const rootHintRaw = typeof body?.rootHint === "string" ? body.rootHint : null;
-    const bassHintRaw = typeof body?.bassHint === "string" ? body.bassHint : null;
+    const selectedNotesRaw: any[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
+    const question = typeof body?.question === "string" ? body.question.trim() : "";
 
-    const normalized = selectedNotesRaw.map(normalizeAccidentals).filter(Boolean);
-    const onlyNotes = normalized.filter((n) => /^[A-G]((?:bb|b|##|#)?)$/.test(n));
-    const notesSorted = uniq(onlyNotes).sort(sortSpelling);
+    const keyHint = typeof body?.keyHint === "string" && body.keyHint.trim() ? body.keyHint.trim() : null;
+    const engineChord = typeof body?.engineChord === "string" && body.engineChord.trim() ? body.engineChord.trim() : null;
+    const candidatesIn = Array.isArray(body?.candidates) ? body.candidates : null;
+    const candidates = candidatesIn?.map((x: any) => (typeof x === "string" ? x : x?.chord))
+        .filter((x: any) => typeof x === "string" && x.trim())
+        .slice(0, 10) ?? null;
 
-    const keyHint = (keyHintRaw || "none").trim();
-    const rootHint = rootHintRaw && notesSorted.includes(normalizeAccidentals(rootHintRaw)) ? normalizeAccidentals(rootHintRaw) : null;
-    const bassHint = bassHintRaw && notesSorted.includes(normalizeAccidentals(bassHintRaw)) ? normalizeAccidentals(bassHintRaw) : null;
+    const normalized = selectedNotesRaw
+      .map((x) => (typeof x === "string" ? normalizeAccidentals(x) : ""))
+      .filter(Boolean)
+      .filter((n) => /^[A-G]((?:bb|b|##|#)?)$/.test(n));
 
-    if (!model) return NextResponse.json({ error: "AI未接続" }, { status: 500 });
-    if (notesSorted.length < 3) {
-      return NextResponse.json({ status: "insufficient", engineChord: "判定不能", analysis: "音が不足しています。", candidates: [], notes: notesSorted });
+    const notesSorted = uniq(normalized).sort(sortSpelling);
+    const bassHintRaw = asNoteOrNull(body?.bassHint);
+    const bassHint = bassHintRaw && notesSorted.includes(bassHintRaw) ? bassHintRaw : null;
+    const rootHintRaw = asNoteOrNull(body?.rootHint);
+    const rootHint = rootHintRaw && notesSorted.includes(rootHintRaw) ? rootHintRaw : null;
+
+    if (!question) {
+      return new NextResponse("質問が空です。", { status: 400 });
+    }
+    if (!model) {
+      return new NextResponse("（AI未接続）GEMINI_API_KEY が未設定です。", { status: 500 });
     }
 
     // ★ モードに応じてプロンプトを切り替え
-    const systemInstruction = mode === "beginner" ? buildBeginnerSystemPrompt() : buildExpertSystemPrompt();
-
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: buildUserPrompt({ notesSorted, keyHint, rootHint, bassHint }) }] }],
-      systemInstruction: systemInstruction,
-      generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
+    const system = mode === "beginner" ? buildBeginnerSystemPrompt() : buildExpertSystemPrompt();
+    
+    const user = buildUserPrompt({
+      notes: notesSorted,
+      question,
+      bassHint,
+      rootHint,
+      keyHint,
+      engineChord,
+      candidates,
     });
 
-    const json = parseJsonSafely(result.response.text());
-    
-    // ★ 1%問題を解決する自動補正ロジック
-    let candidates: CandidateObj[] = (json.candidates || []).map((c: any) => {
-      let rawScore = typeof c.score === "number" ? c.score : 0;
-      let rawConf = typeof c.confidence === "number" ? c.confidence : 0;
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: user }] }],
+      systemInstruction: system,
+      generationConfig: { temperature: 0.3 },
+    });
 
-      // 自動補正: スコアが0.95などの小数で来たら、95点(整数)に直す
-      if (rawScore <= 1 && rawScore > 0) {
-         rawScore = rawScore * 100;
-      }
-      
-      // 自動補正: 自信度が95などの整数で来たら、0.95(小数)に直す
-      if (rawConf > 1) {
-         rawConf = rawConf / 100;
-      }
+    const text = result.response.text()?.trim() || "（回答を生成できませんでした）";
 
-      // フォールバック: スコアが0だったら、自信度から作る
-      if (rawScore === 0 && rawConf > 0) {
-         rawScore = rawConf * 100;
-      }
-
-      return {
-        chord: safeStr(c.chord, "判定不能"),
-        chordType: safeStr(c.chordType, ""),
-        inversion: safeStr(c.inversion, "unknown"),
-        romanNumeral: safeStr(c.romanNumeral, ""),
-        tds: (["T", "D", "S"].includes(c.tds) ? c.tds : "?") as any,
-        score: clampScore(rawScore, 0),
-        confidence: clamp01(rawConf, 0),
-        chordTones: safeArrStr(c.chordTones),
-        extraTones: safeArrStr(c.extraTones),
-        reason: safeStr(c.reason, ""),
-        provisional: !!c.provisional,
-      };
-    }).filter((c: CandidateObj) => !!c.chord);
-
-    // --------------------
-    // 順位の保険
-    // --------------------
-    if (candidates.length > 0) {
-      if (bassHint) {
-        candidates.sort((a, b) => {
-          const aMatch = getChordBass(a.chord) === bassHint;
-          const bMatch = getChordBass(b.chord) === bassHint;
-          if (aMatch && !bMatch) return -1; 
-          if (!aMatch && bMatch) return 1;  
-          return 0; 
-        });
-      } else if (rootHint) {
-        candidates.sort((a, b) => {
-          const aMatch = getChordRoot(a.chord) === rootHint;
-          const bMatch = getChordRoot(b.chord) === rootHint;
-          if (aMatch && !bMatch) return -1;
-          if (!aMatch && bMatch) return 1;
-          return 0;
-        });
-      } else {
-        candidates.sort((a, b) => {
-          const aHasSlash = a.chord.includes("/");
-          const bHasSlash = b.chord.includes("/");
-          if (!aHasSlash && bHasSlash) return -1;
-          if (aHasSlash && !bHasSlash) return 1;
-          return 0;
-        });
-      }
-    }
-
-    const top = candidates[0];
-    let engineChord = safeStr((json as any).engineChord, "").trim();
-
-    if (!engineChord || engineChord === "判定不能") {
-      engineChord = top?.chord || `${notesSorted.join("-")}(暫定)`;
-    }
-    if (top?.chord) engineChord = top.chord;
-
-    const chordType = (safeStr((json as any).chordType, "").trim() || top?.chordType || "情報不足").trim();
-
-    const statusRaw = safeStr((json as any).status, "ambiguous") as any;
-    const status: AnalyzeResponse["status"] =
-      statusRaw === "ok" || statusRaw === "ambiguous" || statusRaw === "insufficient"
-        ? statusRaw
-        : "ambiguous";
-
-    let confidence = clamp01((json as any).confidence, 0);
-    // 補正: トップ候補の自信度があればそれを採用
-    if ((!confidence || confidence === 0) && top) confidence = clamp01(top.confidence, 0.3);
-
-    if (top) {
-      const prov = status !== "ok" || confidence < 0.5;
-      top.provisional = top.provisional || prov;
-    }
-
-    const analysis = safeStr((json as any).analysis, "（出力が不完全でした）");
-
-    const res: AnalyzeResponse = {
-      status,
-      engineChord,
-      chordType,
-      confidence,
-      analysis,
-      candidates,
-      notes: notesSorted,
-      keyHint,
-      rootHint,
-      bassHint,
-    };
-
-    return NextResponse.json(res);
+    return new NextResponse(text, {
+      status: 200,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   } catch (e: any) {
-    console.error(e); // サーバーログにエラーを出力
-    return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
+    return new NextResponse(`エラー: ${e?.message ?? "Unknown error"}`, {
+      status: 500,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   }
 }
