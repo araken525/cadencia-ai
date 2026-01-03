@@ -4,17 +4,17 @@ import { useMemo, useRef, useState, useEffect } from "react";
 
 // --- Design Constants ---
 const G = {
-  // ヒーロー: 静かで知的なテキスト（よりコンパクトに）
+  // ヒーロー: 静かで知的なテキスト
   heroTextStatic: "text-slate-700 drop-shadow-sm tracking-tighter",
   
-  // ベースカード: 清潔感のある白、控えめな影
+  // ベースカード
   cardBase: "bg-white rounded-[32px] shadow-xl shadow-blue-900/5 border border-white overflow-hidden relative",
   
-  // キーボード: 半透明ガラス（復刻）
+  // キーボード
   glassKeyContainer: "bg-white/60 backdrop-blur-xl border-t border-white/40 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]",
   glassKey: "bg-white/40 border border-white/50 shadow-sm backdrop-blur-md active:bg-white/70 transition-all",
   
-  // チャット: 最高のメッセージUI
+  // チャット
   chatBubbleUser: "bg-gradient-to-br from-blue-600 to-cyan-600 text-white rounded-[20px] rounded-tr-sm shadow-md",
   chatBubbleAI: "bg-white text-slate-700 border border-slate-100 rounded-[20px] rounded-tl-sm shadow-sm",
   chatContainer: "bg-slate-50/80 backdrop-blur-3xl rounded-[40px] border border-white/60 shadow-2xl shadow-blue-900/10 overflow-hidden",
@@ -96,59 +96,33 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// 1. イントロダクション（フリガナ削除）
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   const [isClosing, setIsClosing] = useState(false);
-
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(onClose, 300);
-  };
+  const handleClose = () => { setIsClosing(true); setTimeout(onClose, 300); };
 
   return (
     <div className={`fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-300 ${isClosing ? "opacity-0" : "opacity-100"}`}>
       <div className={`w-full max-w-md h-[85vh] bg-white rounded-[40px] shadow-2xl overflow-hidden relative transform transition-all duration-300 flex flex-col ${isClosing ? "scale-95 translate-y-8 opacity-0" : "scale-100 translate-y-0 opacity-100"}`}>
-        
-        {/* Background Watermark */}
-        <div className="absolute top-10 -left-10 text-[8rem] font-black text-slate-100 rotate-90 pointer-events-none select-none opacity-50">
-          INTRODUCTION
-        </div>
-
+        <div className="absolute top-10 -left-10 text-[8rem] font-black text-slate-100 rotate-90 pointer-events-none select-none opacity-50">INTRODUCTION</div>
         <div className="flex-1 overflow-y-auto p-8 relative z-10 scrollbar-hide">
-          {/* Header */}
           <div className="text-center mb-10">
-            <div className="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-3xl shadow-xl mx-auto mb-6 rotate-3">
-              🎹
-            </div>
-            {/* フリガナ削除 */}
+            <div className="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-3xl shadow-xl mx-auto mb-6 rotate-3">🎹</div>
             <h1 className="text-4xl font-black text-slate-800 tracking-tighter mb-2">Waon AI</h1>
             <p className="text-sm font-bold text-slate-500">ポケットに、専属の音楽理論家を。</p>
           </div>
-
-          {/* Section 1: Target Audience */}
           <div className="mb-10">
-            <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2">
-              <span className="text-xl">🎯</span> 対象ユーザー
-            </h2>
-            
+            <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">🎯</span> 対象ユーザー</h2>
             <div className="space-y-6">
               <div className="bg-slate-50 p-5 rounded-3xl">
-                <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
-                  <span className="text-xl">🎺</span> 奏者の方へ
-                  <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full">吹奏楽・オケ・合唱</span>
-                </h3>
+                <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><span className="text-xl">🎺</span> 奏者の方へ<span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full">吹奏楽・オケ・合唱</span></h3>
                 <ul className="space-y-2 text-xs text-slate-600 font-medium leading-relaxed list-disc list-outside pl-4">
                   <li>和音の響きは分かるが、機能和声として言語化できない。</li>
                   <li>スコアを読んでいて「この和音の役割は？」と立ち止まってしまう。</li>
                   <li>記号としてのコード名より、音楽的な「意味」を知りたい。</li>
                 </ul>
               </div>
-
               <div className="bg-slate-50 p-5 rounded-3xl">
-                <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
-                  <span className="text-xl">🎓</span> 学ぶ方へ
-                  <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full">音大生・学習者</span>
-                </h3>
+                <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><span className="text-xl">🎓</span> 学ぶ方へ<span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full">音大生・学習者</span></h3>
                 <ul className="space-y-2 text-xs text-slate-600 font-medium leading-relaxed list-disc list-outside pl-4">
                   <li>和声学の用語（主和音、属和音など）を用いた解説が欲しい。</li>
                   <li>転回形やバス、文脈による解釈の変化を深く学びたい。</li>
@@ -157,93 +131,65 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
               </div>
             </div>
           </div>
-
-          {/* Section 2: Features */}
           <div className="mb-8">
-            <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2">
-              <span className="text-xl">✨</span> Waon AIの特徴
-            </h2>
+            <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">✨</span> Waon AIの特徴</h2>
             <div className="text-xs text-slate-600 leading-relaxed font-medium space-y-4">
-              <p>
-                入力された構成音から和音を判定し、その音楽的意味を<span className="bg-yellow-100 font-bold px-1">「和声学の言葉」</span>で解説する音楽理論特化型AI解析アプリです。
-              </p>
+              <p>入力された構成音から和音を判定し、その音楽的意味を<span className="bg-yellow-100 font-bold px-1">「和声学の言葉」</span>で解説する音楽理論特化型AI解析アプリです。</p>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-blue-50 p-3 rounded-2xl text-center">
-                  <div className="text-lg mb-1">🧐</div>
-                  <div className="font-bold text-blue-700">根拠</div>
-                  <div className="text-[9px] text-blue-500">なぜその和音か</div>
-                </div>
-                <div className="bg-rose-50 p-3 rounded-2xl text-center">
-                  <div className="text-lg mb-1">⚙️</div>
-                  <div className="font-bold text-rose-700">機能</div>
-                  <div className="text-[9px] text-rose-500">調性内の役割</div>
-                </div>
-                <div className="bg-emerald-50 p-3 rounded-2xl text-center">
-                  <div className="text-lg mb-1">🏗️</div>
-                  <div className="font-bold text-emerald-700">構造</div>
-                  <div className="text-[9px] text-emerald-500">転回形・バス</div>
-                </div>
-                <div className="bg-purple-50 p-3 rounded-2xl text-center">
-                  <div className="text-lg mb-1">💡</div>
-                  <div className="font-bold text-purple-700">多義性</div>
-                  <div className="text-[9px] text-purple-500">他の解釈</div>
-                </div>
+                <div className="bg-blue-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">🧐</div><div className="font-bold text-blue-700">根拠</div><div className="text-[9px] text-blue-500">なぜその和音か</div></div>
+                <div className="bg-rose-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">⚙️</div><div className="font-bold text-rose-700">機能</div><div className="text-[9px] text-rose-500">調性内の役割</div></div>
+                <div className="bg-emerald-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">🏗️</div><div className="font-bold text-emerald-700">構造</div><div className="text-[9px] text-emerald-500">転回形・バス</div></div>
+                <div className="bg-purple-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">💡</div><div className="font-bold text-purple-700">多義性</div><div className="text-[9px] text-purple-500">他の解釈</div></div>
               </div>
-              <p className="text-center font-bold text-slate-400 mt-2">
-                プロの音楽家の思考プロセスを、AIが可視化します。
-              </p>
+              <p className="text-center font-bold text-slate-400 mt-2">プロの音楽家の思考プロセスを、AIが可視化します。</p>
             </div>
           </div>
         </div>
-
-        {/* Footer Button */}
         <div className="p-6 bg-white border-t border-slate-100 relative z-20">
-          <button 
-            onClick={handleClose}
-            className="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold shadow-lg hover:bg-slate-800 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 group"
-          >
-            <span>はじめる</span>
-            <span className="group-hover:translate-x-1 transition-transform">→</span>
-          </button>
+          <button onClick={handleClose} className="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold shadow-lg hover:bg-slate-800 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 group"><span>はじめる</span><span className="group-hover:translate-x-1 transition-transform">→</span></button>
         </div>
       </div>
     </div>
   );
 };
 
-// 2. キーボード操作ガイド（シンプル化）
+// 2. 修正: スマホで見やすいキーボード操作説明
 const KeyboardGuide = ({ onClose }: { onClose: () => void }) => {
   return (
-    <div className="bg-gradient-to-r from-slate-50 to-blue-50/50 border border-slate-200 rounded-[24px] p-5 mb-4 relative animate-in fade-in zoom-in-95 duration-300">
-      <button 
-        onClick={onClose} 
-        className="absolute top-3 right-3 w-6 h-6 bg-white rounded-full flex items-center justify-center text-slate-400 shadow-sm hover:text-slate-600 transition-colors"
-      >
-        <IconX className="w-3 h-3" />
-      </button>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-lg">🎹</span>
-        <h3 className="text-xs font-bold text-slate-700">直感的なフリック入力キーボード</h3>
-      </div>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] text-slate-600 font-medium leading-tight">
-        <div className="flex items-center gap-1.5"><span className="w-1 h-1 bg-slate-400 rounded-full"></span>C〜Bの各キーをフリックするだけ</div>
-        <div className="flex items-center gap-1.5"><span className="w-1 h-1 bg-blue-400 rounded-full"></span>上フリック：シャープ（#）</div>
-        <div className="flex items-center gap-1.5"><span className="w-1 h-1 bg-blue-400 rounded-full"></span>下フリック：フラット（b）</div>
-        <div className="flex items-center gap-1.5"><span className="w-1 h-1 bg-rose-400 rounded-full"></span>根音モード：根音を指定可能</div>
-        <div className="flex items-center gap-1.5"><span className="w-1 h-1 bg-amber-400 rounded-full"></span>最低音モード：最低音を指定可能</div>
-        <div className="col-span-2 mt-1 text-slate-400 text-[9px] border-t border-slate-200/50 pt-1">
-          スマホでの操作性を極限まで高めています。
+    <div className="bg-blue-50/50 border border-blue-100 rounded-[20px] p-4 mb-4 relative animate-in fade-in zoom-in-95 duration-300">
+      <button onClick={onClose} className="absolute top-3 right-3 p-1.5 bg-white rounded-full text-slate-400 shadow-sm"><IconX className="w-3 h-3" /></button>
+      <h3 className="text-xs font-bold text-blue-600 mb-3 flex items-center gap-2">
+        <IconKeyboard className="w-4 h-4" /> キーボード操作
+      </h3>
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 bg-white p-2 rounded-xl shadow-sm border border-blue-50">
+          <span className="text-lg bg-blue-100 w-8 h-8 flex items-center justify-center rounded-lg">👆</span>
+          <div className="text-[11px] font-bold text-slate-600">キーをタップして入力</div>
+        </div>
+        <div className="flex gap-2">
+          <div className="flex-1 bg-white p-2 rounded-xl shadow-sm border border-blue-50 text-center">
+            <div className="text-[10px] text-slate-400 mb-1">上にフリック</div>
+            <div className="text-sm font-black text-blue-500"># シャープ</div>
+          </div>
+          <div className="flex-1 bg-white p-2 rounded-xl shadow-sm border border-blue-50 text-center">
+            <div className="text-[10px] text-slate-400 mb-1">下にフリック</div>
+            <div className="text-sm font-black text-blue-500">b フラット</div>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <div className="flex-1 bg-rose-50 p-2 rounded-xl border border-rose-100 text-center">
+            <span className="text-[10px] font-bold text-rose-600">根音モード</span>
+          </div>
+          <div className="flex-1 bg-amber-50 p-2 rounded-xl border border-amber-100 text-center">
+            <span className="text-[10px] font-bold text-amber-600">最低音モード</span>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-const GuideItem = ({ icon, text }: { icon: string, text: React.ReactNode }) => (
-  <li className="flex items-start gap-3 text-[11px] text-slate-600 leading-tight"><span className="text-sm shrink-0 relative top-[-1px]">{icon}</span><span>{text}</span></li>
-);
-
-// 3. MiniPiano (一体感を重視)
+// 3. 修正: 枠に馴染ませたMiniPiano
 const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassHint: string | null, rootHint: string | null }) => {
   const keys = [
     { idx: 0, type: "white", x: 0 }, { idx: 1, type: "black", x: 10 },
@@ -259,8 +205,8 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   const isRoot = (keyIdx: number) => rootHint ? getKeyIndex(rootHint) === keyIdx : false;
 
   return (
-    <div className="h-20 w-full relative select-none pointer-events-none opacity-80">
-       <svg viewBox="0 0 100 50" className="w-full h-full drop-shadow-sm" preserveAspectRatio="none">
+    <div className="h-20 w-full relative select-none pointer-events-none">
+       <svg viewBox="0 0 100 50" className="w-full h-full" preserveAspectRatio="none">
          {keys.filter(k => k.type === "white").map((k) => (
            <path key={k.idx} d={`M${k.x},0 h14.28 v46 a4,4 0 0 1 -4,4 h-6.28 a4,4 0 0 1 -4,-4 z`}
              className={`transition-all duration-300 ${
@@ -376,100 +322,42 @@ const InsightCard = ({ text }: { text: string }) => (
   </div>
 );
 
-// 修正: 抜本的に更新された「最高のチャットUI」
 const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp, history }: { question: string, setQuestion: (s:string)=>void, ask: ()=>void, isThinking: boolean, loading: boolean, inputRefProp: any, history: ChatMessage[] }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  
-  useEffect(() => {
-    if (scrollRef.current) {
-      setTimeout(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, 100);
-    }
-  }, [history, isThinking]);
+  useEffect(() => { if (scrollRef.current) setTimeout(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, 100); }, [history, isThinking]);
 
   return (
     <div className={G.chatContainer}>
       <div className="flex flex-col h-[500px]">
-        {/* Chat Header */}
         <div className="px-6 py-4 bg-white/50 backdrop-blur-md border-b border-white/50 flex justify-between items-center z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></div>
-            <h3 className="font-bold text-slate-700">Waon AIのチャット</h3>
-          </div>
-          <IconRobot className="text-slate-300 w-5 h-5" />
+          <div className="flex items-center gap-3"><div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></div><h3 className="font-bold text-slate-700">Waon AIのチャット</h3></div><IconRobot className="text-slate-300 w-5 h-5" />
         </div>
-
-        {/* Chat Stream */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-hide">
           {history.length === 0 && !isThinking && (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50">
-              <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-lg"><span className="text-3xl">💬</span></div>
-              <p className="text-xs font-bold text-slate-500">知りたいことを入力して<br/>AIと対話しよう</p>
-            </div>
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50"><div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-lg"><span className="text-3xl">💬</span></div><p className="text-xs font-bold text-slate-500">知りたいことを入力して<br/>AIと対話しよう</p></div>
           )}
-          
           {history.map((msg, i) => (
             <div key={i} className={`flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-              {msg.role === 'ai' && (
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 border border-slate-100">
-                  <IconRobot className="w-4 h-4 text-blue-500" />
-                </div>
-              )}
-              <div className={`px-5 py-3 text-sm font-medium leading-relaxed max-w-[80%] ${msg.role === 'user' ? G.chatBubbleUser : G.chatBubbleAI}`}>
-                {msg.text}
-              </div>
+              {msg.role === 'ai' && <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 border border-slate-100"><IconRobot className="w-4 h-4 text-blue-500" /></div>}
+              <div className={`px-5 py-3 text-sm font-medium leading-relaxed max-w-[80%] ${msg.role === 'user' ? G.chatBubbleUser : G.chatBubbleAI}`}>{msg.text}</div>
             </div>
           ))}
-
-          {/* Thinking Indicator */}
           {isThinking && (
             <div className="flex items-end gap-2 animate-in fade-in">
               <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 border border-slate-100"><IconRobot className="w-4 h-4 text-blue-500 animate-bounce" /></div>
-              <div className={`${G.chatBubbleAI} px-4 py-3 flex gap-1.5 items-center`}>
-                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
-              </div>
+              <div className={`${G.chatBubbleAI} px-4 py-3 flex gap-1.5 items-center`}><div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div><div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div><div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div></div>
             </div>
           )}
         </div>
-
-        {/* Input Area */}
         <div className="p-4 bg-white/60 backdrop-blur-md border-t border-white/50">
-          {/* Shortcuts */}
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3 mask-linear-fade">
             {SHORTCUT_QUESTIONS.map((q) => (
-              <button 
-                key={q} 
-                onClick={() => { setQuestion(q); setTimeout(ask, 0); }}
-                disabled={loading || isThinking}
-                className="whitespace-nowrap text-[10px] font-bold text-slate-600 bg-white/80 hover:bg-blue-50 border border-white/60 hover:border-blue-200 px-3 py-1.5 rounded-full shadow-sm transition-all active:scale-95 shrink-0"
-              >
-                {q}
-              </button>
+              <button key={q} onClick={() => { setQuestion(q); setTimeout(ask, 0); }} disabled={loading || isThinking} className="whitespace-nowrap text-[10px] font-bold text-slate-600 bg-white/80 hover:bg-blue-50 border border-white/60 hover:border-blue-200 px-3 py-1.5 rounded-full shadow-sm transition-all active:scale-95 shrink-0">{q}</button>
             ))}
           </div>
-          
-          {/* Input Box */}
           <div className="relative flex items-center gap-2 bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 transition-shadow focus-within:shadow-md focus-within:ring-2 focus-within:ring-blue-100">
-            <textarea 
-              ref={inputRefProp}
-              className="flex-1 bg-transparent border-none rounded-xl py-3 px-3 text-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0 resize-none max-h-24 min-h-[48px] leading-relaxed" // text-base avoids zoom
-              placeholder="質問を入力..." 
-              value={question} 
-              rows={1}
-              onChange={(e) => setQuestion(e.target.value)} 
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); } }}
-              disabled={isThinking}
-            />
-            <button 
-              onClick={ask} 
-              disabled={loading || isThinking || !question.trim()} 
-              className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 transition-all ${
-                !question.trim() ? "bg-slate-200 text-slate-400 cursor-default" : "bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/30 active:scale-90"
-              }`}
-            >
-              <IconSend className="w-4 h-4" />
-            </button>
+            <textarea ref={inputRefProp} className="flex-1 bg-transparent border-none rounded-xl py-3 px-3 text-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0 resize-none max-h-24 min-h-[48px] leading-relaxed" placeholder="質問を入力..." value={question} rows={1} onChange={(e) => setQuestion(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); } }} disabled={isThinking} />
+            <button onClick={ask} disabled={loading || isThinking || !question.trim()} className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 transition-all ${!question.trim() ? "bg-slate-200 text-slate-400 cursor-default" : "bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/30 active:scale-90"}`}><IconSend className="w-4 h-4" /></button>
           </div>
         </div>
       </div>
@@ -512,8 +400,6 @@ export default function CadenciaPage() {
   const [inputMode, setInputMode] = useState<"normal" | "root" | "bass">("normal");
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(true);
   const [showWelcome, setShowWelcome] = useState(true);
-  
-  // 修正: ガイドはデフォルトで表示、ユーザーが消せるように
   const [showGuide, setShowGuide] = useState(true);
 
   const [candidates, setCandidates] = useState<CandidateObj[]>([]);
@@ -535,18 +421,9 @@ export default function CadenciaPage() {
     return [...selected].sort((a, b) => SORT_ORDER.indexOf(a) - SORT_ORDER.indexOf(b));
   }, [selected]);
 
-  // 6. 修正: スクロール制御の改善 (キーボード考慮)
   const focusInput = () => {
-    // まずキーボードを閉じるなどの処理が必要ならここで行う
-    // 今回はキーボードが開いていても入力できるようにするが、重なりを防ぐ
-    setIsKeyboardOpen(false); // 入力時はキーボードを閉じるのが安全
-    
-    setTimeout(() => {
-        if (inputRef.current) {
-            inputRef.current.focus();
-            inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-    }, 300);
+    setIsKeyboardOpen(false);
+    setTimeout(() => { if (inputRef.current) { inputRef.current.focus(); inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" }); } }, 300);
   };
 
   const handleKeyInput = (inputNote: string, type: "flick" | "tap") => {
@@ -602,7 +479,7 @@ export default function CadenciaPage() {
     setLoading(true); setChatHistory([]); setInfoText("");
     const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
     try {
-      await new Promise(r => setTimeout(r, 2000)); // 演出のため少し長く
+      await new Promise(r => setTimeout(r, 2000));
       const res = await fetch("/api/analyze", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ selectedNotes: selected, keyHint, bassHint, rootHint }),
@@ -668,9 +545,9 @@ export default function CadenciaPage() {
         <div className="flex items-center"><span className="font-mono text-[10px] font-bold text-black border-l-2 border-slate-200 pl-3 ml-2">v0.1.0 BETA</span></div>
       </header>
 
-      <main className="pt-20 px-5 max-w-md mx-auto space-y-6 relative z-10">
+      <main className="pt-24 px-5 max-w-md mx-auto space-y-8 relative z-10">
         
-        {/* 4. 修正: ヒーロー（ピアノ削除・文字だけ） */}
+        {/* 4. 修正: ヒーロー（ピアノ削除） */}
         {!hasResult && (
           <section className="text-center space-y-2 py-4 relative">
             <div className="absolute top-0 left-10 text-4xl text-cyan-200 animate-float-1 pointer-events-none select-none">♪</div>
