@@ -120,8 +120,8 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
             <div className="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-3xl shadow-xl mx-auto mb-6 rotate-3">
               🎹
             </div>
-            <div className="text-xs font-bold text-slate-400 tracking-[0.2em] mb-2">カデンツィア</div>
-            <h1 className="text-4xl font-black text-slate-800 tracking-tighter mb-2">Cadencia AI</h1>
+            <div className="text-xs font-bold text-slate-400 tracking-[0.2em] mb-2">ワオン</div>
+            <h1 className="text-4xl font-black text-slate-800 tracking-tighter mb-2">Waon AI</h1>
             <p className="text-sm font-bold text-slate-500">ポケットに、専属の音楽理論家を。</p>
           </div>
 
@@ -161,7 +161,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
           {/* Section 2: Features */}
           <div className="mb-8">
             <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2">
-              <span className="text-xl">✨</span> Cadencia AIの特徴
+              <span className="text-xl">✨</span> Waon AIの特徴
             </h2>
             <div className="text-xs text-slate-600 leading-relaxed font-medium space-y-4">
               <p>
@@ -356,11 +356,11 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
 
 const InsightCard = ({ text }: { text: string }) => (
   <div className={`${G.cardBase} p-6 overflow-hidden bg-gradient-to-br from-white to-slate-50`}>
-    <div className="absolute -right-4 top-2 text-[5rem] font-black text-slate-900/5 pointer-events-none select-none z-0 transform rotate-[-5deg] tracking-tighter leading-none whitespace-nowrap">Cadencia AI</div>
+    <div className="absolute -right-4 top-2 text-[5rem] font-black text-slate-900/5 pointer-events-none select-none z-0 transform rotate-[-5deg] tracking-tighter leading-none whitespace-nowrap">Waon AI</div>
     <div className="relative z-10">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md"><IconBook className="w-4 h-4" /></div>
-        <h3 className="text-sm font-bold text-slate-800">Cadencia AI の考察</h3>
+        <h3 className="text-sm font-bold text-slate-800">Waon AI の考察</h3>
       </div>
       <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap font-medium">{text}</p>
     </div>
@@ -384,7 +384,7 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
         <div className="px-6 py-4 bg-white/50 backdrop-blur-md border-b border-white/50 flex justify-between items-center z-10">
           <div className="flex items-center gap-3">
             <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></div>
-            <h3 className="font-bold text-slate-700">Cadencia AIのチャット</h3>
+            <h3 className="font-bold text-slate-700">Waon AIのチャット</h3>
           </div>
           <IconRobot className="text-slate-300 w-5 h-5" />
         </div>
@@ -477,7 +477,7 @@ const LoadingOverlay = () => (
       <div className="absolute -right-2 -bottom-2 text-2xl animate-pulse">🔎</div>
     </div>
     <div className="text-center space-y-4 max-w-xs relative z-10">
-      <h2 className="text-lg font-black text-slate-800 drop-shadow-sm leading-tight">Cadencia AIが和音を分析し、<br/>解説の生成をしています…</h2>
+      <h2 className="text-lg font-black text-slate-800 drop-shadow-sm leading-tight">Waon AIが和音を分析し、<br/>解説の生成をしています…</h2>
       <div className="h-1 w-12 bg-cyan-400/50 rounded-full mx-auto animate-pulse"></div>
       <p className="text-[10px] font-bold text-slate-500 leading-relaxed max-w-[200px] mx-auto opacity-80">複雑な和音や、たくさんの解釈がある組み合わせの場合、あらゆる可能性を考慮するため、時間がかかる場合があります。</p>
     </div>
@@ -613,7 +613,7 @@ export default function CadenciaPage() {
           bassHint, rootHint, keyHint, candidates: candidates.slice(0,5) 
         }),
       });
-      const answerText = res.ok ? await res.text() : `エラー: ${await res.text()}`;
+      const answerText = res.ok ? await res.text() : `エラー: ${await res.text()}`);
       setChatHistory(prev => [...prev, { role: 'ai', text: answerText }]);
     } catch (e: any) { 
         setChatHistory(prev => [...prev, { role: 'ai', text: `通信エラー: ${e?.message}` }]);
@@ -641,7 +641,7 @@ export default function CadenciaPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans pb-[450px] selection:bg-cyan-100 overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans pb-[420px] selection:bg-cyan-100 overflow-x-hidden">
       <style jsx global>{`
         @keyframes float-note-1 { 0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.2; } 50% { transform: translateY(-20px) rotate(10deg); opacity: 0.5; } }
         @keyframes float-note-2 { 0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.3; } 50% { transform: translateY(-15px) rotate(-10deg); opacity: 0.6; } }
@@ -664,7 +664,7 @@ export default function CadenciaPage() {
           </div>
           <div className="flex flex-col justify-center leading-none">
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-lg font-black tracking-tight text-slate-800">Cadencia AI</span>
+              <span className="text-lg font-black tracking-tight text-slate-800">Waon AI</span>
             </div>
             <span className="text-[10px] font-bold text-slate-400 tracking-wide">ポケットに、専属音楽理論家を。</span>
           </div>
@@ -683,8 +683,8 @@ export default function CadenciaPage() {
           <div className="absolute top-1/2 right-0 text-xl text-purple-200 animate-float-1 pointer-events-none select-none" style={{animationDelay: '1s'}}>♭</div>
           <div className="inline-block relative z-10">
              <h1 className="text-5xl font-black tracking-tighter pb-2 leading-none flex flex-col items-center">
-                <span className="text-[10px] font-bold text-cyan-500 tracking-widest mb-1">カデンツィア</span>
-                <span className={G.heroTextStatic}>Cadencia AI</span>
+                <span className="text-[10px] font-bold text-cyan-500 tracking-widest mb-1">ワオン</span>
+                <span className={G.heroTextStatic}>Waon AI</span>
              </h1>
           </div>
           <p className="text-sm font-bold text-slate-400 relative z-10">
@@ -698,7 +698,7 @@ export default function CadenciaPage() {
         <section className={`${G.cardBase} bg-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
            <div className="p-5 flex flex-col min-h-[240px]">
               <h3 className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
-                  Cadencia AIに分析と解説をさせよう
+                  Waon AIに分析と解説をさせよう
               </h3>
               <div className="flex-1 flex flex-col items-center justify-center">
                  {selected.length === 0 ? (
@@ -746,7 +746,7 @@ export default function CadenciaPage() {
           <div ref={resultRef} className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
               <div className="flex items-center gap-2 px-1 py-2">
                 <IconBook className="text-slate-800 w-5 h-5" />
-                <h2 className="text-lg font-bold text-slate-800">Cadencia AIの分析結果 📖</h2>
+                <h2 className="text-lg font-bold text-slate-800">Waon AIの分析結果 📖</h2>
               </div>
               {candidates[0] && <ResultCard candidate={candidates[0]} isTop={true} isKeySet={isKeySet} rank={1} />}
               {infoText && <InsightCard text={infoText} />}
@@ -785,7 +785,7 @@ export default function CadenciaPage() {
                 🧑‍💻
               </div>
               <div>
-                <h3 className="text-white font-bold text-sm mb-1">Cadencia AI Beta</h3>
+                <h3 className="text-white font-bold text-sm mb-1">Waon AI Beta</h3>
                 <p className="text-slate-400 text-[10px] leading-relaxed max-w-xs mx-auto">
                   このアプリは現在ベータ版です。機能の改善やバグの報告など、開発者までお気軽にご連絡ください。
                 </p>
@@ -868,7 +868,7 @@ export default function CadenciaPage() {
                <div className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-[10px] shadow-sm relative z-10 ${!hasResult ? "bg-slate-200 text-white" : "bg-cyan-500 text-white"}`}>
                   <IconBook className="w-3 h-3" />
                </div>
-               <span className={`text-xs font-bold relative z-10`}>Cadencia AI にきく</span>
+               <span className={`text-xs font-bold relative z-10`}>Waon AI にきく</span>
             </button>
 
           </div>
