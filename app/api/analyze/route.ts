@@ -11,6 +11,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  * - Expert/Beginnerモード切替対応
  * - JSONフォーマットを厳格に指定し、パースエラーを防ぐ
  * - スコアの1%問題を自動補正する
+ * - 初心者/専門家ともに、和音記号の表記（I¹など）を統一する
  */
 
 // -------------------- Gemini --------------------
@@ -114,7 +115,7 @@ type AnalyzeResponse = {
 };
 
 // ============================================================
-// 共通の特殊和音判定ロジック
+// 1. 特殊和音判定ロジック（辞書）
 // ============================================================
 const SPECIAL_CHORD_RULES = `
 【特殊和音の判定辞書（優先度：高）】
@@ -166,7 +167,18 @@ const SPECIAL_CHORD_RULES = `
 `;
 
 // ============================================================
-// 出力フォーマット（ここが抜けていたので追加！）
+// 2. 表記ルール（ここを分離して両モードに適用！）
+// ============================================================
+const NOTATION_RULES = `
+【和音記号表記】
+- 転回形は右上（I¹）、種類は右下（V₇）に記述。
+- TDS機能は大文字（T, D, S）。
+- ポピュラー表記（C, Am等）は一般的表記に従う。
+- 長三和音は "Major" を付けない。
+`;
+
+// ============================================================
+// 3. 出力フォーマット
 // ============================================================
 const OUTPUT_FORMAT_JSON = `
 【出力はJSONのみ】
@@ -184,7 +196,7 @@ const OUTPUT_FORMAT_JSON = `
       "chordType": string,
       "inversion": "root" | "1st" | "2nd" | "3rd" | "unknown",
       "tds": "T" | "D" | "S" | "?",
-      "romanNumeral": string,
+      "romanNumeral": string, // 記号は指定の表記法に従うこと
       "score": number, // 0-100
       "confidence": number, // 0.0-1.0
       "chordTones": string[],
@@ -219,19 +231,11 @@ function buildExpertSystemPrompt() {
 - 属和音（D）や第7音を含む和音は、必ず「解決（進行方向）」に言及する。
 - 口調は断定的で簡潔に（「〜である。」）。
 
-【コード名（chord）の表記ルール】
-- ポピュラー表記に従う（例: C, Cm, C/E）。
-- 長三和音は "Major" を付けない。
-
 【和音の種類（chordType）の制限】
 許可リスト: 長三和音, 短三和音, 減三和音, 増三和音, 属七の和音, 減七の和音, 長七の和音, 短七の和音, 減５短７の和音, 増七の和音, 属九の和音, 属短九の和音, 増六の和音
 
 ${SPECIAL_CHORD_RULES}
-
-【和音記号表記】
-- 転回形は右上（I¹）、種類は右下（V₇）に記述。
-- TDS機能は大文字（T, D, S）。
-
+${NOTATION_RULES}
 ${OUTPUT_FORMAT_JSON}
 `.trim();
 }
@@ -258,12 +262,7 @@ function buildBeginnerSystemPrompt() {
 - **解決:** 「この音は不安定なので、次に〇〇に行きたがっています」と感覚的に伝える。
 
 ${SPECIAL_CHORD_RULES}
-
-【その他ルール】
-- 上記「特殊和音の判定辞書」の定義は絶対です（例: IV6＝II7の1転）。
-- ただし、解説の言葉選びだけ優しくしてください。
-- 出力フォーマット（JSON）も厳密に守ってください。
-
+${NOTATION_RULES}
 ${OUTPUT_FORMAT_JSON}
 `.trim();
 }
@@ -319,7 +318,7 @@ export async function POST(req: Request) {
 
     const json = parseJsonSafely(result.response.text());
     
-    // ★ 1%問題を解決する自動補正ロジック（ここが重要！）
+    // ★ 1%問題を解決する自動補正ロジック（必須！）
     let candidates: CandidateObj[] = (json.candidates || []).map((c: any) => {
       let rawScore = typeof c.score === "number" ? c.score : 0;
       let rawConf = typeof c.confidence === "number" ? c.confidence : 0;
