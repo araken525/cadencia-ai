@@ -530,7 +530,7 @@ export default function CadenciaPage() {
     setLoading(true); setChatHistory([]); setInfoText("");
     const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
     try {
-      await new Promise(r => setTimeout(r, 2000));
+      // await new Promise(r => setTimeout(r, 2000)); // REMOVED
       const res = await fetch("/api/analyze", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ selectedNotes: selected, keyHint, bassHint, rootHint }),
@@ -617,26 +617,27 @@ export default function CadenciaPage() {
         <section className={`${G.cardBase} bg-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
            <div className="absolute -right-4 top-4 text-[4rem] font-black text-slate-50 pointer-events-none select-none z-0 transform -rotate-3">ANALYZE</div>
            <div className="p-5 flex flex-col min-h-[240px] relative z-10">
-              <div className="flex justify-between items-center mb-6">
-                 <div className="space-y-1">
+              {/* Header with new Notes Badge */}
+              <div className="flex justify-between items-end mb-4">
+                 <div className="space-y-0.5">
                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">Waon AIに分析させよう</h3>
                    <p className="text-[10px] text-slate-400">キーボードをタップして音を追加</p>
                  </div>
-                 <div className="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-bold text-slate-500 border border-slate-200 shadow-sm">
-                   {selected.length} Notes
+                 <div className="flex items-center gap-1.5 bg-white border border-slate-100 shadow-sm px-3 py-1.5 rounded-xl">
+                    <span className={`text-lg font-black leading-none ${selected.length > 0 ? "text-cyan-500" : "text-slate-300"}`}>{selected.length}</span>
+                    <span className="text-[10px] font-bold text-slate-400">音</span>
                  </div>
               </div>
 
-              {/* ガイドコンポーネント削除 */}
-
-              <div className="flex-1 flex flex-col items-center justify-center relative">
+              {/* Recessed Input Area */}
+              <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner p-4 flex flex-col items-center justify-center min-h-[160px] relative transition-colors duration-300 hover:bg-slate-100/50">
                  {selected.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-3 animate-in fade-in zoom-in duration-500 py-4 opacity-60">
                          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-300 shadow-inner"><IconKeyboard className="w-6 h-6" /></div>
                          <p className="text-xs font-bold text-slate-400">下のキーボードから音を選んでください</p>
                     </div>
                  ) : (
-                    // 4列グリッドに変更 (grid-cols-4)
+                    // 4列グリッド (grid-cols-4)
                     <div className="w-full grid grid-cols-4 gap-2">
                        {sortedSelected.map((note) => (
                           <div key={note} className={`relative group animate-in zoom-in duration-300 aspect-square`}>
