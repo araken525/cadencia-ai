@@ -62,7 +62,7 @@ type ChatMessage = {
 
 // --- Helper Functions ---
 
-// 修正: 記号表示用フォーマッター
+// 音楽記号への変換ヘルパー
 const formatNote = (note: string): string => {
   return note
     .replace(/##/g, "𝄪") // ダブルシャープ
@@ -84,7 +84,6 @@ function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateObj[] {
   });
 }
 
-// 修正: ダブルシャープ・ダブルフラット対応の計算ロジック
 const getKeyIndex = (note: string): number => {
   const baseMap: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
   const base = note.charAt(0);
@@ -96,7 +95,7 @@ const getKeyIndex = (note: string): number => {
   if (acc === "b") idx -= 1;
   if (acc === "bb") idx -= 2;
 
-  return (idx + 24) % 12; // 負の数を防ぐ
+  return (idx + 24) % 12;
 };
 
 // --- Components ---
@@ -231,7 +230,7 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   );
 };
 
-// 修正: 4方向フリックに対応したFlickKey
+// 修正: iPhone風の静的フリックキー
 const FlickKey = ({ 
   noteBase, currentSelection, isBass, isRoot, onInput, className
 }: { 
@@ -255,9 +254,10 @@ const FlickKey = ({
   
   const handlePointerMove = (e: React.PointerEvent) => { 
     if (startY === null || startX === null) return; 
+    // iPhone風: オフセットは内部計算のみに使用し、文字は動かさない
     setOffset({ 
-      x: Math.max(-40, Math.min(40, e.clientX - startX)), 
-      y: Math.max(-40, Math.min(40, e.clientY - startY)) 
+      x: e.clientX - startX, 
+      y: e.clientY - startY
     }); 
   };
   
@@ -269,15 +269,12 @@ const FlickKey = ({
       const absY = Math.abs(deltaY);
 
       if (absX > absY && absX > THRESHOLD) {
-        // Horizontal Flick
         if (deltaX > 0) onInput(`${noteBase}##`, "flick"); // Right -> Double Sharp
         else onInput(`${noteBase}bb`, "flick");            // Left -> Double Flat
       } else if (absY >= absX && absY > THRESHOLD) {
-        // Vertical Flick
         if (deltaY < 0) onInput(`${noteBase}#`, "flick");  // Up -> Sharp
         else onInput(`${noteBase}b`, "flick");             // Down -> Flat
       } else {
-        // Tap
         onInput(noteBase, "tap");
       }
     } 
@@ -287,23 +284,26 @@ const FlickKey = ({
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {} 
   };
 
-  // Direction states for visuals
+  // Direction states for visuals (High Sensitivity)
   const isUp = offset.y < -THRESHOLD && Math.abs(offset.y) > Math.abs(offset.x);
   const isDown = offset.y > THRESHOLD && Math.abs(offset.y) > Math.abs(offset.x);
   const isLeft = offset.x < -THRESHOLD && Math.abs(offset.x) > Math.abs(offset.y);
   const isRight = offset.x > THRESHOLD && Math.abs(offset.x) > Math.abs(offset.y);
 
   return (
-    <div className={`relative rounded-2xl touch-none select-none overflow-visible flex flex-col items-center justify-center transition-all duration-200 z-0 ${isRoot ? "bg-rose-50 border border-rose-200 shadow-[0_4px_12px_rgba(244,63,94,0.2)]" : isBass ? "bg-amber-50 border border-amber-200 shadow-[0_4px_12px_rgba(251,191,36,0.2)]" : G.glassKey} ${!isBass && !isRoot && isActive ? "bg-cyan-50 border-cyan-200 shadow-[0_4px_12px_rgba(34,211,238,0.2)]" : ""} ${className}`} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
+    <div className={`relative rounded-2xl touch-none select-none overflow-visible flex flex-col items-center justify-center transition-all duration-100 z-0 ${isRoot ? "bg-rose-50 border border-rose-200 shadow-[0_4px_12px_rgba(244,63,94,0.2)]" : isBass ? "bg-amber-50 border border-amber-200 shadow-[0_4px_12px_rgba(251,191,36,0.2)]" : G.glassKey} ${!isBass && !isRoot && isActive ? "bg-cyan-50 border-cyan-200 shadow-[0_4px_12px_rgba(34,211,238,0.2)]" : ""} ${className}`} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       
-      {/* 4方向ガイド表示 */}
-      <div className={`absolute top-1 left-0 right-0 flex justify-center transition-opacity duration-200 pointer-events-none ${isUp ? "opacity-100 scale-110 text-blue-500" : "opacity-30 text-slate-400"}`}><span className="text-[9px] font-bold leading-none">♯</span></div>
-      <div className={`absolute bottom-1 left-0 right-0 flex justify-center transition-opacity duration-200 pointer-events-none ${isDown ? "opacity-100 scale-110 text-blue-500" : "opacity-30 text-slate-400"}`}><span className="text-[9px] font-bold leading-none">♭</span></div>
-      <div className={`absolute left-1 top-0 bottom-0 flex items-center transition-opacity duration-200 pointer-events-none ${isLeft ? "opacity-100 scale-110 text-blue-500" : "opacity-30 text-slate-400"}`}><span className="text-[8px] font-bold leading-none">𝄫</span></div>
-      <div className={`absolute right-1 top-0 bottom-0 flex items-center transition-opacity duration-200 pointer-events-none ${isRight ? "opacity-100 scale-110 text-blue-500" : "opacity-30 text-slate-400"}`}><span className="text-[8px] font-bold leading-none">𝄪</span></div>
+      {/* 上フリックガイド */}
+      <div className={`absolute top-1 left-0 right-0 flex justify-center transition-all duration-150 pointer-events-none ${isUp ? "opacity-100 scale-125 text-blue-600 font-black translate-y-[-2px]" : "opacity-30 text-slate-400"}`}><span className="text-[10px] leading-none">♯</span></div>
+      {/* 下フリックガイド */}
+      <div className={`absolute bottom-1 left-0 right-0 flex justify-center transition-all duration-150 pointer-events-none ${isDown ? "opacity-100 scale-125 text-blue-600 font-black translate-y-[2px]" : "opacity-30 text-slate-400"}`}><span className="text-[10px] leading-none">♭</span></div>
+      {/* 左フリックガイド */}
+      <div className={`absolute left-1 top-0 bottom-0 flex items-center transition-all duration-150 pointer-events-none ${isLeft ? "opacity-100 scale-125 text-blue-600 font-black translate-x-[-2px]" : "opacity-30 text-slate-400"}`}><span className="text-[9px] leading-none">𝄫</span></div>
+      {/* 右フリックガイド */}
+      <div className={`absolute right-1 top-0 bottom-0 flex items-center transition-all duration-150 pointer-events-none ${isRight ? "opacity-100 scale-125 text-blue-600 font-black translate-x-[2px]" : "opacity-30 text-slate-400"}`}><span className="text-[9px] leading-none">𝄪</span></div>
 
-      <span className={`text-2xl font-medium tracking-tight transition-all duration-100 ${isRoot ? "text-rose-500" : isBass ? "text-amber-500" : isActive ? "text-cyan-600" : "text-slate-600"}`} 
-        style={{ transform: `translate(${offset.x * 0.4}px, ${offset.y * 0.4}px)` }}>
+      {/* メインラベル（動かない！） */}
+      <span className={`text-2xl font-medium tracking-tight transition-all duration-100 ${isRoot ? "text-rose-500" : isBass ? "text-amber-500" : isActive ? "text-cyan-600" : "text-slate-600"}`}>
         {displayLabel}
       </span>
     </div>
@@ -535,7 +535,7 @@ export default function CadenciaPage() {
     setLoading(true); setChatHistory([]); setInfoText("");
     const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
     try {
-      await new Promise(r => setTimeout(r, 2000)); 
+      await new Promise(r => setTimeout(r, 2000));
       const res = await fetch("/api/analyze", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ selectedNotes: selected, keyHint, bassHint, rootHint }),
@@ -700,22 +700,30 @@ export default function CadenciaPage() {
       <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glassKeyContainer} rounded-t-[36px] transition-transform duration-300 ease-out touch-none ${isKeyboardOpen ? "translate-y-0" : "translate-y-[calc(100%-30px)]"}`} style={{ transform: isKeyboardOpen ? `translateY(${keyboardOffset}px)` : undefined }}>
         <div className="h-8 flex items-center justify-center cursor-grab active:cursor-grabbing active:opacity-50" onClick={() => setIsKeyboardOpen(!isKeyboardOpen)} onPointerDown={handleDragStart} onPointerMove={handleDragMove} onPointerUp={handleDragEnd} onPointerCancel={handleDragEnd}><div className="w-12 h-1 bg-slate-300/80 rounded-full"></div></div>
         <div className="max-w-md mx-auto px-4 pb-8 pt-2">
-          <div className="grid grid-cols-4 grid-rows-4 gap-2.5 h-full">
+          <div className="grid grid-cols-4 grid-rows-3 gap-2.5 h-full">
+            {/* Row 1: C D E Del */}
             <FlickKey className="col-start-1 row-start-1" noteBase="C" currentSelection={selected.find(s=>s.startsWith("C"))} isBass={bassHint?.startsWith("C")??false} isRoot={rootHint?.startsWith("C")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-2 row-start-1" noteBase="D" currentSelection={selected.find(s=>s.startsWith("D"))} isBass={bassHint?.startsWith("D")??false} isRoot={rootHint?.startsWith("D")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-3 row-start-1" noteBase="E" currentSelection={selected.find(s=>s.startsWith("E"))} isBass={bassHint?.startsWith("E")??false} isRoot={rootHint?.startsWith("E")??false} onInput={handleKeyInput} />
-            <button className="col-start-4 row-start-1 h-14 rounded-2xl bg-white/40 border border-white/40 text-slate-400 active:text-rose-500 active:bg-rose-50 transition-all flex items-center justify-center shadow-sm active:scale-95 hover:bg-white/60" onClick={reset}><IconTrash /></button>
+            <button className="col-start-4 row-start-1 rounded-2xl bg-white/40 border border-white/30 text-slate-400 active:text-rose-500 active:bg-rose-50 transition-all flex items-center justify-center shadow-sm active:scale-95 hover:bg-white/60" onClick={reset}><IconTrash /></button>
+
+            {/* Row 2: F G A B */}
             <FlickKey className="col-start-1 row-start-2" noteBase="F" currentSelection={selected.find(s=>s.startsWith("F"))} isBass={bassHint?.startsWith("F")??false} isRoot={rootHint?.startsWith("F")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-2 row-start-2" noteBase="G" currentSelection={selected.find(s=>s.startsWith("G"))} isBass={bassHint?.startsWith("G")??false} isRoot={rootHint?.startsWith("G")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-3 row-start-2" noteBase="A" currentSelection={selected.find(s=>s.startsWith("A"))} isBass={bassHint?.startsWith("A")??false} isRoot={rootHint?.startsWith("A")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-4 row-start-2" noteBase="B" currentSelection={selected.find(s=>s.startsWith("B"))} isBass={bassHint?.startsWith("B")??false} isRoot={rootHint?.startsWith("B")??false} onInput={handleKeyInput} />
-            <div className="col-start-1 row-start-3 h-14 flex flex-col gap-1.5">
-               <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border ${inputMode === "root" ? "bg-rose-500 text-white border-rose-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>根音</button>
-               <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border ${inputMode === "bass" ? "bg-amber-500 text-white border-amber-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>最低音</button>
+
+            {/* Row 3 */}
+            {/* Col 1: Root/Bass (Split) */}
+            <div className="col-start-1 row-start-3 flex flex-col gap-1.5 h-full">
+               <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`flex-1 rounded-xl text-[9px] font-bold transition-all border flex flex-col items-center justify-center leading-tight ${inputMode === "root" ? "bg-rose-500 text-white border-rose-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>Root<br/><span className="text-[7px] opacity-70">根音</span></button>
+               <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`flex-1 rounded-xl text-[9px] font-bold transition-all border flex flex-col items-center justify-center leading-tight ${inputMode === "bass" ? "bg-amber-500 text-white border-amber-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>Bass<br/><span className="text-[7px] opacity-70">最低音</span></button>
             </div>
-            <div className="col-start-2 col-span-2 row-start-3 h-14 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-sm flex items-center overflow-hidden">
-                <div className="flex-[0.8] flex items-center justify-center border-r-2 border-dotted border-slate-400/30 h-full px-1"><span className="text-[10px] font-bold text-slate-500 whitespace-nowrap leading-tight text-center">調性は</span></div>
-                <div className="flex-1 relative h-full border-r-2 border-dotted border-slate-400/30 group active:bg-black/5 transition-colors">
+
+            {/* Col 2-3: Key Selector */}
+            <div className="col-start-2 col-span-2 row-start-3 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-sm flex items-center overflow-hidden h-full">
+                <div className="flex-[0.8] flex items-center justify-center border-r border-dotted border-slate-400/30 h-full px-1"><span className="text-[10px] font-bold text-slate-500 whitespace-nowrap leading-tight text-center">調性は</span></div>
+                <div className="flex-1 relative h-full border-r border-dotted border-slate-400/30 group active:bg-black/5 transition-colors">
                    <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyRoot} onChange={(e) => setKeyRoot(e.target.value)}>{KEYS_ROOT.map(k => <option key={k} value={k}>{k === "none" ? "なし" : k}</option>)}</select>
                    <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-400" : "text-cyan-600"}`}>{keyRoot === "none" ? "なし" : keyRoot}</span></div>
                 </div>
@@ -724,16 +732,13 @@ export default function CadenciaPage() {
                    <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-300" : "text-purple-600"}`}>{keyType === "Major" ? "Major" : "Minor"}</span></div>
                 </div>
             </div>
-            <button className={`col-start-4 row-start-3 row-span-2 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20 relative overflow-hidden group ${canAnalyze && !loading ? "bg-cyan-500 text-white" : "bg-slate-100 text-slate-300 cursor-not-allowed"}`} onClick={analyze} disabled={!canAnalyze || loading}>
+            
+            {/* Col 4: Analyze Button */}
+            <button className={`col-start-4 row-start-3 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20 relative overflow-hidden group ${canAnalyze && !loading ? "bg-cyan-500 text-white" : "bg-slate-100 text-slate-300 cursor-not-allowed"}`} onClick={analyze} disabled={!canAnalyze || loading}>
                <div className="relative z-10 flex flex-col items-center gap-1">
                  {loading ? <IconRefresh className="animate-spin w-5 h-5" /> : <IconArrowRight className="w-5 h-5" />}
-                 <span className="text-[10px] font-bold leading-tight">分析</span>
+                 <span className="text-[10px] font-bold leading-tight">判定</span>
                </div>
-            </button>
-            <button onClick={focusInput} disabled={!hasResult} className={`col-start-1 col-span-3 row-start-4 h-14 rounded-2xl border font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 relative overflow-hidden group ${!hasResult ? "bg-slate-100 border-slate-200 text-slate-300 shadow-none cursor-default" : "bg-white/60 border-white/40 shadow-cyan-500/10 text-cyan-600 hover:bg-white/80"}`}>
-               {hasResult && <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-cyan-400`}></div>}
-               <div className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-[10px] shadow-sm relative z-10 ${!hasResult ? "bg-slate-200 text-white" : "bg-cyan-500 text-white"}`}><IconBook className="w-3 h-3" /></div>
-               <span className={`text-xs font-bold relative z-10`}>Waon AI にきく</span>
             </button>
           </div>
         </div>
