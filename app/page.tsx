@@ -92,14 +92,14 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// 1. イントロダクション（キーボード操作削除・修正済み）
+// 1. イントロダクション（キーボード操作ガイド復活・6項目化）
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   const [isClosing, setIsClosing] = useState(false);
   const handleClose = () => { setIsClosing(true); setTimeout(onClose, 300); };
 
   return (
     <div className={`fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-300 ${isClosing ? "opacity-0" : "opacity-100"}`}>
-      <div className={`w-full max-w-md h-[80vh] bg-white rounded-[40px] shadow-2xl overflow-hidden relative transform transition-all duration-300 flex flex-col ${isClosing ? "scale-95 translate-y-8 opacity-0" : "scale-100 translate-y-0 opacity-100"}`}>
+      <div className={`w-full max-w-md h-[85vh] bg-white rounded-[40px] shadow-2xl overflow-hidden relative transform transition-all duration-300 flex flex-col ${isClosing ? "scale-95 translate-y-8 opacity-0" : "scale-100 translate-y-0 opacity-100"}`}>
         <div className="absolute top-10 -left-10 text-[8rem] font-black text-slate-100 rotate-90 pointer-events-none select-none opacity-50">INTRODUCTION</div>
         <div className="flex-1 overflow-y-auto p-8 relative z-10 scrollbar-hide">
           <div className="text-center mb-10">
@@ -107,6 +107,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
             <h1 className="text-4xl font-black text-slate-800 tracking-tighter mb-2">Waon AI</h1>
             <p className="text-sm font-bold text-slate-500">ポケットに、専属の音楽理論家を。</p>
           </div>
+          
           <div className="mb-10">
             <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">🎯</span> 対象ユーザー</h2>
             <div className="space-y-6">
@@ -128,6 +129,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
               </div>
             </div>
           </div>
+
           <div className="mb-8">
             <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">✨</span> Waon AIの特徴</h2>
             <div className="text-xs text-slate-600 leading-relaxed font-medium space-y-4">
@@ -141,6 +143,27 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
               <p className="text-center font-bold text-slate-400 mt-2">プロの音楽家の思考プロセスを、AIが可視化します。</p>
             </div>
           </div>
+
+          {/* 復活・拡張されたキーボード操作ガイド */}
+          <div className="mb-4">
+            <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">🎹</span> キーボード操作</h2>
+            <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 rounded-3xl p-5 border border-slate-100">
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100">👆</span><div className="text-[10px] font-bold text-slate-600 leading-tight">タップ<br/><span className="text-slate-400 font-normal">音を入力</span></div></div>
+                  
+                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-blue-500">⬆️</span><div className="text-[10px] font-bold text-slate-600 leading-tight">上フリック<br/><span className="text-blue-500 font-bold"># シャープ</span></div></div>
+                  
+                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-blue-500">⬇️</span><div className="text-[10px] font-bold text-slate-600 leading-tight">下フリック<br/><span className="text-blue-500 font-bold">b フラット</span></div></div>
+                  
+                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-rose-50 shadow-sm flex items-center justify-center text-xs border border-rose-100 text-rose-500">R</span><div className="text-[10px] font-bold text-slate-600 leading-tight">根音指定<br/><span className="text-rose-500 font-bold">Root</span></div></div>
+
+                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-amber-50 shadow-sm flex items-center justify-center text-xs border border-amber-100 text-amber-500">B</span><div className="text-[10px] font-bold text-slate-600 leading-tight">最低音指定<br/><span className="text-amber-500 font-bold">Bass</span></div></div>
+                  
+                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-purple-500">🗝</span><div className="text-[10px] font-bold text-slate-600 leading-tight">調性指定<br/><span className="text-purple-500 font-bold">Key</span></div></div>
+               </div>
+               <p className="mt-4 text-[9px] text-slate-400 text-center">直感的なフリック操作で、素早く音符を入力できます。</p>
+            </div>
+          </div>
         </div>
         <div className="p-6 bg-white border-t border-slate-100 relative z-20">
           <button onClick={handleClose} className="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold shadow-lg hover:bg-slate-800 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 group"><span>はじめる</span><span className="group-hover:translate-x-1 transition-transform">→</span></button>
@@ -150,22 +173,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-// 2. キーボードガイド
-const KeyboardGuide = ({ onClose }: { onClose: () => void }) => {
-  return (
-    <div className="bg-gradient-to-r from-blue-50/50 to-white border border-blue-100 rounded-[24px] p-5 mb-4 relative animate-in fade-in zoom-in-95 duration-300">
-      <button onClick={onClose} className="absolute top-3 right-3 w-6 h-6 bg-white rounded-full flex items-center justify-center text-slate-400 shadow-sm hover:text-slate-600 transition-colors"><IconX className="w-3 h-3" /></button>
-      <div className="flex items-center gap-2 mb-3"><span className="text-lg">🎹</span><h3 className="text-xs font-bold text-slate-700">キーボードの使い方</h3></div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm flex items-center gap-2"><div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center text-xs">👆</div><div className="text-[10px] font-bold text-slate-600 leading-tight">タップ<br/><span className="text-slate-400 font-normal">音を入力</span></div></div>
-        <div className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm flex items-center gap-2"><div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-xs text-blue-500">⬆️</div><div className="text-[10px] font-bold text-slate-600 leading-tight">上フリック<br/><span className="text-blue-500 font-bold"># シャープ</span></div></div>
-        <div className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm flex items-center gap-2"><div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-xs text-blue-500">⬇️</div><div className="text-[10px] font-bold text-slate-600 leading-tight">下フリック<br/><span className="text-blue-500 font-bold">b フラット</span></div></div>
-        <div className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm flex items-center gap-2"><div className="w-6 h-6 bg-rose-50 rounded-lg flex items-center justify-center text-xs text-rose-500">R</div><div className="text-[10px] font-bold text-slate-600 leading-tight">根音モード<br/><span className="text-rose-500 font-bold">Root</span></div></div>
-      </div>
-    </div>
-  );
-};
-
+// MiniPiano & Keys (No changes needed)
 const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassHint: string | null, rootHint: string | null }) => {
   const keys = [
     { idx: 0, type: "white", x: 0 }, { idx: 1, type: "black", x: 10 },
@@ -320,7 +328,7 @@ const InsightCard = ({ text, onAsk }: { text: string, onAsk: () => void }) => (
   </div>
 );
 
-// 2. 統合フッターセクション（並列デザイン）
+// Footer Section (Keep side-by-side)
 const FooterSection = () => (
   <div className="grid grid-cols-2 gap-3 mt-6">
     {/* Beta Card */}
@@ -438,7 +446,7 @@ export default function CadenciaPage() {
   const [inputMode, setInputMode] = useState<"normal" | "root" | "bass">("normal");
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(true);
   const [showWelcome, setShowWelcome] = useState(true);
-  const [showGuide, setShowGuide] = useState(true);
+  // Guide state is removed from main page flow
 
   const [candidates, setCandidates] = useState<CandidateObj[]>([]);
   const [infoText, setInfoText] = useState<string>("");
@@ -605,7 +613,7 @@ export default function CadenciaPage() {
             </p>
         </section>
 
-        {/* 入力カード */}
+        {/* 入力カード (ガイド削除・グリッドレイアウトへ変更) */}
         <section className={`${G.cardBase} bg-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
            <div className="absolute -right-4 top-4 text-[4rem] font-black text-slate-50 pointer-events-none select-none z-0 transform -rotate-3">ANALYZE</div>
            <div className="p-5 flex flex-col min-h-[240px] relative z-10">
@@ -619,21 +627,20 @@ export default function CadenciaPage() {
                  </div>
               </div>
 
-              {showGuide && selected.length === 0 && <KeyboardGuide onClose={() => setShowGuide(false)} />}
+              {/* ガイドコンポーネント削除 */}
 
               <div className="flex-1 flex flex-col items-center justify-center relative">
                  {selected.length === 0 ? (
-                    !showGuide && (
-                      <div className="flex flex-col items-center justify-center gap-3 animate-in fade-in zoom-in duration-500 py-4 opacity-60">
+                    <div className="flex flex-col items-center justify-center gap-3 animate-in fade-in zoom-in duration-500 py-4 opacity-60">
                          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-300 shadow-inner"><IconKeyboard className="w-6 h-6" /></div>
                          <p className="text-xs font-bold text-slate-400">下のキーボードから音を選んでください</p>
-                      </div>
-                    )
+                    </div>
                  ) : (
-                    <div className="w-full flex flex-wrap justify-center gap-2">
+                    // 4列グリッドに変更 (grid-cols-4)
+                    <div className="w-full grid grid-cols-4 gap-2">
                        {sortedSelected.map((note) => (
-                          <div key={note} className={`relative group animate-in zoom-in duration-300`}>
-                            <div className={`w-14 h-14 rounded-2xl text-xl font-black shadow-lg flex items-center justify-center border transition-transform hover:scale-105 ${
+                          <div key={note} className={`relative group animate-in zoom-in duration-300 aspect-square`}>
+                            <div className={`w-full h-full rounded-2xl text-xl font-black shadow-lg flex items-center justify-center border transition-transform hover:scale-105 ${
                               rootHint === note 
                                 ? "bg-rose-500 border-rose-400 text-white shadow-rose-200" 
                                 : bassHint === note 
@@ -670,13 +677,13 @@ export default function CadenciaPage() {
               
               <div className="pt-4 pb-4"><AskCard question={question} setQuestion={setQuestion} ask={ask} isThinking={isThinking} loading={loading} inputRefProp={inputRef} history={chatHistory} /></div>
 
-              {/* 3. 分析結果時は最後に配置 */}
+              {/* Footer Section */}
               <FooterSection />
           </div>
         )}
       </main>
 
-      {/* 4. 分析前はフッター最下部に配置 */}
+      {/* Footer (No Result) */}
       {!hasResult && (
          <footer className="relative z-10 px-5 pb-32 mt-12">
             <FooterSection />
@@ -731,7 +738,7 @@ export default function CadenciaPage() {
 
 // Icons
 const IconBook = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>;
-const IconSparkles = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
+const IconSparkles = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/></svg>;
 const IconSend = ({className}: {className?: string}) => <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
 const IconRefresh = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>;
 const IconTrash = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
