@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState, useEffect } from "react";
-import Script from "next/script";
 
 // --- Design Constants ---
 const G = {
@@ -85,12 +84,6 @@ const getKeyIndex = (note: string): number => {
 };
 
 // --- Components ---
-
-const FeedbackLink = ({ className, children }: { className?: string, children: React.ReactNode }) => (
-  <a href="https://x.com/araken525_toho?s=21" target="_blank" rel="noopener noreferrer" className={className}>
-    {children}
-  </a>
-);
 
 // 1. イントロダクション
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
@@ -202,45 +195,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-// MiniPiano & Keys (No changes needed)
-const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassHint: string | null, rootHint: string | null }) => {
-  const keys = [
-    { idx: 0, type: "white", x: 0 }, { idx: 1, type: "black", x: 10 },
-    { idx: 2, type: "white", x: 14.28 }, { idx: 3, type: "black", x: 24.28 },
-    { idx: 4, type: "white", x: 28.56 }, { idx: 5, type: "white", x: 42.84 },
-    { idx: 6, type: "black", x: 52.84 }, { idx: 7, type: "white", x: 57.12 },
-    { idx: 8, type: "black", x: 67.12 }, { idx: 9, type: "white", x: 71.4 },
-    { idx: 10, type: "black", x: 81.4 }, { idx: 11, type: "white", x: 85.68 },
-  ];
-  const activeIndices = selected.map(getKeyIndex);
-  const isActive = (keyIdx: number) => activeIndices.includes(keyIdx);
-  const isBass = (keyIdx: number) => bassHint ? getKeyIndex(bassHint) === keyIdx : false;
-  const isRoot = (keyIdx: number) => rootHint ? getKeyIndex(rootHint) === keyIdx : false;
-
-  return (
-    <div className="h-full w-full relative select-none pointer-events-none opacity-90">
-       <svg viewBox="0 0 100 50" className="w-full h-full" preserveAspectRatio="none">
-         {keys.filter(k => k.type === "white").map((k) => (
-           <path key={k.idx} d={`M${k.x},0 h14.28 v50 h-14.28 z`}
-             className={`transition-all duration-300 ${
-               isActive(k.idx) 
-                 ? (isRoot(k.idx) ? "fill-rose-400" : isBass(k.idx) ? "fill-amber-400" : "fill-cyan-400") 
-                 : "fill-white"
-             } stroke-slate-100 stroke-[0.5]`} />
-         ))}
-         {keys.filter(k => k.type === "black").map((k) => (
-           <path key={k.idx} d={`M${k.x},0 h8 v32 a2,2 0 0 1 -2,2 h-4 a2,2 0 0 1 -2,-2 z`}
-             className={`transition-all duration-300 ${
-               isActive(k.idx) 
-                 ? (isRoot(k.idx) ? "fill-rose-600" : isBass(k.idx) ? "fill-amber-600" : "fill-cyan-600") 
-                 : "fill-slate-800"
-             }`} />
-         ))}
-       </svg>
-    </div>
-  );
-};
-
+// FlickKey (No changes)
 const FlickKey = ({ 
   noteBase, currentSelection, isBass, isRoot, onInput, className
 }: { 
@@ -357,7 +312,7 @@ const InsightCard = ({ text, onAsk }: { text: string, onAsk: () => void }) => (
   </div>
 );
 
-// Footer Section (Keep side-by-side)
+// Footer Section
 const FooterSection = () => (
   <div className="grid grid-cols-2 gap-3 mt-6">
     {/* Beta Card */}
@@ -486,6 +441,9 @@ export default function CadenciaPage() {
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(true);
   const [showWelcome, setShowWelcome] = useState(true);
 
+  // ★ New: Mode Switch State
+  const [mode, setMode] = useState<"expert" | "beginner">("expert");
+
   const [candidates, setCandidates] = useState<CandidateObj[]>([]);
   const [infoText, setInfoText] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -569,10 +527,10 @@ export default function CadenciaPage() {
     setLoading(true); setChatHistory([]); setInfoText("");
     const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
     try {
-      // await new Promise(r => setTimeout(r, 2000)); // REMOVED
+      // ★ Mode Added
       const res = await fetch("/api/analyze", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedNotes: selected, keyHint, bassHint, rootHint }),
+        body: JSON.stringify({ selectedNotes: selected, keyHint, bassHint, rootHint, mode }),
       });
       const data = res.headers.get("content-type")?.includes("json") ? await res.json() : { error: await res.text() };
       if (!res.ok) { setCandidates([]); setInfoText(`システムエラー: ${data?.error}`); return; }
@@ -592,11 +550,12 @@ export default function CadenciaPage() {
     const topChord = candidates[0].chord;
     const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
     try {
+      // ★ Mode Added
       const res = await fetch("/api/ask", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           selectedNotes: selected, engineChord: topChord, question: q, 
-          bassHint, rootHint, keyHint, candidates: candidates.slice(0,5) 
+          bassHint, rootHint, keyHint, candidates: candidates.slice(0,5), mode
         }),
       });
       const answerText = res.ok ? await res.text() : `エラー: ${await res.text()}`;
@@ -632,7 +591,19 @@ export default function CadenciaPage() {
             <span className="text-[10px] font-bold text-slate-400 tracking-wide">ポケットに、専属音楽理論家を。</span>
           </div>
         </div>
-        <div className="flex items-center"><span className="font-mono text-[10px] font-bold text-black border-l-2 border-slate-200 pl-3 ml-2">v0.1.0 BETA</span></div>
+
+        {/* ★ Mode Switch & Version */}
+        <div className="flex items-center gap-3">
+          <div className="bg-slate-100/80 p-0.5 rounded-full flex border border-slate-200/60 shadow-inner gap-0.5">
+             <button onClick={() => setMode("beginner")} className={`relative px-3 py-1.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition-all duration-300 ${mode === "beginner" ? "bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-100" : "text-slate-400 hover:bg-white/50 hover:text-slate-600"}`}>
+               <span>🔰</span><span>初心者</span>
+             </button>
+             <button onClick={() => setMode("expert")} className={`relative px-3 py-1.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition-all duration-300 ${mode === "expert" ? "bg-white text-blue-600 shadow-sm ring-1 ring-blue-100" : "text-slate-400 hover:bg-white/50 hover:text-slate-600"}`}>
+               <span>🎓</span><span>専門家</span>
+             </button>
+          </div>
+          <span className="hidden sm:inline-block font-mono text-[10px] font-bold text-black border-l-2 border-slate-200 pl-3">v0.1.0</span>
+        </div>
       </header>
 
       <main className="pt-20 px-5 max-w-md mx-auto space-y-6 relative z-10">
