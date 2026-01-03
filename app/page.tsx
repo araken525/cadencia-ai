@@ -92,7 +92,7 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// 1. イントロダクション（キーボード操作ガイド復活・6項目化）
+// 1. イントロダクション
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   const [isClosing, setIsClosing] = useState(false);
   const handleClose = () => { setIsClosing(true); setTimeout(onClose, 300); };
@@ -144,7 +144,6 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
             </div>
           </div>
 
-          {/* 復活・拡張されたキーボード操作ガイド */}
           <div className="mb-4">
             <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">🎹</span> キーボード操作</h2>
             <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 rounded-3xl p-5 border border-slate-100">
@@ -416,17 +415,29 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
   );
 }
 
+// 修正: リッチで洗練された分析中オーバーレイ
 const LoadingOverlay = () => (
-  <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/60 backdrop-blur-xl animate-in fade-in duration-500 px-6">
-    <div className="relative w-16 h-16 mb-6">
-      <div className="absolute inset-0 rounded-full border-[3px] border-slate-200 border-t-slate-800 animate-spin"></div>
+  <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/80 backdrop-blur-3xl animate-in fade-in duration-500 transition-all">
+    {/* Animated Icon Container */}
+    <div className="relative mb-8">
+      <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-xl animate-pulse"></div>
+      <div className="relative w-20 h-20 bg-white rounded-3xl shadow-2xl shadow-blue-500/10 flex items-center justify-center border border-white/50">
+        {/* Spinning gradient ring */}
+        <div className="absolute inset-0 rounded-3xl border-2 border-slate-50"></div>
+        <div className="absolute inset-[-2px] rounded-[26px] border-2 border-transparent border-t-blue-400 border-r-cyan-300 animate-spin"></div>
+        
+        {/* Center Icon */}
+        <IconSparkles className="w-8 h-8 text-slate-700 animate-bounce duration-[2s]" />
+      </div>
     </div>
-    <div className="text-center space-y-3 max-w-xs relative z-10">
-      <h2 className="text-base font-bold text-slate-800 tracking-tight">
+
+    {/* Text Content */}
+    <div className="text-center space-y-3 px-8 relative z-10">
+      <h2 className="text-lg font-black text-slate-800 tracking-tight animate-pulse">
         Waon AIが分析しています
       </h2>
-      <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
-        複雑な和音構造を解析し、最適な音楽的解釈を生成しています。
+      <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
+        複雑な和音構造を解析し、<br/>最適な音楽的解釈を生成しています。
       </p>
     </div>
   </div>
