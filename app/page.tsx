@@ -92,7 +92,7 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// 1. イントロダクション
+// 1. イントロダクション（対象ユーザーセクションをコンパクト化）
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   const [isClosing, setIsClosing] = useState(false);
   const handleClose = () => { setIsClosing(true); setTimeout(onClose, 300); };
@@ -110,21 +110,21 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
           
           <div className="mb-10">
             <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">🎯</span> 対象ユーザー</h2>
-            <div className="space-y-6">
-              <div className="bg-slate-50 p-5 rounded-3xl">
-                <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><span className="text-xl">🎺</span> 奏者の方へ<span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full">吹奏楽・オケ・合唱</span></h3>
-                <ul className="space-y-2 text-xs text-slate-600 font-medium leading-relaxed list-disc list-outside pl-4">
-                  <li>和音の響きは分かるが、機能和声として言語化できない。</li>
-                  <li>スコアを読んでいて「この和音の役割は？」と立ち止まってしまう。</li>
-                  <li>記号としてのコード名より、音楽的な「意味」を知りたい。</li>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100">
+                <h3 className="font-bold text-slate-700 mb-2 text-xs flex items-center gap-1.5"><span className="text-base">🎺</span> 奏者の方へ</h3>
+                <ul className="space-y-1.5 text-[10px] text-slate-500 font-medium leading-tight list-disc list-outside pl-3">
+                  <li>和音を言語化したい</li>
+                  <li>スコアの理解を深めたい</li>
+                  <li>音楽的意味を知りたい</li>
                 </ul>
               </div>
-              <div className="bg-slate-50 p-5 rounded-3xl">
-                <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><span className="text-xl">🎓</span> 学ぶ方へ<span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full">音大生・学習者</span></h3>
-                <ul className="space-y-2 text-xs text-slate-600 font-medium leading-relaxed list-disc list-outside pl-4">
-                  <li>和声学の用語（主和音、属和音など）を用いた解説が欲しい。</li>
-                  <li>転回形やバス、文脈による解釈の変化を深く学びたい。</li>
-                  <li>自習時の解答合わせや、理論の復習ツールとして。</li>
+              <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100">
+                <h3 className="font-bold text-slate-700 mb-2 text-xs flex items-center gap-1.5"><span className="text-base">🎓</span> 学ぶ方へ</h3>
+                <ul className="space-y-1.5 text-[10px] text-slate-500 font-medium leading-tight list-disc list-outside pl-3">
+                  <li>和声用語で解説が欲しい</li>
+                  <li>転回形やバスを学びたい</li>
+                  <li>自習の答え合わせに</li>
                 </ul>
               </div>
             </div>
@@ -415,28 +415,30 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
   );
 }
 
-// 修正: リッチで洗練された分析中オーバーレイ
+// 修正: ロボットアイコンを使った洗練された分析中画面
 const LoadingOverlay = () => (
   <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/80 backdrop-blur-3xl animate-in fade-in duration-500 transition-all">
     {/* Animated Icon Container */}
     <div className="relative mb-8">
       <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-xl animate-pulse"></div>
-      <div className="relative w-20 h-20 bg-white rounded-3xl shadow-2xl shadow-blue-500/10 flex items-center justify-center border border-white/50">
+      <div className="relative w-24 h-24 bg-white rounded-3xl shadow-2xl shadow-blue-500/10 flex items-center justify-center border border-white/50">
         {/* Spinning gradient ring */}
         <div className="absolute inset-0 rounded-3xl border-2 border-slate-50"></div>
-        <div className="absolute inset-[-2px] rounded-[26px] border-2 border-transparent border-t-blue-400 border-r-cyan-300 animate-spin"></div>
+        <div className="absolute inset-[-3px] rounded-[28px] border-[3px] border-transparent border-t-blue-400 border-r-cyan-300 animate-spin"></div>
         
-        {/* Center Icon */}
-        <IconSparkles className="w-8 h-8 text-slate-700 animate-bounce duration-[2s]" />
+        {/* Center Icon (Robot) */}
+        <div className="animate-bounce duration-[2s]">
+           <IconRobot className="w-10 h-10 text-slate-700" />
+        </div>
       </div>
     </div>
 
     {/* Text Content */}
     <div className="text-center space-y-3 px-8 relative z-10">
-      <h2 className="text-lg font-black text-slate-800 tracking-tight animate-pulse">
-        Waon AIが分析しています
+      <h2 className="text-xl font-black text-slate-800 tracking-tight animate-pulse">
+        Waon AIが分析中...
       </h2>
-      <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
+      <p className="text-xs font-bold text-slate-400 leading-relaxed">
         複雑な和音構造を解析し、<br/>最適な音楽的解釈を生成しています。
       </p>
     </div>
@@ -750,7 +752,7 @@ export default function CadenciaPage() {
 
 // Icons
 const IconBook = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>;
-const IconSparkles = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/></svg>;
+const IconSparkles = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
 const IconSend = ({className}: {className?: string}) => <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
 const IconRefresh = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>;
 const IconTrash = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
