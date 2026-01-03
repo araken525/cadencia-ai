@@ -86,13 +86,59 @@ const getKeyIndex = (note: string): number => {
 
 // --- Components ---
 
+// NEW: 理論基準セクションコンポーネント
+const TheoryGuideSection = () => (
+  <section className="mt-12 mb-8 animate-in fade-in duration-700">
+    <div className="bg-white/60 border border-slate-200 rounded-[32px] p-6 backdrop-blur-sm shadow-sm relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-full blur-3xl -z-10 opacity-50"></div>
+      <h3 className="text-sm font-black text-slate-700 mb-6 flex items-center gap-2 border-b border-slate-100 pb-4">
+        <span className="text-lg">📚</span>
+        音名表記と理論の基準
+      </h3>
+
+      <div className="space-y-5 text-xs text-slate-600 leading-relaxed font-medium">
+        <p>
+          Waon AIは、<strong>日本の音楽高等教育（芸大和声・機能和声）</strong>の理論体系を基準に設計されています。
+          単なるコードネームの羅列ではなく、文脈に応じた和声的な解釈を優先します。
+        </p>
+
+        <div className="grid grid-cols-1 gap-3">
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-center">
+            <h4 className="font-bold text-slate-700 mb-2 text-[10px] uppercase tracking-wider flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+              和音記号と転回形
+            </h4>
+            <p className="opacity-80 text-[10px] leading-relaxed">
+              欧米式の数字付き低音（I6, V65等）ではなく、<strong>転回指数（I¹, V⁷など）</strong>を使用します。
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-center">
+            <h4 className="font-bold text-slate-700 mb-2 text-[10px] uppercase tracking-wider flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-pink-400"></span>
+              機能と解決
+            </h4>
+            <p className="opacity-80 text-[10px] leading-relaxed">
+              機能は <strong>T / D / S</strong> で分類。属七の和音（V⁷）などは、第7音の解決（Resolution）を含めた進行の妥当性を考慮します。
+            </p>
+          </div>
+        </div>
+        
+        <p className="text-[9px] text-slate-400 mt-2">
+           ※ 入力は英語音名（C, D, E...）に対応していますが、内部ロジックではドイツ音名や異名同音の文脈も考慮して解析を行います。
+        </p>
+      </div>
+    </div>
+  </section>
+);
+
 const FeedbackLink = ({ className, children }: { className?: string, children: React.ReactNode }) => (
   <a href="https://x.com/araken525_toho?s=21" target="_blank" rel="noopener noreferrer" className={className}>
     {children}
   </a>
 );
 
-// 1. イントロダクション（対象ユーザーセクションをコンパクト化）
+// 1. イントロダクション
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   const [isClosing, setIsClosing] = useState(false);
   const handleClose = () => { setIsClosing(true); setTimeout(onClose, 300); };
@@ -172,7 +218,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-// MiniPiano & Keys (No changes needed)
+// MiniPiano & Keys
 const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassHint: string | null, rootHint: string | null }) => {
   const keys = [
     { idx: 0, type: "white", x: 0 }, { idx: 1, type: "black", x: 10 },
@@ -327,7 +373,7 @@ const InsightCard = ({ text, onAsk }: { text: string, onAsk: () => void }) => (
   </div>
 );
 
-// Footer Section (Keep side-by-side)
+// Footer Section
 const FooterSection = () => (
   <div className="grid grid-cols-2 gap-3 mt-6">
     {/* Beta Card */}
@@ -415,28 +461,20 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
   );
 }
 
-// 修正: ロボットアイコンを使った洗練された分析中画面
+// Loading
 const LoadingOverlay = () => (
   <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/80 backdrop-blur-3xl animate-in fade-in duration-500 transition-all">
-    {/* Animated Icon Container */}
     <div className="relative mb-8">
       <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-xl animate-pulse"></div>
       <div className="relative w-24 h-24 bg-white rounded-[32px] shadow-2xl shadow-blue-500/10 flex items-center justify-center border border-white/60">
-        {/* Simple bouncing robot */}
         <div className="animate-bounce duration-[2000ms]">
            <IconRobot className="w-10 h-10 text-slate-700" />
         </div>
       </div>
     </div>
-
-    {/* Text Content */}
     <div className="text-center space-y-3 px-8 relative z-10">
-      <h2 className="text-lg font-black text-slate-800 tracking-tight animate-pulse">
-        Waon AIが分析しています
-      </h2>
-      <p className="text-xs font-bold text-slate-400 leading-relaxed">
-        複雑な和音構造を解析し、<br/>最適な音楽的解釈を生成しています。
-      </p>
+      <h2 className="text-lg font-black text-slate-800 tracking-tight animate-pulse">Waon AIが分析しています</h2>
+      <p className="text-xs font-bold text-slate-400 leading-relaxed">複雑な和音構造を解析し、<br/>最適な音楽的解釈を生成しています。</p>
     </div>
   </div>
 );
@@ -455,7 +493,6 @@ export default function CadenciaPage() {
   const [inputMode, setInputMode] = useState<"normal" | "root" | "bass">("normal");
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(true);
   const [showWelcome, setShowWelcome] = useState(true);
-  // Guide state is removed from main page flow
 
   const [candidates, setCandidates] = useState<CandidateObj[]>([]);
   const [infoText, setInfoText] = useState<string>("");
@@ -539,7 +576,6 @@ export default function CadenciaPage() {
     setLoading(true); setChatHistory([]); setInfoText("");
     const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
     try {
-      // await new Promise(r => setTimeout(r, 2000)); // REMOVED
       const res = await fetch("/api/analyze", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ selectedNotes: selected, keyHint, bassHint, rootHint }),
@@ -622,11 +658,10 @@ export default function CadenciaPage() {
             </p>
         </section>
 
-        {/* 入力カード (ガイド削除・グリッドレイアウトへ変更) */}
+        {/* 入力カード */}
         <section className={`${G.cardBase} bg-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
            <div className="absolute -right-4 top-4 text-[4rem] font-black text-slate-50 pointer-events-none select-none z-0 transform -rotate-3">ANALYZE</div>
            <div className="p-5 flex flex-col min-h-[240px] relative z-10">
-              {/* Header with new Notes Badge */}
               <div className="flex justify-between items-end mb-4">
                  <div className="space-y-0.5">
                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">Waon AIに分析させよう</h3>
@@ -638,7 +673,6 @@ export default function CadenciaPage() {
                  </div>
               </div>
 
-              {/* Recessed Input Area */}
               <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner p-4 flex flex-col items-center justify-center min-h-[160px] relative transition-colors duration-300 hover:bg-slate-100/50">
                  {selected.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-3 animate-in fade-in zoom-in duration-500 py-4 opacity-60">
@@ -646,7 +680,6 @@ export default function CadenciaPage() {
                          <p className="text-xs font-bold text-slate-400">下のキーボードから音を選んでください</p>
                     </div>
                  ) : (
-                    // 4列グリッド (grid-cols-4)
                     <div className="w-full grid grid-cols-4 gap-2">
                        {sortedSelected.map((note) => (
                           <div key={note} className={`relative group animate-in zoom-in duration-300 aspect-square`}>
@@ -687,7 +720,10 @@ export default function CadenciaPage() {
               
               <div className="pt-4 pb-4"><AskCard question={question} setQuestion={setQuestion} ask={ask} isThinking={isThinking} loading={loading} inputRefProp={inputRef} history={chatHistory} /></div>
 
-              {/* Footer Section */}
+              {/* NEW: 理論基準セクション (結果ありの場合) */}
+              <TheoryGuideSection />
+
+              {/* Footer Section (結果ありの場合) */}
               <FooterSection />
           </div>
         )}
@@ -695,12 +731,14 @@ export default function CadenciaPage() {
 
       {/* Footer (No Result) */}
       {!hasResult && (
-         <footer className="relative z-10 px-5 pb-32 mt-12">
+         <footer className="relative z-10 px-5 pb-32 mt-12 max-w-md mx-auto">
+             {/* NEW: 理論基準セクション (結果なしの場合) */}
+            <TheoryGuideSection />
             <FooterSection />
          </footer>
       )}
 
-      {/* --- Floating Glass Keyboard (Translucent) --- */}
+      {/* --- Floating Glass Keyboard --- */}
       <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glassKeyContainer} rounded-t-[36px] transition-transform duration-300 ease-out touch-none ${isKeyboardOpen ? "translate-y-0" : "translate-y-[calc(100%-30px)]"}`} style={{ transform: isKeyboardOpen ? `translateY(${keyboardOffset}px)` : undefined }}>
         <div className="h-8 flex items-center justify-center cursor-grab active:cursor-grabbing active:opacity-50" onClick={() => setIsKeyboardOpen(!isKeyboardOpen)} onPointerDown={handleDragStart} onPointerMove={handleDragMove} onPointerUp={handleDragEnd} onPointerCancel={handleDragEnd}><div className="w-12 h-1 bg-slate-300/80 rounded-full"></div></div>
         <div className="max-w-md mx-auto px-4 pb-8 pt-2">
