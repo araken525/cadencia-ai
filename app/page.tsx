@@ -613,7 +613,7 @@ export default function CadenciaPage() {
           bassHint, rootHint, keyHint, candidates: candidates.slice(0,5) 
         }),
       });
-      const answerText = res.ok ? await res.text() : `エラー: ${await res.text()}`);
+      const answerText = res.ok ? await res.text() : `エラー: ${await res.text()}`;
       setChatHistory(prev => [...prev, { role: 'ai', text: answerText }]);
     } catch (e: any) { 
         setChatHistory(prev => [...prev, { role: 'ai', text: `通信エラー: ${e?.message}` }]);
