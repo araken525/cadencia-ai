@@ -105,7 +105,7 @@ type AnalyzeResponse = {
 };
 
 // ============================================================
-// 共通の特殊和音ロジック
+// 1. 特殊和音ロジック（共通辞書）
 // ============================================================
 const SPECIAL_CHORD_RULES = `
 【特殊和音の判定辞書（優先度：高）】
@@ -122,6 +122,41 @@ const SPECIAL_CHORD_RULES = `
 9. **根音省略の属九:** 減七の和音は、機能的には「根音省略の属九（V₉）」としてD機能を持つとみなす。
 10. **Iの付加6:** ポピュラーではI6だが、芸大和声ではVIの七の第1転回形（VI₇¹）として扱うことが多い。
 11. **導七の和音:** 短調のVIIまたは長調の減5短7を持つ和音。減七と区別し、穏やかなD機能を持つとする。
+`;
+
+// ============================================================
+// 2. 出力フォーマット（ここが抜けていたので共通化！）
+// ============================================================
+const OUTPUT_FORMAT_JSON = `
+【出力はJSONのみ】
+以下のJSONフォーマットを厳守してください。Markdownや他のテキストは含めないでください。
+
+{
+  "status": "ok" | "ambiguous" | "insufficient",
+  "engineChord": string, // 代表的なコード名（C, Cm/Ebなど）
+  "chordType": string, // 和音の種類（長三和音、属七の和音など許可された名称）
+  "confidence": number, // 0.0-1.0
+  "analysis": string, // 解説文
+  "candidates": [
+    {
+      "chord": string,
+      "chordType": string,
+      "inversion": "root" | "1st" | "2nd" | "3rd" | "unknown",
+      "tds": "T" | "D" | "S" | "?",
+      "romanNumeral": string,
+      "score": number, // 0-100
+      "confidence": number, // 0.0-1.0
+      "chordTones": string[],
+      "extraTones": string[],
+      "reason": string,
+      "provisional": boolean
+    }
+  ]
+}
+
+【candidatesの条件】
+- 最大10件、上から有力順
+- candidates[0] は現時点で最有力なものにする
 `;
 
 // ============================================================
@@ -152,39 +187,12 @@ function buildExpertSystemPrompt() {
 - 減５短７の和音（導七の和音）, 増七の和音
 - 属九の和音, 属短九の和音, 増六の和音
 
-${SPECIAL_CHORD_RULES}
-
 【和音記号表記】
 - 転回形は右上（I¹）、種類は右下（V₇）に記述。
 - TDS機能は大文字（T, D, S）。
 
-【出力はJSONのみ】
-{
-  "status": "ok" | "ambiguous" | "insufficient",
-  "engineChord": string,
-  "chordType": string,
-  "confidence": number, // 0.0-1.0
-  "analysis": string,
-  "candidates": [
-    {
-      "chord": string,
-      "chordType": string,
-      "inversion": "root" | "1st" | "2nd" | "3rd" | "unknown",
-      "tds": "T" | "D" | "S" | "?",
-      "romanNumeral": string,
-      "score": number, // 0-100
-      "confidence": number, // 0.0-1.0
-      "chordTones": string[],
-      "extraTones": string[],
-      "reason": string,
-      "provisional": boolean
-    }
-  ]
-}
-
-【candidatesの条件】
-- 最大10件、上から有力順
-- candidates[0] は現時点で最有力なものにする
+${SPECIAL_CHORD_RULES}
+${OUTPUT_FORMAT_JSON}
 `.trim();
 }
 
@@ -210,10 +218,7 @@ function buildBeginnerSystemPrompt() {
 - **解決:** 「この音は不安定なので、次に〇〇に行きたがっています」と感覚的に伝える。
 
 ${SPECIAL_CHORD_RULES}
-
-【その他ルール】
-- 上記「特殊和音の判定辞書」の定義は絶対です（例: IV6＝II7の1転）。
-- 出力フォーマット（JSON）も厳密に守ってください。
+${OUTPUT_FORMAT_JSON}
 `.trim();
 }
 
@@ -268,7 +273,7 @@ export async function POST(req: Request) {
 
     const json = parseJsonSafely(result.response.text());
     
-    // ★ ここで「1%」問題を解決する自動補正を入れています
+    // ★ 1%問題を解決する自動補正ロジック
     let candidates: CandidateObj[] = (json.candidates || []).map((c: any) => {
       let rawScore = typeof c.score === "number" ? c.score : 0;
       let rawConf = typeof c.confidence === "number" ? c.confidence : 0;
@@ -294,8 +299,8 @@ export async function POST(req: Request) {
         inversion: safeStr(c.inversion, "unknown"),
         romanNumeral: safeStr(c.romanNumeral, ""),
         tds: (["T", "D", "S"].includes(c.tds) ? c.tds : "?") as any,
-        score: clampScore(rawScore, 0), // 補正済みの値を使用
-        confidence: clamp01(rawConf, 0), // 補正済みの値を使用
+        score: clampScore(rawScore, 0),
+        confidence: clamp01(rawConf, 0),
         chordTones: safeArrStr(c.chordTones),
         extraTones: safeArrStr(c.extraTones),
         reason: safeStr(c.reason, ""),
@@ -376,7 +381,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(res);
   } catch (e: any) {
-    console.error(e);
+    console.error(e); // サーバーログにエラーを出力
     return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
   }
 }
