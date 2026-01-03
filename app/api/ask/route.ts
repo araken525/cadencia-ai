@@ -55,7 +55,7 @@ function asNoteOrNull(x: any): string | null {
 }
 
 // ============================================================
-// 共通の特殊和音ロジック（両モードで必須）
+// 共通の特殊和音ロジック（Analyzeと共通）
 // ============================================================
 const SPECIAL_CHORD_RULES = `
 【特殊和音の判定辞書（優先度：高）】
@@ -177,7 +177,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
 
-    // ★ モード判定（デフォルトは expert）
+    // ★ モード判定
     const mode = (body?.mode === "beginner") ? "beginner" : "expert";
 
     const selectedNotesRaw: any[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
