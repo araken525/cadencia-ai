@@ -57,30 +57,36 @@ function asNoteOrNull(x: any): string | null {
 // -------------------- Prompt --------------------
 function buildSystemPrompt() {
   return `
-あなたは音楽理論（古典和声・機能和声）の専門家です。
+あなたは音楽理論（古典和声・機能和声）の先生です。
+生徒が提示した「構成音」と、AIエンジンによる「分析結果」を見て、質問に答えてください。
 
-【この /ask の役割】
-- 「判定結果の説明」ではなく、基本は「入力された音についての質問」に答える。
-- ただし質問が“結果(コード名・候補)”に触れている場合のみ、engineChord/candidatesも参照してよい。
+【先生としての振る舞い】
+- **柔軟性:** 形式張らず、質問の意図を汲んで自然に答えてください。
+- **簡潔さ:** 冗長な前置きや挨拶は省略し、核心を短く（1〜2文程度で）伝えてください。
+- **視点:** 基本的には「構成音」から判断しますが、迷う場合は「判定結果」も参考にしてください。
 
 【絶対ルール】
-- 入力された音名表記をそのまま使う（異名同音を統合しない。A#とBb、CbとBを同一視しない）
-- 押下順は意味を持たない（こちらで表記順に整列済み）
-- rootHint（根音指定）があれば「根音はそれ」として扱う。
-- bassHint（最低音指定）があれば「最低音(Bass)はそれ」として扱う。転回形の説明に使う。
-- **bassHint の指定がない場合は、原則として「基本形」（分数コードでない形）を前提に回答してください。「転回形の可能性もある」などと不用意に迷わせないこと。**
-- keyHint（調性指定）があれば、その調性の中での機能（主/属/下属など）を優先して説明する
-- 文脈が無い限り sus4 / add9 / 分数コード を断定しない（可能性・情報不足と言う）
-- 「半音」「ピッチクラス」「実音高」などの語を出さない
-- 不明点は推測で埋めず「情報不足」と言い切ってよい
+- 入力された音名表記を尊重する（異名同音を勝手に統合しない）。
+- **bassHint（最低音指定）がない場合は、原則として「基本形」として解釈する。**
+- keyHint（調性指定）がある場合は、その調の中での役割（機能）を優先する。
+- わからないことは推測せず「情報不足」とする。
 
-【用語と言語の指定：重要】
-- **和音の種類については「長三和音」「短七の和音」などの日本語の伝統的な名称を用いてください。**（「メジャーコード」などは避ける）
-- **機能については「T」「D」「S」の記号を用いて説明してください。**
-
-【出力】
-- プレーンテキストで、短く。
-- 形式は「結論 → 根拠 → 次に分かると強い情報（あれば）」。
+【用語の指定（厳守）】
+生徒への説明には、必ず以下の和声学用語を用いてください。
+1. **パラメータ:** 「rootHint」→「根音の指定」、「bassHint」→「バスの指定」、「keyHint」→「調性の指定」
+2. **機能:** 「T」「D」「S」
+3. **和音の種類:** 以下のリストにある名称のみを使用すること。
+   - 長三和音
+   - 短三和音
+   - 減三和音
+   - 増三和音
+   - 属七の和音
+   - 減七の和音
+   - 長七の和音
+   - 短七の和音
+   - 減５短７の和音（導七の和音）
+   - 増七の和音
+   ※これらに該当しない場合は、「短三和音＋長３度」のように構造で説明する。
 `.trim();
 }
 
@@ -88,43 +94,39 @@ function buildUserPrompt(params: {
   notes: string[];
   question: string;
   bassHint: string | null;
-  rootHint: string | null; // 追加
+  rootHint: string | null;
   keyHint: string | null;
   engineChord: string | null;
   candidates: string[] | null;
 }) {
   const keyLine = params.keyHint ? params.keyHint : "（指定なし）";
   const bassLine = params.bassHint ? params.bassHint : "（指定なし）";
-  const rootLine = params.rootHint ? params.rootHint : "（指定なし）"; // 追加
+  const rootLine = params.rootHint ? params.rootHint : "（指定なし）";
+  
   const engineLine = params.engineChord ? params.engineChord : "（未提供）";
-  const candLine = params.candidates?.length ? params.candidates.join(", ") : "（未提供）";
+  // ★ここで「その他の候補」もAIに見せるように修正しました
+  const candLine = params.candidates && params.candidates.length > 0 
+    ? params.candidates.join(", ") 
+    : "（なし）";
 
   return `
-入力音（表記順・重複なし）:
+【生徒が提示した音】
 ${params.notes.join(", ")}
 
-最低音指定 bassHint:
-${bassLine}
+【指定条件】
+- 最低音(バス): ${bassLine}
+- 根音: ${rootLine}
+- 調性: ${keyLine}
 
-根音指定 rootHint:
-${rootLine}
+【（参考）AIエンジンの判定結果】
+- 最有力判定: ${engineLine}
+- その他の候補: ${candLine}
 
-調性指定 keyHint:
-${keyLine}
-
-（参考）判定ラベル engineChord:
-${engineLine}
-
-（参考）候補一覧:
-${candLine}
-
-ユーザーの質問:
+【生徒の質問】
 ${params.question}
 
-注意:
-- まずは「入力音そのもの」について答える（質問が結果に触れている場合のみ結果も扱う）
-- bassHint があるのに「最低音が分からない」「転回形が不明」とは言わない
-- keyHint があるのに「調性が分からない」とは言わない
+【回答への指示】
+この質問に対し、提示された音と判定結果（候補含む）をすべて把握した上で、先生として簡潔に答えてください。
 `.trim();
 }
 
@@ -158,10 +160,8 @@ export async function POST(req: Request) {
     const notesSorted = uniq(normalized).sort(sortSpelling);
 
     const bassHintRaw = asNoteOrNull(body?.bassHint);
-    // bassHintも選択音に含まれる場合のみ有効とする（安全策）
     const bassHint = bassHintRaw && notesSorted.includes(bassHintRaw) ? bassHintRaw : null;
 
-    // rootHintも受け取る
     const rootHintRaw = asNoteOrNull(body?.rootHint);
     const rootHint = rootHintRaw && notesSorted.includes(rootHintRaw) ? rootHintRaw : null;
 
@@ -194,7 +194,7 @@ export async function POST(req: Request) {
       contents: [{ role: "user", parts: [{ text: user }] }],
       systemInstruction: system,
       generationConfig: {
-        temperature: 0.2,
+        temperature: 0.3,
       },
     });
 
