@@ -421,13 +421,9 @@ const LoadingOverlay = () => (
     {/* Animated Icon Container */}
     <div className="relative mb-8">
       <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-xl animate-pulse"></div>
-      <div className="relative w-24 h-24 bg-white rounded-3xl shadow-2xl shadow-blue-500/10 flex items-center justify-center border border-white/50">
-        {/* Spinning gradient ring */}
-        <div className="absolute inset-0 rounded-3xl border-2 border-slate-50"></div>
-        <div className="absolute inset-[-3px] rounded-[28px] border-[3px] border-transparent border-t-blue-400 border-r-cyan-300 animate-spin"></div>
-        
-        {/* Center Icon (Robot) */}
-        <div className="animate-bounce duration-[2s]">
+      <div className="relative w-24 h-24 bg-white rounded-[32px] shadow-2xl shadow-blue-500/10 flex items-center justify-center border border-white/60">
+        {/* Simple bouncing robot */}
+        <div className="animate-bounce duration-[2000ms]">
            <IconRobot className="w-10 h-10 text-slate-700" />
         </div>
       </div>
@@ -435,8 +431,8 @@ const LoadingOverlay = () => (
 
     {/* Text Content */}
     <div className="text-center space-y-3 px-8 relative z-10">
-      <h2 className="text-xl font-black text-slate-800 tracking-tight animate-pulse">
-        Waon AIが分析中...
+      <h2 className="text-lg font-black text-slate-800 tracking-tight animate-pulse">
+        Waon AIが分析しています
       </h2>
       <p className="text-xs font-bold text-slate-400 leading-relaxed">
         複雑な和音構造を解析し、<br/>最適な音楽的解釈を生成しています。
