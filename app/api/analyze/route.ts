@@ -5,15 +5,15 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /**
- * 目的:
- * - 「判定(engineChord)」「候補(candidates)」「考察(analysis)」「信頼度(confidence)」をAIで生成
- * - 入力表記は絶対に尊重
- * - keyHint / rootHint / bassHint をAIに明示的に渡す
- * - 保険ロジック:
- * 1. bassHintがあれば、ベース音が一致するものを最優先
- * 2. rootHintがあれば、ルート音が一致するものを最優先
- * 3. どちらもなければ、スラッシュ(/)を含まない「基本形」を強制的に最優先
- */
+* 目的:
+* - 「判定(engineChord)」「候補(candidates)」「考察(analysis)」「信頼度(confidence)」をAIで生成
+* - 入力表記は絶対に尊重
+* - keyHint / rootHint / bassHint をAIに明示的に渡す
+* - 保険ロジック:
+* 1. bassHintがあれば、ベース音が一致するものを最優先
+* 2. rootHintがあれば、ルート音が一致するものを最優先
+* 3. どちらもなければ、スラッシュ(/)を含まない「基本形」を強制的に最優先
+*/
 
 // -------------------- Gemini --------------------
 const apiKey = process.env.GEMINI_API_KEY || "";
@@ -23,7 +23,7 @@ const model = genAI ? genAI.getGenerativeModel({ model: modelName }) : null;
 
 // -------------------- Utils --------------------
 function normalizeAccidentals(s: string) {
-  return (s ?? "").trim().replaceAll("♭", "b").replaceAll("♯", "#").replaceAll("𝄫", "bb").replaceAll("𝄪", "##");
+return (s ?? "").trim().replaceAll("♭", "b").replaceAll("♯", "#").replaceAll("𝄫", "bb").replaceAll("𝄪", "##");
 }
 
 type Acc = "" | "#" | "##" | "b" | "bb";
@@ -31,157 +31,145 @@ const LETTER_INDEX: Record<string, number> = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 
 const ACC_INDEX: Record<Acc, number> = { bb: 0, b: 1, "": 2, "#": 3, "##": 4 };
 
 function parseSpelling(s: string): { letter: string; acc: Acc } | null {
-  const m = (s ?? "").match(/^([A-G])((?:bb|b|##|#)?)$/);
-  if (!m) return null;
-  return { letter: m[1], acc: (m[2] ?? "") as Acc };
+const m = (s ?? "").match(/^([A-G])((?:bb|b|##|#)?)$/);
+if (!m) return null;
+return { letter: m[1], acc: (m[2] ?? "") as Acc };
 }
 function sortSpelling(a: string, b: string) {
-  const pa = parseSpelling(a);
-  const pb = parseSpelling(b);
-  if (!pa || !pb) return a.localeCompare(b);
-  const la = LETTER_INDEX[pa.letter] ?? 999;
-  const lb = LETTER_INDEX[pb.letter] ?? 999;
-  if (la !== lb) return la - lb;
-  const aa = ACC_INDEX[pa.acc] ?? 999;
-  const ab = ACC_INDEX[pb.acc] ?? 999;
-  if (aa !== ab) return aa - ab;
-  return a.localeCompare(b);
+const pa = parseSpelling(a);
+const pb = parseSpelling(b);
+if (!pa || !pb) return a.localeCompare(b);
+const la = LETTER_INDEX[pa.letter] ?? 999;
+const lb = LETTER_INDEX[pb.letter] ?? 999;
+if (la !== lb) return la - lb;
+const aa = ACC_INDEX[pa.acc] ?? 999;
+const ab = ACC_INDEX[pb.acc] ?? 999;
+if (aa !== ab) return aa - ab;
+return a.localeCompare(b);
 }
 function uniq<T>(arr: T[]) {
-  return [...new Set(arr)];
+return [...new Set(arr)];
 }
 
 function parseJsonSafely(text: string) {
-  const t = (text ?? "").trim();
-  try { return JSON.parse(t); } catch {}
-  const m = t.match(/\{[\s\S]*\}/);
-  if (m) { try { return JSON.parse(m[0]); } catch {} }
-  throw new Error("AIのJSONパースに失敗しました");
+const t = (text ?? "").trim();
+try { return JSON.parse(t); } catch {}
+const m = t.match(/\{[\s\S]*\}/);
+if (m) { try { return JSON.parse(m[0]); } catch {} }
+throw new Error("AIのJSONパースに失敗しました");
 }
 
 function clamp01(n: any, fallback = 0) {
-  const x = typeof n === "number" ? n : Number(n);
-  return Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : fallback;
+const x = typeof n === "number" ? n : Number(n);
+return Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : fallback;
 }
 function clampScore(n: any, fallback = 0) {
-  const x = typeof n === "number" ? n : Number(n);
-  return Number.isFinite(x) ? Math.max(0, Math.min(100, Math.round(x))) : fallback;
+const x = typeof n === "number" ? n : Number(n);
+return Number.isFinite(x) ? Math.max(0, Math.min(100, Math.round(x))) : fallback;
 }
 function safeStr(s: any, fallback = "") { return typeof s === "string" ? s : fallback; }
 function safeArrStr(a: any) { return Array.isArray(a) ? a.filter((x) => typeof x === "string") : []; }
 
 // コード名からルート音とベース音を抽出するヘルパー
 function getChordRoot(chordName: string): string {
-  const core = chordName.split("/")[0];
-  const m = core.match(/^([A-G](?:bb|b|##|#)?)/);
-  return m ? normalizeAccidentals(m[1]) : "";
+const core = chordName.split("/")[0];
+const m = core.match(/^([A-G](?:bb|b|##|#)?)/);
+return m ? normalizeAccidentals(m[1]) : "";
 }
 
 function getChordBass(chordName: string): string {
-  if (chordName.includes("/")) {
-    return normalizeAccidentals(chordName.split("/")[1]);
-  }
-  return getChordRoot(chordName);
+if (chordName.includes("/")) {
+return normalizeAccidentals(chordName.split("/")[1]);
+}
+return getChordRoot(chordName);
 }
 
 // -------------------- Types --------------------
 type CandidateObj = {
-  chord: string;
-  chordType?: string;
-  inversion?: string;
-  romanNumeral?: string;
-  tds?: "T" | "D" | "S" | "SD" | "?";
-  score: number;
-  confidence: number;
-  chordTones: string[];
-  extraTones: string[];
-  reason: string;
-  provisional?: boolean;
+chord: string;
+chordType?: string;
+inversion?: string;
+romanNumeral?: string;
+tds?: "T" | "D" | "S" | "SD" | "?";
+score: number;
+confidence: number;
+chordTones: string[];
+extraTones: string[];
+reason: string;
+provisional?: boolean;
 };
 
 type AnalyzeResponse = {
-  status: "ok" | "ambiguous" | "insufficient";
-  engineChord: string;
-  chordType?: string;
-  confidence?: number;
-  candidates: CandidateObj[];
-  analysis: string;
-  notes: string[];
-  keyHint: string;
-  rootHint: string | null;
-  bassHint: string | null;
+status: "ok" | "ambiguous" | "insufficient";
+engineChord: string;
+chordType?: string;
+confidence?: number;
+candidates: CandidateObj[];
+analysis: string;
+notes: string[];
+keyHint: string;
+rootHint: string | null;
+bassHint: string | null;
 };
 
 // -------------------- Prompt --------------------
 function buildSystemPrompt() {
-  return `
-あなたは日本の音楽教育（特に芸大和声・機能和声）に精通した専門家です。
+return `
+あなたは日本の音楽教育（特に芸大和声・島岡式和声）に精通した専門家です。
 
 【絶対ルール】
 - 入力された音名表記をそのまま使う（異名同音を勝手に統合しない）
-- 押された順番は意味を持たない
 - rootHint がある場合は「根音候補として強く尊重」する
-- bassHint がある場合は「最低音（バス）候補として強く尊重」し、転回形や分数コード表記に反映する
-- **bassHint の指定がない場合は、原則として「基本形」（分数コードでない形）を最優先の候補として扱ってください。**
+- bassHint がある場合は「最低音（バス）候補として強く尊重」する
 - keyHint がある場合は、機能（TDS）と和音記号を必ず算出する
-- 3音未満なら status="insufficient"
 
-【用語と言語の指定：重要】
-**1. 解説文（analysis）の質**
-- "rootHint"等は使わず「根音の指定」のように自然な日本語で記述する。
-- **重要：** 属和音（D機能）や第7音を含む和音の場合、**「解決（Resolution）」**について言及すること。
-  （例：「第7音のFは、Eへ下行して解決する性質を持ちます」）
-- ドイツ音名（C,D,E,F,G,A,H）の知識を持ち、必要であれば言及してよいが、基本出力は入力された英語音名に合わせる。
+【記号表記の厳格な指定：島岡式（芸大和声）】
+和音記号（romanNumeral）は、以下のルールで出力してください。
+欧米式の数字付き低音（6, 64, 65, 43, 2）は使用禁止です。
 
-**2. 和音の種類（chordType）の厳格な制限**
-以下のリストにある名称のみを使用すること。
-- 長三和音, 短三和音, 減三和音, 増三和音
-- 属七の和音, 減七の和音, 長七の和音, 短七の和音, 減５短７の和音（導七の和音）, 増七の和音
-- 属九の和音（長九度）, 属短九の和音（短九度）
+1. **三和音（Triads）**
+   - 基本形: I, V
+   - 第1転回形: I₁, V₁ （右下に1）
+   - 第2転回形: I₂, V₂ （右下に2）
 
-**3. 和音記号（romanNumeral）の表記ルール**
-- **日本の「芸大和声」式（転回指数）を使用すること。**
-- 欧米式の数字付き低音（I6, V65など）は使用禁止。
-- 転回形を示す数字は、可能な限りUnicodeの上付き文字（¹ ² ³ ⁴）を使用して記述する。
-  - 基本形: I, V, V⁷
-  - 第1転回形: I¹, V¹, V⁷¹
-  - 第2転回形: I², V², V⁷²
-  - 第3転回形: V⁷³
+2. **七の和音（7th Chords）**
+   - 基本形: V⁷ （右上に7）
+   - 第1転回形: V⁷₁ （右上に7、右下に1）
+   - 第2転回形: V⁷₂ （右上に7、右下に2）
+   - 第3転回形: V⁷₃ （右上に7、右下に3）
 
-**4. その他のパラメータ**
-- **tds（機能）は必ず大文字一文字 "T", "D", "S" のいずれか（不明なら "?"）で答えてください。**
-- **inversion（転回形）は "root", "1st", "2nd", "3rd", "unknown" のいずれかで返してください。**
+※Unicodeの上付き文字（⁷）と下付き文字（₁ ₂ ₃）を組み合わせて表現してください。
+
+【用語と言語の指定】
+- 解説文（analysis）は自然な和声学の文章で記述する。
+- 属和音（D機能）や第7音、導音を含む和音の場合、**「解決（Resolution）」**（例：第7音の下行解決、導音の上行解決）について必ず言及すること。
 
 【出力はJSONのみ】
 {
-  "status": "ok" | "ambiguous" | "insufficient",
-  "engineChord": string,
-  "analysis": string,
-  "candidates": [
-    {
-      "chord": string,
-      "chordType": string,
-      "inversion": "root" | "1st" | "2nd" | "3rd" | "unknown",
-      "tds": "T" | "D" | "S" | "?",
-      "romanNumeral": string,
-      "score": number, (0-100)
-      "confidence": number, (0-1)
-      "chordTones": string[],
-      "extraTones": string[],
-      "reason": string,
-      "provisional": boolean
-    }
-  ]
+"status": "ok" | "ambiguous" | "insufficient",
+"engineChord": string,
+"analysis": string,
+"candidates": [
+{
+"chord": string,
+"chordType": string,
+"inversion": "root" | "1st" | "2nd" | "3rd" | "unknown",
+"tds": "T" | "D" | "S" | "?",
+"romanNumeral": string,
+"score": number, (0-100)
+"confidence": number, (0-1)
+"chordTones": string[],
+"extraTones": string[],
+"reason": string,
+"provisional": boolean
 }
-
-【candidatesの条件】
-- 最大10件、上から有力順
-- chordTones/extraTones は入力表記をそのまま使う
+]
+}
 `.trim();
 }
 
 function buildUserPrompt(params: { notesSorted: string[]; keyHint: string; rootHint: string | null; bassHint: string | null; }) {
-  return `
+return `
 入力音: ${params.notesSorted.join(", ")}
 keyHint: ${params.keyHint}
 rootHint: ${params.rootHint || "none"}
@@ -195,125 +183,120 @@ bassHint: ${params.bassHint || "none"}
 
 // -------------------- Route --------------------
 export async function POST(req: Request) {
-  try {
-    const body = await req.json().catch(() => ({}));
-    const selectedNotesRaw: string[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
-    const keyHintRaw = typeof body?.keyHint === "string" ? body.keyHint : "none";
-    const rootHintRaw = typeof body?.rootHint === "string" ? body.rootHint : null;
-    const bassHintRaw = typeof body?.bassHint === "string" ? body.bassHint : null;
+try {
+const body = await req.json().catch(() => ({}));
+const selectedNotesRaw: string[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
+const keyHintRaw = typeof body?.keyHint === "string" ? body.keyHint : "none";
+const rootHintRaw = typeof body?.rootHint === "string" ? body.rootHint : null;
+const bassHintRaw = typeof body?.bassHint === "string" ? body.bassHint : null;
 
-    const normalized = selectedNotesRaw.map(normalizeAccidentals).filter(Boolean);
-    const onlyNotes = normalized.filter((n) => /^[A-G]((?:bb|b|##|#)?)$/.test(n));
-    const notesSorted = uniq(onlyNotes).sort(sortSpelling);
+const normalized = selectedNotesRaw.map(normalizeAccidentals).filter(Boolean);
+const onlyNotes = normalized.filter((n) => /^[A-G]((?:bb|b|##|#)?)$/.test(n));
+const notesSorted = uniq(onlyNotes).sort(sortSpelling);
 
-    const keyHint = (keyHintRaw || "none").trim();
-    const rootHint = rootHintRaw && notesSorted.includes(normalizeAccidentals(rootHintRaw)) ? normalizeAccidentals(rootHintRaw) : null;
-    const bassHint = bassHintRaw && notesSorted.includes(normalizeAccidentals(bassHintRaw)) ? normalizeAccidentals(bassHintRaw) : null;
+const keyHint = (keyHintRaw || "none").trim();
+const rootHint = rootHintRaw && notesSorted.includes(normalizeAccidentals(rootHintRaw)) ? normalizeAccidentals(rootHintRaw) : null;
+const bassHint = bassHintRaw && notesSorted.includes(normalizeAccidentals(bassHintRaw)) ? normalizeAccidentals(bassHintRaw) : null;
 
-    if (!model) return NextResponse.json({ error: "AI未接続" }, { status: 500 });
-    if (notesSorted.length < 3) {
-      return NextResponse.json({ status: "insufficient", engineChord: "判定不能", analysis: "音が不足しています。", candidates: [], notes: notesSorted });
-    }
+if (!model) return NextResponse.json({ error: "AI未接続" }, { status: 500 });
+if (notesSorted.length < 3) {
+return NextResponse.json({ status: "insufficient", engineChord: "判定不能", analysis: "音が不足しています。", candidates: [], notes: notesSorted });
+}
 
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: buildUserPrompt({ notesSorted, keyHint, rootHint, bassHint }) }] }],
-      systemInstruction: buildSystemPrompt(),
-      generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
-    });
+const result = await model.generateContent({
+contents: [{ role: "user", parts: [{ text: buildUserPrompt({ notesSorted, keyHint, rootHint, bassHint }) }] }],
+systemInstruction: buildSystemPrompt(),
+generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
+});
 
-    const json = parseJsonSafely(result.response.text());
-    
-    let candidates: CandidateObj[] = (json.candidates || []).map((c: any) => ({
-      chord: safeStr(c.chord, "判定不能"),
-      chordType: safeStr(c.chordType, ""),
-      inversion: safeStr(c.inversion, "unknown"),
-      romanNumeral: safeStr(c.romanNumeral, ""),
-      tds: (["T", "D", "S"].includes(c.tds) ? c.tds : "?") as any,
-      score: clampScore(c.score, 0),
-      confidence: clamp01(c.confidence, 0),
-      chordTones: safeArrStr(c.chordTones),
-      extraTones: safeArrStr(c.extraTones),
-      reason: safeStr(c.reason, ""),
-      provisional: !!c.provisional,
-    })).filter((c: CandidateObj) => !!c.chord);
+const json = parseJsonSafely(result.response.text());
 
-    // --------------------
-    // 順位の保険（修正済み）
-    // --------------------
-    if (candidates.length > 0) {
-      if (bassHint) {
-        // bassHintがある場合: ベース音が一致するものを最優先
-        candidates.sort((a, b) => {
-          const aMatch = getChordBass(a.chord) === bassHint;
-          const bMatch = getChordBass(b.chord) === bassHint;
-          if (aMatch && !bMatch) return -1; 
-          if (!aMatch && bMatch) return 1;  
-          return 0; 
-        });
-      } else if (rootHint) {
-        // rootHintがある場合: ルート音が一致するものを最優先
-        candidates.sort((a, b) => {
-          const aMatch = getChordRoot(a.chord) === rootHint;
-          const bMatch = getChordRoot(b.chord) === rootHint;
-          if (aMatch && !bMatch) return -1;
-          if (!aMatch && bMatch) return 1;
-          return 0;
-        });
-      } else {
-        // どちらのヒントも無い場合: 「/」を含まないもの（基本形）を強制的に最優先
-        candidates.sort((a, b) => {
-          const aHasSlash = a.chord.includes("/");
-          const bHasSlash = b.chord.includes("/");
-          // aが基本形、bが転回形なら、aを優先(-1)
-          if (!aHasSlash && bHasSlash) return -1;
-          // aが転回形、bが基本形なら、bを優先(1)
-          if (aHasSlash && !bHasSlash) return 1;
-          return 0; // 両方基本形、または両方転回形ならAIの順序に従う
-        });
-      }
-    }
+let candidates: CandidateObj[] = (json.candidates || []).map((c: any) => ({
+chord: safeStr(c.chord, "判定不能"),
+chordType: safeStr(c.chordType, ""),
+inversion: safeStr(c.inversion, "unknown"),
+romanNumeral: safeStr(c.romanNumeral, ""),
+tds: (["T", "D", "S"].includes(c.tds) ? c.tds : "?") as any,
+score: clampScore(c.score, 0),
+confidence: clamp01(c.confidence, 0),
+chordTones: safeArrStr(c.chordTones),
+extraTones: safeArrStr(c.extraTones),
+reason: safeStr(c.reason, ""),
+provisional: !!c.provisional,
+})).filter((c: CandidateObj) => !!c.chord);
 
-    const top = candidates[0];
-    let engineChord = safeStr((json as any).engineChord, "").trim();
+// --------------------
+// 順位の保険
+// --------------------
+if (candidates.length > 0) {
+if (bassHint) {
+candidates.sort((a, b) => {
+const aMatch = getChordBass(a.chord) === bassHint;
+const bMatch = getChordBass(b.chord) === bassHint;
+if (aMatch && !bMatch) return -1;
+if (!aMatch && bMatch) return 1;
+return 0;
+});
+} else if (rootHint) {
+candidates.sort((a, b) => {
+const aMatch = getChordRoot(a.chord) === rootHint;
+const bMatch = getChordRoot(b.chord) === rootHint;
+if (aMatch && !bMatch) return -1;
+if (!aMatch && bMatch) return 1;
+return 0;
+});
+} else {
+candidates.sort((a, b) => {
+const aHasSlash = a.chord.includes("/");
+const bHasSlash = b.chord.includes("/");
+if (!aHasSlash && bHasSlash) return -1;
+if (aHasSlash && !bHasSlash) return 1;
+return 0;
+});
+}
+}
 
-    if (!engineChord || engineChord === "判定不能") {
-      engineChord = top?.chord || `${notesSorted.join("-")}(暫定)`;
-    }
-    if (top?.chord) engineChord = top.chord;
+const top = candidates[0];
+let engineChord = safeStr((json as any).engineChord, "").trim();
 
-    const chordType = (safeStr((json as any).chordType, "").trim() || top?.chordType || "情報不足").trim();
+if (!engineChord || engineChord === "判定不能") {
+engineChord = top?.chord || `${notesSorted.join("-")}(暫定)`;
+}
+if (top?.chord) engineChord = top.chord;
 
-    const statusRaw = safeStr((json as any).status, "ambiguous") as any;
-    const status: AnalyzeResponse["status"] =
-      statusRaw === "ok" || statusRaw === "ambiguous" || statusRaw === "insufficient"
-        ? statusRaw
-        : "ambiguous";
+const chordType = (safeStr((json as any).chordType, "").trim() || top?.chordType || "情報不足").trim();
 
-    let confidence = clamp01((json as any).confidence, 0);
-    if ((!confidence || confidence === 0) && top) confidence = clamp01(top.confidence, 0.3);
+const statusRaw = safeStr((json as any).status, "ambiguous") as any;
+const status: AnalyzeResponse["status"] =
+statusRaw === "ok" || statusRaw === "ambiguous" || statusRaw === "insufficient"
+? statusRaw
+: "ambiguous";
 
-    if (top) {
-      const prov = status !== "ok" || confidence < 0.5;
-      top.provisional = top.provisional || prov;
-    }
+let confidence = clamp01((json as any).confidence, 0);
+if ((!confidence || confidence === 0) && top) confidence = clamp01(top.confidence, 0.3);
 
-    const analysis = safeStr((json as any).analysis, "（出力が不完全でした）");
+if (top) {
+const prov = status !== "ok" || confidence < 0.5;
+top.provisional = top.provisional || prov;
+}
 
-    const res: AnalyzeResponse = {
-      status,
-      engineChord,
-      chordType,
-      confidence,
-      analysis,
-      candidates,
-      notes: notesSorted,
-      keyHint,
-      rootHint,
-      bassHint,
-    };
+const analysis = safeStr((json as any).analysis, "（出力が不完全でした）");
 
-    return NextResponse.json(res);
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
-  }
+const res: AnalyzeResponse = {
+status,
+engineChord,
+chordType,
+confidence,
+analysis,
+candidates,
+notes: notesSorted,
+keyHint,
+rootHint,
+bassHint,
+};
+
+return NextResponse.json(res);
+} catch (e: any) {
+return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
+}
 }
