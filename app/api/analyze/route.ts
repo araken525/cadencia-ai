@@ -12,6 +12,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  * - JSONフォーマットを厳格に指定し、パースエラーを防ぐ
  * - スコアの1%問題を自動補正する
  * - 初心者/専門家ともに、和音記号の表記（I¹など）を統一する
+ * - 【修正】調名は「ファ長調」ではなく「ヘ長調」等の日本音名（いろは）を強制する
  */
 
 // -------------------- Gemini --------------------
@@ -255,7 +256,7 @@ function buildBeginnerSystemPrompt() {
 
 【解説文（analysis）の書き方】
 - 口調は**「〜ですね」「〜ですよ」**といった丁寧語（です・ます調）。
-- **調の名前:** 「ハ長調（C-dur）」のように日本語とドイツ語を併記してあげるのが親切です。
+- **調の名前（重要）:** 「ヘ長調（F-dur）」「ハ長調（C-dur）」のように、必ず**日本音名（ハニホヘトイロ）**を使ってください。「ファ長調」「ド長調」は誤りなので禁止です。
 - **専門用語:** 「準固有和音」や「ナポリの六」などの用語は使ってOKですが、必ず簡単な説明を添えてください。
   - 例: 「これは『ナポリの六』と呼ばれる、とても劇的な変化をもたらす和音ですね。」
   - 例: 「『準固有和音』です。ちょっと切ない響きがしますね。」
@@ -318,16 +319,14 @@ export async function POST(req: Request) {
 
     const json = parseJsonSafely(result.response.text());
     
-    // ★ 1%問題を解決する自動補正ロジック（必須！）
+    // ★ 1%問題を解決する自動補正ロジック
     let candidates: CandidateObj[] = (json.candidates || []).map((c: any) => {
       let rawScore = typeof c.score === "number" ? c.score : 0;
       let rawConf = typeof c.confidence === "number" ? c.confidence : 0;
 
-      // 自動補正: スコアが0.95などの小数で来たら、95点(整数)に直す
+      // 自動補正
       if (rawScore <= 1 && rawScore > 0) rawScore = rawScore * 100;
-      // 自動補正: 自信度が95などの整数で来たら、0.95(小数)に直す
       if (rawConf > 1) rawConf = rawConf / 100;
-      // フォールバック: スコアが0だったら、自信度から作る
       if (rawScore === 0 && rawConf > 0) rawScore = rawConf * 100;
 
       return {
@@ -336,8 +335,8 @@ export async function POST(req: Request) {
         inversion: safeStr(c.inversion, "unknown"),
         romanNumeral: safeStr(c.romanNumeral, ""),
         tds: (["T", "D", "S"].includes(c.tds) ? c.tds : "?") as any,
-        score: clampScore(rawScore, 0), // 補正済みの値を使用
-        confidence: clamp01(rawConf, 0), // 補正済みの値を使用
+        score: clampScore(rawScore, 0),
+        confidence: clamp01(rawConf, 0),
         chordTones: safeArrStr(c.chordTones),
         extraTones: safeArrStr(c.extraTones),
         reason: safeStr(c.reason, ""),
@@ -345,9 +344,7 @@ export async function POST(req: Request) {
       };
     }).filter((c: CandidateObj) => !!c.chord);
 
-    // --------------------
     // 順位の保険
-    // --------------------
     if (candidates.length > 0) {
       if (bassHint) {
         candidates.sort((a, b) => {
