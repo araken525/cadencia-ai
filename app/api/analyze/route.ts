@@ -152,23 +152,24 @@ function buildSystemPrompt() {
 - 属九の和音（長九度を持つ場合）
 - 属短九の和音（短九度を持つ場合）
 
-**3. 和音記号（romanNumeral）の厳格な表記ルール：島岡式（芸大和声）**
-- **欧米式の数字付き低音（I6, V65, V43, V2など）は使用禁止。**
-- 和音記号の**右下に「転回指数（1, 2, 3）」を付記**する方式を使用すること。
+**3. 和音記号（romanNumeral）の表記ルール：指定テキスト準拠**
+**【重要】以下の表記ルールを厳守してください**
+- **転回形（Inversion）** は和音記号の**右上（上付き文字）** に数字を書く。
+- **七の和音（7th）などの種類** は和音記号の**右下（下付き文字）** に数字を書く。
 
 【表記パターン】
 1. **三和音（Triads）**
    - 基本形: I, V
-   - 第1転回形: I₁, V₁ （右下に1）
-   - 第2転回形: I₂, V₂ （右下に2）
+   - 第1転回形: I¹ （数字は右上）
+   - 第2転回形: I² （数字は右上）
 
 2. **七の和音（7th Chords）**
-   - 基本形: V⁷ （右上に7）
-   - 第1転回形: V⁷₁ （右上に7、右下に1）
-   - 第2転回形: V⁷₂ （右上に7、右下に2）
-   - 第3転回形: V⁷₃ （右上に7、右下に3）
+   - 基本形: V₇ （7は右下）
+   - 第1転回形: V₇¹ （7は右下、1は右上）
+   - 第2転回形: V₇² （7は右下、2は右上）
+   - 第3転回形: V₇³ （7は右下、3は右上）
 
-※Unicodeの上付き文字（⁷）と下付き文字（₁ ₂ ₃）を組み合わせて正確に記述してください。
+※Unicodeの上付き文字（¹ ² ³）と下付き文字（₇ ₉）を組み合わせて正確に記述してください。
 
 **4. その他のパラメータ**
 - **tds（機能）は必ず大文字一文字 "T", "D", "S" のいずれか（不明なら "?"）で答えてください。**
@@ -261,7 +262,7 @@ export async function POST(req: Request) {
     })).filter((c: CandidateObj) => !!c.chord);
 
     // --------------------
-    // 順位の保険（修正済み）
+    // 順位の保険
     // --------------------
     if (candidates.length > 0) {
       if (bassHint) {
@@ -287,11 +288,9 @@ export async function POST(req: Request) {
         candidates.sort((a, b) => {
           const aHasSlash = a.chord.includes("/");
           const bHasSlash = b.chord.includes("/");
-          // aが基本形、bが転回形なら、aを優先(-1)
           if (!aHasSlash && bHasSlash) return -1;
-          // aが転回形、bが基本形なら、bを優先(1)
           if (aHasSlash && !bHasSlash) return 1;
-          return 0; // 両方基本形、または両方転回形ならAIの順序に従う
+          return 0;
         });
       }
     }
@@ -340,3 +339,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
   }
 }
+
+```
