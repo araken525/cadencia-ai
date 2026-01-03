@@ -1,4 +1,4 @@
-// app/api/chat/route.ts
+g// app/api/chat/route.ts
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
