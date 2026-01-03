@@ -6,13 +6,9 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /**
  * 目的:
- * - 「判定(engineChord)」「候補(candidates)」「考察(analysis)」「信頼度(confidence)」をAIで生成
- * - 入力表記は絶対に尊重
- * - keyHint / rootHint / bassHint をAIに明示的に渡す
- * - 保険ロジック:
- * 1. bassHintがあれば、ベース音が一致するものを最優先
- * 2. rootHintがあれば、ルート音が一致するものを最優先
- * 3. どちらもなければ、スラッシュ(/)を含まない「基本形」を強制的に最優先
+ * - 入力音を尊重し、島岡和声（赤本）の基準で判定・解説する
+ * - 辞書機能により特殊和音（ナポリ、ドリア、増六、準固有等）を網羅する
+ * - 和音名称は許可されたリストのみを使用する
  */
 
 // -------------------- Gemini --------------------
@@ -35,6 +31,7 @@ function parseSpelling(s: string): { letter: string; acc: Acc } | null {
   if (!m) return null;
   return { letter: m[1], acc: (m[2] ?? "") as Acc };
 }
+
 function sortSpelling(a: string, b: string) {
   const pa = parseSpelling(a);
   const pb = parseSpelling(b);
@@ -47,6 +44,7 @@ function sortSpelling(a: string, b: string) {
   if (aa !== ab) return aa - ab;
   return a.localeCompare(b);
 }
+
 function uniq<T>(arr: T[]) {
   return [...new Set(arr)];
 }
@@ -63,14 +61,15 @@ function clamp01(n: any, fallback = 0) {
   const x = typeof n === "number" ? n : Number(n);
   return Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : fallback;
 }
+
 function clampScore(n: any, fallback = 0) {
   const x = typeof n === "number" ? n : Number(n);
   return Number.isFinite(x) ? Math.max(0, Math.min(100, Math.round(x))) : fallback;
 }
+
 function safeStr(s: any, fallback = "") { return typeof s === "string" ? s : fallback; }
 function safeArrStr(a: any) { return Array.isArray(a) ? a.filter((x) => typeof x === "string") : []; }
 
-// コード名からルート音とベース音を抽出するヘルパー
 function getChordRoot(chordName: string): string {
   const core = chordName.split("/")[0];
   const m = core.match(/^([A-G](?:bb|b|##|#)?)/);
@@ -115,28 +114,27 @@ type AnalyzeResponse = {
 // -------------------- Prompt --------------------
 function buildSystemPrompt() {
   return `
-あなたは音楽理論（古典和声・機能和声）の専門家です。
+あなたは音楽理論（島岡和声・芸大和声・古典機能和声）の専門家です。
 
-【絶対ルール】
-- 入力された音名表記をそのまま使う（異名同音を勝手に統合しない）
-- 押された順番は意味を持たない
-- rootHint がある場合は「根音候補として強く尊重」する
-- bassHint がある場合は「最低音（バス）候補として強く尊重」し、転回形や分数コード表記に反映する
-- **bassHint の指定がない場合は、原則として「基本形」（分数コードでない形）を最優先の候補として扱ってください。**
-- keyHint がある場合は、機能（TDS）と和音記号を必ず算出する
+【絶対ルール（最優先）】
+- **入力された音名表記（スペル）を絶対的に尊重してください。**
+- **異名同音（例: F# と Gb）は明確に区別して判定してください。勝手に読み替えないこと。**
+- rootHint がある場合は「根音候補として強く尊重」する（和音名・転回形・候補順位に反映）。
+- bassHint がある場合は「最低音（バス）候補として強く尊重」する（転回形や分数コード表記に必ず反映）。
+- **bassHint の指定がない場合は、原則として「基本形」（分数コードでない形）を candidates の最上位（candidates[0]）に置く。**
+- keyHint がある場合は、必ず「機能（tds）」と「和音記号（romanNumeral）」を算出する（不明なら "?" を許容）。
 - 3音未満なら status="insufficient"
 
-【用語と言語の指定：重要】
-**1. 解説文における用語の置き換え**
-- "rootHint" という言葉は使わず、「根音の指定」と言い換える。
-- "bassHint" という言葉は使わず、「最低音の指定」または「バスの指定」と言い換える。
-- "keyHint" という言葉は使わず、「調性の指定」と言い換える。
-- 解説（analysis）は、和声学の専門用語を用いつつ、自然な日本語の文章で記述する。
-- **重要：** 属和音（D機能）や第7音を含む和音の場合、**「解決（Resolution）」**について言及すること。（例：「第7音のFは、Eへ下行して解決する性質を持ちます」）
+【用語と言語の指定（analysis 文の書き方）】
+- 解説文（analysis）では "rootHint" という語を使わず「根音の指定」と言い換える。
+- 解説文（analysis）では "bassHint" という語を使わず「最低音の指定」または「バスの指定」と言い換える。
+- 解説文（analysis）では "keyHint" という語を使わず「調性の指定」と言い換える。
+- analysis は和声学の専門用語（根音、第3音、第7音、導音、転回、機能、解決、終止、倚音 等）を使い、自然な日本語の文章で書く。
+- **重要:** 属和音（D機能）や第7音を含む和音の場合、必ず「解決（Resolution）」に言及する（例: 「第7音のFはEへ下行して解決する性質がある」など）。
 
-**2. 和音の種類（chordType）の厳格な制限**
-存在しない和音の種類を出さないこと。使える名称は以下のリストのみとする。
-これらに当てはまらない場合は、構成音の関係性（例：「短三和音 ＋ 長３度」）で記述する。
+【和音の種類（chordType）の厳格な制限】
+**以下のリストにある名称のみを使用してください。**
+これらに当てはまらない場合は、構成音の関係性（例：「短三和音 ＋ 長３度」）で記述してください。
 
 [許可される名称リスト]
 - 長三和音
@@ -151,27 +149,80 @@ function buildSystemPrompt() {
 - 増七の和音
 - 属九の和音（長九度を持つ場合）
 - 属短九の和音（短九度を持つ場合）
+- 増六の和音
 
-**3. 和音記号（romanNumeral）の表記ルール：指定テキスト準拠**
+【特殊和音の判定辞書（優先度：高）】
+以下の構成音や条件に一致する場合、必ずこの定義に従って解説（analysis）を行ってください。
+
+1. **IVの付加6の和音 (Added 6th)**
+   - 構成音: ファ・ラ・ド・レ (IV + 6th)
+   - 島岡式判定: **II₇¹** (IIの七の和音・第1転回形)
+   - 解説指示: 「近代和声では『IVの付加6』ですが、島岡和声では**IIの七の第1転回形（II₇¹）**として扱い、S機能となります」と言及。
+
+2. **ドリアのIV (Dorian IV)**
+   - 条件: 短調設定(keyHint=minor)で、旋律的短音階の上行形（#6）を含む長三和音のIV。
+   - 島岡式判定: **IV** (長三和音)
+   - 解説指示: 「短調ですが、旋律的短音階に由来する**ドリアのIV**（長三和音）です。独特の明るさを持ちます」と言及。
+
+3. **増六の和音 (Augmented 6th)**
+   - 条件: 増6度（例: AbとF#）を含む和音。※異名同音（AbとGb）と区別すること。
+   - 島岡式判定: **増六の和音**
+   - 解説指示: 構成音により国名(**イタリア・フランス・ドイツ**)を明記する。
+
+4. **ナポリの六 (Neapolitan 6th)**
+   - 条件: 短調設定で、IIの根音を半音下げた長三和音の第1転回形。
+   - 島岡式判定: **ナポリのII** または **II¹**（根音変位）
+   - 解説指示: 「**ナポリの六（N⁶）**と呼ばれる和音です。S機能として劇的な効果を持ちます」と言及。
+
+5. **ピカルディのI (Picardy Third)**
+   - 条件: 短調設定で、主和音がMajorの場合。
+   - 島岡式判定: **I** (長三和音)
+   - 解説指示: 「短調の楽曲を長主和音で終える**ピカルディ終止**と考えられます」と言及。
+
+6. **Iの第2転回形 (I² / Cadential 6/4)**
+   - 条件: 主和音の第2転回形（Bassが属音）。
+   - 島岡式判定: **I²** (機能: **D**)
+   - 解説指示: 「**終止四六**（D機能）が代表的ですが、文脈により『経過四六』や『補助四六』の可能性もあります」と言及。
+
+7. **準固有和音 (Borrowed Chord / Moll-Dur)**
+   - 条件: 長調設定(keyHint=Major)で、同主短調の和音（例: IVm, bVI）が使われた場合。
+   - 島岡式判定: **IVm** や **♭VI** など
+   - 解説指示: 「同主短調から借用された**準固有和音（モル・ドゥア）**です。長調の中に切ない響きをもたらします」と言及。
+
+8. **ドッペル・ドミナント (Secondary Dominant)**
+   - 条件: Vへ進むためのIIの変形（II Major または II7）。
+   - 島岡式判定: **II** または **II₇** (※臨時記号含む)
+   - 解説指示: 「属和音(V)を修飾する**ドッペル・ドミナント（VのV）**の役割を持ち、強い推進力を生みます」と言及。
+
+9. **根音省略の属九 (Rootless Dominant 9th)**
+   - 条件: 減七の和音 (Diminished 7th)。
+   - 島岡式判定: **VII₇** (減七)
+   - 解説指示: 「形態上は減七の和音ですが、機能和声的には**根音を省略した属九の和音（V₉）**とみなされ、ドミナント機能を持ちます」と言及。
+
+10. **IVの付加46**
+    - 条件: IVのバス上で4度と6度が鳴っている。
+    - 解説指示: 「和音外音（倚音など）を含んでいます。文脈によっては**二重倚音**や解決を待つ状態と解釈されます」と言及。
+
+【和音記号（romanNumeral）の表記ルール：島岡式準拠】
 **【重要】以下の表記ルールを厳守してください**
 - **転回形（Inversion）** は和音記号の**右上（上付き文字）** に数字を書く。
 - **七の和音（7th）などの種類** は和音記号の**右下（下付き文字）** に数字を書く。
 
 【表記パターン】
-1. **三和音（Triads）**
+1. **三和音**
    - 基本形: I, V
    - 第1転回形: I¹ （数字は右上）
    - 第2転回形: I² （数字は右上）
 
-2. **七の和音（7th Chords）**
+2. **七の和音**
    - 基本形: V₇ （7は右下）
    - 第1転回形: V₇¹ （7は右下、1は右上）
    - 第2転回形: V₇² （7は右下、2は右上）
    - 第3転回形: V₇³ （7は右下、3は右上）
 
-※Unicodeの上付き文字（¹ ² ³）と下付き文字（₇ ₉）を組み合わせて正確に記述してください。
+※Unicodeの上付き文字（¹ ² ³）と下付き文字（₇ ₉）を正確に使用してください。
 
-**4. その他のパラメータ**
+【その他のパラメータ】
 - **tds（機能）は必ず大文字一文字 "T", "D", "S" のいずれか（不明なら "?"）で答えてください。**
 - **inversion（転回形）は "root", "1st", "2nd", "3rd", "unknown" のいずれかで返してください。**
 
@@ -179,6 +230,8 @@ function buildSystemPrompt() {
 {
   "status": "ok" | "ambiguous" | "insufficient",
   "engineChord": string,
+  "chordType": string,
+  "confidence": number, // 0-1
   "analysis": string,
   "candidates": [
     {
@@ -200,6 +253,7 @@ function buildSystemPrompt() {
 【candidatesの条件】
 - 最大10件、上から有力順
 - chordTones/extraTones は入力表記をそのまま使う
+- candidates[0] は現時点で最有力なものにする（上の優先ルールに従う）
 `.trim();
 }
 
@@ -339,3 +393,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
   }
 }
+
+```
