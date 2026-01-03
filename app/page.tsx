@@ -4,10 +4,17 @@ import { useMemo, useRef, useState, useEffect } from "react";
 
 // --- Design Constants ---
 const G = {
+  // ヒーロー: 静かで知的なテキスト（よりコンパクトに）
   heroTextStatic: "text-slate-700 drop-shadow-sm tracking-tighter",
+  
+  // ベースカード: 清潔感のある白、控えめな影
   cardBase: "bg-white rounded-[32px] shadow-xl shadow-blue-900/5 border border-white overflow-hidden relative",
+  
+  // キーボード: 半透明ガラス（復刻）
   glassKeyContainer: "bg-white/60 backdrop-blur-xl border-t border-white/40 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]",
   glassKey: "bg-white/40 border border-white/50 shadow-sm backdrop-blur-md active:bg-white/70 transition-all",
+  
+  // チャット: 最高のメッセージUI
   chatBubbleUser: "bg-gradient-to-br from-blue-600 to-cyan-600 text-white rounded-[20px] rounded-tr-sm shadow-md",
   chatBubbleAI: "bg-white text-slate-700 border border-slate-100 rounded-[20px] rounded-tl-sm shadow-sm",
   chatContainer: "bg-slate-50/80 backdrop-blur-3xl rounded-[40px] border border-white/60 shadow-2xl shadow-blue-900/10 overflow-hidden",
@@ -55,7 +62,7 @@ type ChatMessage = {
 
 // --- Helper Functions ---
 
-// 追加: 音楽記号への変換ヘルパー
+// 修正: 記号表示用フォーマッター
 const formatNote = (note: string): string => {
   return note
     .replace(/##/g, "𝄪") // ダブルシャープ
@@ -77,19 +84,19 @@ function normalizeCandidates(input: AnalyzeRes["candidates"]): CandidateObj[] {
   });
 }
 
+// 修正: ダブルシャープ・ダブルフラット対応の計算ロジック
 const getKeyIndex = (note: string): number => {
   const baseMap: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
   const base = note.charAt(0);
   const acc = note.slice(1);
-  
   let idx = baseMap[base] ?? 0;
   
   if (acc === "#") idx += 1;
-  if (acc === "##" || acc === "x") idx += 2; // ダブルシャープ計算用
+  if (acc === "##" || acc === "x") idx += 2;
   if (acc === "b") idx -= 1;
-  if (acc === "bb") idx -= 2; // ダブルフラット計算用
+  if (acc === "bb") idx -= 2;
 
-  return (idx + 24) % 12; // 負の数を防ぐために余裕を持って足す
+  return (idx + 24) % 12; // 負の数を防ぐ
 };
 
 // --- Components ---
@@ -170,12 +177,12 @@ const KeyboardGuide = ({ onClose }: { onClose: () => void }) => {
           <div className="text-[10px] font-bold text-slate-600 leading-tight">タップ<br/><span className="text-slate-400 font-normal">音を入力</span></div>
         </div>
         <div className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm flex items-center gap-2">
-          <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-xs text-blue-500">⬆️</div>
-          <div className="text-[10px] font-bold text-slate-600 leading-tight">上フリック<br/><span className="text-blue-500 font-bold"># シャープ</span></div>
+          <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-xs text-blue-500">↕️</div>
+          <div className="text-[10px] font-bold text-slate-600 leading-tight">フリック<br/><span className="text-blue-500 font-bold"># シャープ / b フラット</span></div>
         </div>
         <div className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm flex items-center gap-2">
-          <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-xs text-blue-500">⬇️</div>
-          <div className="text-[10px] font-bold text-slate-600 leading-tight">下フリック<br/><span className="text-blue-500 font-bold">b フラット</span></div>
+          <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-xs text-blue-500">↔️</div>
+          <div className="text-[10px] font-bold text-slate-600 leading-tight">左右フリック<br/><span className="text-blue-500 font-bold">𝄪 ダブル / 𝄫 ダブル</span></div>
         </div>
         <div className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm flex items-center gap-2">
           <div className="w-6 h-6 bg-rose-50 rounded-lg flex items-center justify-center text-xs text-rose-500">R</div>
@@ -224,73 +231,81 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
   );
 };
 
-// 修正: ダブルシャープ・ダブルフラット対応のフリックキー
+// 修正: 4方向フリックに対応したFlickKey
 const FlickKey = ({ 
   noteBase, currentSelection, isBass, isRoot, onInput, className
 }: { 
   noteBase: string, currentSelection: string | undefined, isBass: boolean, isRoot: boolean,
   onInput: (n: string, type: "flick" | "tap") => void, className?: string
 }) => {
+  const [startX, setStartX] = useState<number | null>(null);
   const [startY, setStartY] = useState<number | null>(null);
-  const [offsetY, setOffsetY] = useState(0);
-  
-  // 閾値を調整：15pxでシングル、50pxでダブル
-  const THRESHOLD_SINGLE = 15;
-  const THRESHOLD_DOUBLE = 50;
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const THRESHOLD = 15;
 
   const isActive = !!currentSelection;
   const displayLabel = currentSelection ? formatNote(currentSelection) : noteBase;
 
-  const handlePointerDown = (e: React.PointerEvent) => { e.preventDefault(); try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch {} setStartY(e.clientY); };
+  const handlePointerDown = (e: React.PointerEvent) => { 
+    e.preventDefault(); 
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch {} 
+    setStartX(e.clientX);
+    setStartY(e.clientY); 
+  };
   
   const handlePointerMove = (e: React.PointerEvent) => { 
-    if (startY === null) return; 
-    const delta = e.clientY - startY;
-    // 動きの幅を少し広げる
-    setOffsetY(Math.max(-70, Math.min(70, delta))); 
+    if (startY === null || startX === null) return; 
+    setOffset({ 
+      x: Math.max(-40, Math.min(40, e.clientX - startX)), 
+      y: Math.max(-40, Math.min(40, e.clientY - startY)) 
+    }); 
   };
   
   const handlePointerUp = (e: React.PointerEvent) => { 
-    if (startY !== null) { 
-      const delta = e.clientY - startY; 
-      // 上フリック判定
-      if (delta < -THRESHOLD_DOUBLE) onInput(`${noteBase}##`, "flick");
-      else if (delta < -THRESHOLD_SINGLE) onInput(`${noteBase}#`, "flick");
-      // 下フリック判定
-      else if (delta > THRESHOLD_DOUBLE) onInput(`${noteBase}bb`, "flick"); 
-      else if (delta > THRESHOLD_SINGLE) onInput(`${noteBase}b`, "flick"); 
-      // タップ判定
-      else onInput(noteBase, "tap"); 
+    if (startY !== null && startX !== null) { 
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+
+      if (absX > absY && absX > THRESHOLD) {
+        // Horizontal Flick
+        if (deltaX > 0) onInput(`${noteBase}##`, "flick"); // Right -> Double Sharp
+        else onInput(`${noteBase}bb`, "flick");            // Left -> Double Flat
+      } else if (absY >= absX && absY > THRESHOLD) {
+        // Vertical Flick
+        if (deltaY < 0) onInput(`${noteBase}#`, "flick");  // Up -> Sharp
+        else onInput(`${noteBase}b`, "flick");             // Down -> Flat
+      } else {
+        // Tap
+        onInput(noteBase, "tap");
+      }
     } 
+    setStartX(null);
     setStartY(null); 
-    setOffsetY(0); 
+    setOffset({ x: 0, y: 0 }); 
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {} 
   };
 
-  // 状態判定
-  const isUpSingle = offsetY < -THRESHOLD_SINGLE && offsetY >= -THRESHOLD_DOUBLE;
-  const isUpDouble = offsetY < -THRESHOLD_DOUBLE;
-  const isDownSingle = offsetY > THRESHOLD_SINGLE && offsetY <= THRESHOLD_DOUBLE;
-  const isDownDouble = offsetY > THRESHOLD_DOUBLE;
+  // Direction states for visuals
+  const isUp = offset.y < -THRESHOLD && Math.abs(offset.y) > Math.abs(offset.x);
+  const isDown = offset.y > THRESHOLD && Math.abs(offset.y) > Math.abs(offset.x);
+  const isLeft = offset.x < -THRESHOLD && Math.abs(offset.x) > Math.abs(offset.y);
+  const isRight = offset.x > THRESHOLD && Math.abs(offset.x) > Math.abs(offset.y);
 
   return (
     <div className={`relative rounded-2xl touch-none select-none overflow-visible flex flex-col items-center justify-center transition-all duration-200 z-0 ${isRoot ? "bg-rose-50 border border-rose-200 shadow-[0_4px_12px_rgba(244,63,94,0.2)]" : isBass ? "bg-amber-50 border border-amber-200 shadow-[0_4px_12px_rgba(251,191,36,0.2)]" : G.glassKey} ${!isBass && !isRoot && isActive ? "bg-cyan-50 border-cyan-200 shadow-[0_4px_12px_rgba(34,211,238,0.2)]" : ""} ${className}`} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       
-      {/* 上フリックガイド */}
-      <div className={`absolute top-1 left-0 right-0 flex justify-center transition-all duration-200 pointer-events-none ${isUpDouble ? "-translate-y-3" : isUpSingle ? "-translate-y-1" : "translate-y-0"}`}>
-        <span className={`text-[10px] font-bold leading-none transition-all ${isUpDouble ? "text-rose-500 scale-125" : isUpSingle ? "text-cyan-500 scale-110" : "opacity-30 text-slate-400"}`}>
-          {isUpDouble ? "𝄪" : "♯"}
-        </span>
-      </div>
+      {/* 4方向ガイド表示 */}
+      <div className={`absolute top-1 left-0 right-0 flex justify-center transition-opacity duration-200 pointer-events-none ${isUp ? "opacity-100 scale-110 text-blue-500" : "opacity-30 text-slate-400"}`}><span className="text-[9px] font-bold leading-none">♯</span></div>
+      <div className={`absolute bottom-1 left-0 right-0 flex justify-center transition-opacity duration-200 pointer-events-none ${isDown ? "opacity-100 scale-110 text-blue-500" : "opacity-30 text-slate-400"}`}><span className="text-[9px] font-bold leading-none">♭</span></div>
+      <div className={`absolute left-1 top-0 bottom-0 flex items-center transition-opacity duration-200 pointer-events-none ${isLeft ? "opacity-100 scale-110 text-blue-500" : "opacity-30 text-slate-400"}`}><span className="text-[8px] font-bold leading-none">𝄫</span></div>
+      <div className={`absolute right-1 top-0 bottom-0 flex items-center transition-opacity duration-200 pointer-events-none ${isRight ? "opacity-100 scale-110 text-blue-500" : "opacity-30 text-slate-400"}`}><span className="text-[8px] font-bold leading-none">𝄪</span></div>
 
-      {/* 下フリックガイド */}
-      <div className={`absolute bottom-1 left-0 right-0 flex justify-center transition-all duration-200 pointer-events-none ${isDownDouble ? "translate-y-3" : isDownSingle ? "translate-y-1" : "translate-y-0"}`}>
-        <span className={`text-[10px] font-bold leading-none transition-all ${isDownDouble ? "text-rose-500 scale-125" : isDownSingle ? "text-cyan-500 scale-110" : "opacity-30 text-slate-400"}`}>
-          {isDownDouble ? "𝄫" : "♭"}
-        </span>
-      </div>
-
-      <span className={`text-2xl font-medium tracking-tight transition-all duration-200 ${isRoot ? "text-rose-500" : isBass ? "text-amber-500" : isActive ? "text-cyan-600" : "text-slate-600"}`} style={{ transform: `translateY(${offsetY * 0.4}px)` }}>{displayLabel}</span>
+      <span className={`text-2xl font-medium tracking-tight transition-all duration-100 ${isRoot ? "text-rose-500" : isBass ? "text-amber-500" : isActive ? "text-cyan-600" : "text-slate-600"}`} 
+        style={{ transform: `translate(${offset.x * 0.4}px, ${offset.y * 0.4}px)` }}>
+        {displayLabel}
+      </span>
     </div>
   );
 };
@@ -314,7 +329,7 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
                  </span>
                </div>
              )}
-             <h2 className="text-5xl font-black text-slate-800 tracking-tighter leading-none">{candidate.chord}</h2>
+             <h2 className="text-5xl font-black text-slate-800 tracking-tighter leading-none">{formatNote(candidate.chord)}</h2>
           </div>
           <div className="text-right">
              <div className="flex items-baseline justify-end gap-1">
@@ -458,7 +473,7 @@ export default function CadenciaPage() {
   }, [selected]);
 
   const focusInput = () => {
-    setIsKeyboardOpen(false); // 入力時はキーボードを閉じるのが安全
+    setIsKeyboardOpen(false); 
     setTimeout(() => {
         if (inputRef.current) {
             inputRef.current.focus();
@@ -520,7 +535,7 @@ export default function CadenciaPage() {
     setLoading(true); setChatHistory([]); setInfoText("");
     const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
     try {
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 2000)); 
       const res = await fetch("/api/analyze", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ selectedNotes: selected, keyHint, bassHint, rootHint }),
@@ -628,7 +643,11 @@ export default function CadenciaPage() {
                           {sortedSelected.map((note) => (
                             <div key={note} className={`relative group animate-in zoom-in duration-300`}>
                               <div className={`w-12 h-12 rounded-xl text-xl font-black shadow-md flex items-center justify-center border transition-transform hover:scale-105 ${
-                                rootHint === note ? "bg-rose-500 border-rose-400 text-white shadow-rose-200" : bassHint === note ? "bg-amber-400 border-amber-300 text-white shadow-amber-200" : "bg-white border-slate-100 text-slate-700 shadow-slate-100"
+                                rootHint === note 
+                                  ? "bg-rose-500 border-rose-400 text-white shadow-rose-200" 
+                                  : bassHint === note 
+                                    ? "bg-amber-400 border-amber-300 text-white shadow-amber-200" 
+                                    : "bg-white border-slate-100 text-slate-700 shadow-slate-100"
                               }`}>{formatNote(note)}</div>
                               <div className="absolute -top-2 left-1/2 -translate-x-1/2 flex flex-col gap-1 items-center w-max pointer-events-none">
                                 {rootHint === note && <span className="text-[8px] bg-rose-600 text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm z-20">根音</span>}
