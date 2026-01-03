@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useEffect } from "react";
+import Script from "next/script";
 
 // --- Design Constants ---
 const G = {
@@ -91,7 +92,7 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// 1 & 2. イントロダクション（操作解説を追加・再構成）
+// 1. イントロダクション
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   const [isClosing, setIsClosing] = useState(false);
   const handleClose = () => { setIsClosing(true); setTimeout(onClose, 300); };
@@ -101,61 +102,54 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
       <div className={`w-full max-w-md h-[85vh] bg-white rounded-[40px] shadow-2xl overflow-hidden relative transform transition-all duration-300 flex flex-col ${isClosing ? "scale-95 translate-y-8 opacity-0" : "scale-100 translate-y-0 opacity-100"}`}>
         <div className="absolute top-10 -left-10 text-[8rem] font-black text-slate-100 rotate-90 pointer-events-none select-none opacity-50">INTRODUCTION</div>
         <div className="flex-1 overflow-y-auto p-8 relative z-10 scrollbar-hide">
-          {/* Header */}
           <div className="text-center mb-10">
             <div className="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-3xl shadow-xl mx-auto mb-6 rotate-3">🎹</div>
             <h1 className="text-4xl font-black text-slate-800 tracking-tighter mb-2">Waon AI</h1>
             <p className="text-sm font-bold text-slate-500">ポケットに、専属の音楽理論家を。</p>
           </div>
-
-          {/* Targets */}
           <div className="mb-10">
             <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">🎯</span> 対象ユーザー</h2>
-            <div className="space-y-4">
-              <div className="bg-slate-50 p-4 rounded-3xl">
-                <h3 className="font-bold text-slate-700 mb-2 flex items-center gap-2"><span className="text-xl">🎺</span> 奏者の方へ</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">和音の響きは分かるが、機能和声として言語化できない方。スコアの和音の役割を知りたい方に。</p>
+            <div className="space-y-6">
+              <div className="bg-slate-50 p-5 rounded-3xl">
+                <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><span className="text-xl">🎺</span> 奏者の方へ<span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full">吹奏楽・オケ・合唱</span></h3>
+                <ul className="space-y-2 text-xs text-slate-600 font-medium leading-relaxed list-disc list-outside pl-4">
+                  <li>和音の響きは分かるが、機能和声として言語化できない。</li>
+                  <li>スコアを読んでいて「この和音の役割は？」と立ち止まってしまう。</li>
+                  <li>記号としてのコード名より、音楽的な「意味」を知りたい。</li>
+                </ul>
               </div>
-              <div className="bg-slate-50 p-4 rounded-3xl">
-                <h3 className="font-bold text-slate-700 mb-2 flex items-center gap-2"><span className="text-xl">🎓</span> 学ぶ方へ</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">和声学の用語を用いた解説が欲しい方。転回形やバス、文脈による解釈の変化を深く学びたい方に。</p>
+              <div className="bg-slate-50 p-5 rounded-3xl">
+                <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><span className="text-xl">🎓</span> 学ぶ方へ<span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full">音大生・学習者</span></h3>
+                <ul className="space-y-2 text-xs text-slate-600 font-medium leading-relaxed list-disc list-outside pl-4">
+                  <li>和声学の用語（主和音、属和音など）を用いた解説が欲しい。</li>
+                  <li>転回形やバス、文脈による解釈の変化を深く学びたい。</li>
+                  <li>自習時の解答合わせや、理論の復習ツールとして。</li>
+                </ul>
               </div>
             </div>
           </div>
-
-          {/* Features */}
-          <div className="mb-10">
+          <div className="mb-8">
             <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">✨</span> Waon AIの特徴</h2>
-            <p className="text-xs text-slate-600 leading-relaxed font-medium mb-4">入力された構成音から和音を判定し、その音楽的意味を<span className="bg-yellow-100 font-bold px-1">「和声学の言葉」</span>で解説する音楽理論特化型AI解析アプリです。</p>
-            <div className="grid grid-cols-2 gap-3">
-                <div className="bg-blue-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">🧐</div><div className="font-bold text-blue-700 text-xs">根拠</div></div>
-                <div className="bg-rose-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">⚙️</div><div className="font-bold text-rose-700 text-xs">機能</div></div>
-                <div className="bg-emerald-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">🏗️</div><div className="font-bold text-emerald-700 text-xs">構造</div></div>
-                <div className="bg-purple-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">💡</div><div className="font-bold text-purple-700 text-xs">多義性</div></div>
+            <div className="text-xs text-slate-600 leading-relaxed font-medium space-y-4">
+              <p>入力された構成音から和音を判定し、その音楽的意味を<span className="bg-yellow-100 font-bold px-1">「和声学の言葉」</span>で解説する音楽理論特化型AI解析アプリです。</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">🧐</div><div className="font-bold text-blue-700">根拠</div><div className="text-[9px] text-blue-500">なぜその和音か</div></div>
+                <div className="bg-rose-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">⚙️</div><div className="font-bold text-rose-700">機能</div><div className="text-[9px] text-rose-500">調性内の役割</div></div>
+                <div className="bg-emerald-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">🏗️</div><div className="font-bold text-emerald-700">構造</div><div className="text-[9px] text-emerald-500">転回形・バス</div></div>
+                <div className="bg-purple-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">💡</div><div className="font-bold text-purple-700">多義性</div><div className="text-[9px] text-purple-500">他の解釈</div></div>
+              </div>
+              <p className="text-center font-bold text-slate-400 mt-2">プロの音楽家の思考プロセスを、AIが可視化します。</p>
             </div>
           </div>
-
-          {/* Keyboard Guide (Integrated) */}
+          {/* Keyboard Guide Integrated */}
           <div className="mb-4">
             <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">🎹</span> キーボード操作</h2>
             <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 rounded-3xl p-5 border border-slate-100">
                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100">👆</span>
-                    <span className="text-[10px] font-bold text-slate-600">タップ入力</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-blue-500">↕️</span>
-                    <span className="text-[10px] font-bold text-slate-600"># / ♭</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-blue-500">↔️</span>
-                    <span className="text-[10px] font-bold text-slate-600">𝄪 / 𝄫</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-rose-500">R</span>
-                    <span className="text-[10px] font-bold text-slate-600">根音指定</span>
-                  </div>
+                  <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100">👆</span><span className="text-[10px] font-bold text-slate-600">タップ入力</span></div>
+                  <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-blue-500">↕️</span><span className="text-[10px] font-bold text-slate-600"># / ♭</span></div>
+                  <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-blue-500">↔️</span><span className="text-[10px] font-bold text-slate-600">𝄪 / 𝄫</span></div>
+                  <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-rose-500">R</span><span className="text-[10px] font-bold text-slate-600">根音指定</span></div>
                </div>
                <p className="mt-4 text-[9px] text-slate-400 text-center">直感的なフリック操作で、素早く音符を入力できます。</p>
             </div>
@@ -165,6 +159,44 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
           <button onClick={handleClose} className="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold shadow-lg hover:bg-slate-800 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 group"><span>はじめる</span><span className="group-hover:translate-x-1 transition-transform">→</span></button>
         </div>
       </div>
+    </div>
+  );
+};
+
+const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassHint: string | null, rootHint: string | null }) => {
+  const keys = [
+    { idx: 0, type: "white", x: 0 }, { idx: 1, type: "black", x: 10 },
+    { idx: 2, type: "white", x: 14.28 }, { idx: 3, type: "black", x: 24.28 },
+    { idx: 4, type: "white", x: 28.56 }, { idx: 5, type: "white", x: 42.84 },
+    { idx: 6, type: "black", x: 52.84 }, { idx: 7, type: "white", x: 57.12 },
+    { idx: 8, type: "black", x: 67.12 }, { idx: 9, type: "white", x: 71.4 },
+    { idx: 10, type: "black", x: 81.4 }, { idx: 11, type: "white", x: 85.68 },
+  ];
+  const activeIndices = selected.map(getKeyIndex);
+  const isActive = (keyIdx: number) => activeIndices.includes(keyIdx);
+  const isBass = (keyIdx: number) => bassHint ? getKeyIndex(bassHint) === keyIdx : false;
+  const isRoot = (keyIdx: number) => rootHint ? getKeyIndex(rootHint) === keyIdx : false;
+
+  return (
+    <div className="h-full w-full relative select-none pointer-events-none opacity-90">
+       <svg viewBox="0 0 100 50" className="w-full h-full" preserveAspectRatio="none">
+         {keys.filter(k => k.type === "white").map((k) => (
+           <path key={k.idx} d={`M${k.x},0 h14.28 v50 h-14.28 z`}
+             className={`transition-all duration-300 ${
+               isActive(k.idx) 
+                 ? (isRoot(k.idx) ? "fill-rose-400" : isBass(k.idx) ? "fill-amber-400" : "fill-cyan-400") 
+                 : "fill-white"
+             } stroke-slate-100 stroke-[0.5]`} />
+         ))}
+         {keys.filter(k => k.type === "black").map((k) => (
+           <path key={k.idx} d={`M${k.x},0 h8 v32 a2,2 0 0 1 -2,2 h-4 a2,2 0 0 1 -2,-2 z`}
+             className={`transition-all duration-300 ${
+               isActive(k.idx) 
+                 ? (isRoot(k.idx) ? "fill-rose-600" : isBass(k.idx) ? "fill-amber-600" : "fill-cyan-600") 
+                 : "fill-slate-800"
+             }`} />
+         ))}
+       </svg>
     </div>
   );
 };
@@ -264,7 +296,7 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
   );
 };
 
-// 4. 修正: 質問ボタン付きの考察カード
+// 4. 修正: 考察カード（質問ボタン追加）
 const InsightCard = ({ text, onAsk }: { text: string, onAsk: () => void }) => (
   <div className={`${G.cardBase} p-6 overflow-hidden bg-gradient-to-br from-white to-slate-50`}>
     <div className="absolute -right-4 top-2 text-[5rem] font-black text-slate-900/5 pointer-events-none select-none z-0 transform rotate-[-5deg] tracking-tighter leading-none whitespace-nowrap">Waon AI</div>
@@ -275,14 +307,64 @@ const InsightCard = ({ text, onAsk }: { text: string, onAsk: () => void }) => (
       </div>
       <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap font-medium mb-6">{text}</p>
       
-      {/* 修正: 質問ボタン追加 */}
       <button 
         onClick={onAsk}
-        className="w-full py-2.5 rounded-xl border border-blue-200 text-blue-600 text-xs font-bold bg-blue-50/50 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+        className="w-full py-3 rounded-2xl border border-blue-100 text-blue-600 text-xs font-bold bg-gradient-to-b from-white to-blue-50 hover:to-blue-100 transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2"
       >
-        <IconRobot className="w-3 h-3" />
+        <IconRobot className="w-4 h-4" />
         Waon AIに質問する
       </button>
+    </div>
+  </div>
+);
+
+// 3. 修正: ベータカード（考察の下、黒基調）
+const BetaCard = () => (
+  <div className="bg-slate-900 rounded-[24px] p-6 shadow-xl relative overflow-hidden group border border-slate-800 mt-6">
+     <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
+     <div className="absolute -right-2 top-2 text-[4rem] font-black text-white/5 pointer-events-none select-none tracking-tighter leading-none">BETA</div>
+     <div className="relative z-10 flex items-start gap-4">
+        <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-xl shadow-inner border border-slate-700 shrink-0">
+          🧑‍💻
+        </div>
+        <div className="flex-1">
+          <h3 className="text-white font-bold text-sm mb-1">Waon AI Beta</h3>
+          <p className="text-slate-400 text-[10px] leading-relaxed mb-4">
+            このアプリは現在ベータ版です。機能の改善やバグの報告など、開発者までお気軽にご連絡ください。
+          </p>
+          <a href="https://x.com/araken525_toho?s=21" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-white text-slate-900 text-[10px] font-bold px-4 py-2 rounded-full hover:bg-slate-200 transition-all hover:scale-105 active:scale-95">
+            <IconTwitter className="w-3 h-3" />
+            <span>@araken525_toho にDMする</span>
+          </a>
+        </div>
+     </div>
+  </div>
+);
+
+// 4. 追加: 開発者支援カード（フッター）
+const SupportCard = () => (
+  <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-[24px] p-6 shadow-sm relative overflow-hidden">
+    {/* PayPal Script Loader */}
+    <Script 
+      src="https://www.paypal.com/sdk/js?client-id=BAAXPHxkzubmSik_OPzsoUTtMY7ldLJYz3C_ufXB8RJc_ChSi0DPAT1SdjfgcEVXntN37Bn6iYmXM1DDn8&components=hosted-buttons&disable-funding=venmo&currency=JPY" 
+      strategy="lazyOnload"
+    />
+    
+    <div className="text-center relative z-10">
+      <div className="inline-block bg-white p-3 rounded-full shadow-sm mb-3 text-2xl">☕️</div>
+      <h3 className="text-sm font-bold text-amber-900 mb-2">開発者を支援する</h3>
+      <p className="text-[10px] text-amber-800/70 leading-relaxed mb-4 max-w-xs mx-auto">
+        アプリの運営・開発にはサーバー代などの費用がかかります。<br/>
+        もしWaon AIが役に立ったなら、コーヒー1杯分の応援をいただけると嬉しいです。今後の開発の励みになります！
+      </p>
+      
+      {/* PayPal Button Container (Placeholder for actual implementation) */}
+      <div className="flex justify-center">
+         <a href="#" className="bg-[#FFC439] text-amber-900 px-6 py-2.5 rounded-full font-bold text-xs shadow-md hover:brightness-105 active:scale-95 transition-all flex items-center gap-2">
+           <span className="text-lg">🙏</span> 支援する (PayPal)
+         </a>
+      </div>
+      <p className="text-[8px] text-amber-700/50 mt-2">※現在は準備中です</p>
     </div>
   </div>
 );
@@ -512,7 +594,7 @@ export default function CadenciaPage() {
 
       <main className="pt-20 px-5 max-w-md mx-auto space-y-6 relative z-10">
         
-        {/* ヒーロー（常時表示、アイコンなし） */}
+        {/* 4. ヒーロー（文字のみ） */}
         <section className="text-center py-2 relative h-[100px] flex flex-col items-center justify-center">
             <div className="absolute top-2 left-8 text-4xl text-cyan-200 animate-float-1 pointer-events-none select-none">♪</div>
             <div className="absolute bottom-2 right-8 text-3xl text-blue-200 animate-float-2 pointer-events-none select-none">♫</div>
@@ -527,13 +609,16 @@ export default function CadenciaPage() {
             </p>
         </section>
 
-        {/* 5. 修正: 抜本的に刷新された「音符のステージ」入力画面 */}
+        {/* 5. ダッシュボード（新デザイン・ピアノなし） */}
         <section className={`${G.cardBase} min-h-[220px] flex flex-col transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
-           <div className="flex-1 bg-gradient-to-b from-white to-slate-50 p-6 flex flex-col">
-              <div className="flex justify-between items-start mb-4">
+           <div className="absolute -right-4 top-4 text-[4rem] font-black text-slate-50 pointer-events-none select-none z-0 transform -rotate-3">ANALYZE</div>
+           <div className="flex-1 bg-gradient-to-b from-white to-slate-50 p-6 flex flex-col relative z-10">
+              <div className="flex justify-between items-start mb-6">
                  <div className="space-y-1">
-                   <h2 className="text-lg font-black text-slate-700 tracking-tight">新しい分析</h2>
-                   <p className="text-[10px] text-slate-400 font-medium">音を選んで、その響きの正体を探ろう。</p>
+                   <h3 className="text-sm font-black text-slate-700 tracking-tight flex items-center gap-2">
+                     Waon AIに分析させよう
+                   </h3>
+                   <p className="text-[10px] text-slate-400 font-medium">キーボードをタップして音を追加</p>
                  </div>
                  <div className="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-bold text-slate-500 border border-slate-200 shadow-sm">
                    {selected.length} Notes
@@ -541,17 +626,16 @@ export default function CadenciaPage() {
               </div>
 
               {/* Main Note Stage */}
-              <div className="flex-1 rounded-[24px] border border-slate-100 bg-white shadow-inner relative overflow-hidden flex items-center justify-center">
-                 {/* Empty State */}
+              <div className="flex-1 rounded-[24px] border border-slate-100 bg-white/50 shadow-inner relative overflow-hidden flex items-center justify-center p-4">
                  {selected.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-3 animate-in fade-in zoom-in duration-500 py-8 opacity-50">
                        <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 border border-slate-100">
                           <IconKeyboard className="w-6 h-6" />
                        </div>
-                       <p className="text-xs font-bold text-slate-400 tracking-wide">鍵盤をタップして音符を追加</p>
+                       <p className="text-xs font-bold text-slate-400 tracking-wide">待機中...</p>
                     </div>
                  ) : (
-                    <div className="w-full h-full p-4 overflow-x-auto flex items-center gap-3 px-6 scrollbar-hide mask-linear-fade">
+                    <div className="flex flex-wrap justify-center gap-3 animate-in fade-in duration-300 w-full">
                        {sortedSelected.map((note) => (
                           <div key={note} className="flex-shrink-0 relative group animate-in zoom-in duration-300">
                             <div className={`w-14 h-14 rounded-2xl text-xl font-black shadow-lg flex items-center justify-center border transition-transform hover:scale-105 ${
@@ -563,17 +647,12 @@ export default function CadenciaPage() {
                             }`}>
                               {formatNote(note)}
                             </div>
-                            {/* Badges */}
                             <div className="absolute -top-2 left-1/2 -translate-x-1/2 flex flex-col gap-1 items-center w-max pointer-events-none z-10">
                               {rootHint === note && <span className="text-[8px] bg-rose-600 text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm">根音</span>}
                               {bassHint === note && <span className="text-[8px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm">最低音</span>}
                             </div>
                           </div>
                        ))}
-                       {/* Add Button Placeholder */}
-                       <div className="w-10 h-10 rounded-full border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 flex-shrink-0">
-                         <span className="text-lg">+</span>
-                       </div>
                     </div>
                  )}
               </div>
@@ -585,8 +664,11 @@ export default function CadenciaPage() {
           <div ref={resultRef} className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
               <div className="flex items-center gap-2 px-1 py-2"><IconBook className="text-slate-800 w-5 h-5" /><h2 className="text-lg font-bold text-slate-800">Waon AIの分析結果 📖</h2></div>
               {candidates[0] && <ResultCard candidate={candidates[0]} isTop={true} isKeySet={isKeySet} rank={1} />}
-              {/* 4. 修正: 質問ボタン付き考察カード */}
               {infoText && <InsightCard text={infoText} onAsk={focusInput} />}
+              
+              {/* 3. ベータカード (Results内へ移動) */}
+              <BetaCard />
+
               {candidates.length > 1 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-center py-4 gap-4"><div className="h-px bg-slate-200 flex-1"></div><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">その他の候補</span><div className="h-px bg-slate-200 flex-1"></div></div>
@@ -598,45 +680,32 @@ export default function CadenciaPage() {
         )}
       </main>
 
-      {/* --- Footer Beta Card --- */}
+      {/* 4. フッター (Support) */}
       <footer className="relative z-10 px-5 pb-32 mt-12">
-        <div className="bg-slate-900 rounded-[24px] p-6 shadow-xl relative overflow-hidden group border border-slate-800">
-           <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all duration-500 pointer-events-none"></div>
-           <div className="relative z-10 flex flex-col items-center text-center space-y-4">
-              <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center text-2xl shadow-inner border border-slate-700">🧑‍💻</div>
-              <div><h3 className="text-white font-bold text-sm mb-1">Waon AI Beta</h3><p className="text-slate-400 text-[10px] leading-relaxed max-w-xs mx-auto">このアプリは現在ベータ版です。機能の改善やバグの報告など、開発者までお気軽にご連絡ください。</p></div>
-              <a href="https://x.com/araken525_toho?s=21" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-black text-white text-[10px] font-bold px-4 py-2 rounded-full border border-slate-700 hover:bg-slate-800 transition-all hover:scale-105 active:scale-95"><IconTwitter className="w-3 h-3" /><span>@araken525_toho に連絡する</span></a>
-           </div>
-        </div>
+        <SupportCard />
       </footer>
 
-      {/* 1. 修正: 4列×3行 プロフェッショナルキーボード */}
+      {/* --- Floating Glass Keyboard (Translucent) --- */}
       <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glassKeyContainer} rounded-t-[36px] transition-transform duration-300 ease-out touch-none ${isKeyboardOpen ? "translate-y-0" : "translate-y-[calc(100%-30px)]"}`} style={{ transform: isKeyboardOpen ? `translateY(${keyboardOffset}px)` : undefined }}>
         <div className="h-8 flex items-center justify-center cursor-grab active:cursor-grabbing active:opacity-50" onClick={() => setIsKeyboardOpen(!isKeyboardOpen)} onPointerDown={handleDragStart} onPointerMove={handleDragMove} onPointerUp={handleDragEnd} onPointerCancel={handleDragEnd}><div className="w-12 h-1 bg-slate-300/80 rounded-full"></div></div>
         <div className="max-w-md mx-auto px-4 pb-8 pt-2">
-          {/* Grid Layout: 4 cols x 3 rows */}
+          {/* 1. キーボード高さ調整 (h-16) */}
           <div className="grid grid-cols-4 grid-rows-3 gap-2.5 h-full">
-            
-            {/* Row 1: C D E Del */}
             <FlickKey className="col-start-1 row-start-1 h-16" noteBase="C" currentSelection={selected.find(s=>s.startsWith("C"))} isBass={bassHint?.startsWith("C")??false} isRoot={rootHint?.startsWith("C")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-2 row-start-1 h-16" noteBase="D" currentSelection={selected.find(s=>s.startsWith("D"))} isBass={bassHint?.startsWith("D")??false} isRoot={rootHint?.startsWith("D")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-3 row-start-1 h-16" noteBase="E" currentSelection={selected.find(s=>s.startsWith("E"))} isBass={bassHint?.startsWith("E")??false} isRoot={rootHint?.startsWith("E")??false} onInput={handleKeyInput} />
             <button className="col-start-4 row-start-1 h-16 rounded-2xl bg-white/40 border border-white/40 text-slate-400 active:text-rose-500 active:bg-rose-50 transition-all flex items-center justify-center shadow-sm active:scale-95 hover:bg-white/60" onClick={reset}><IconTrash /></button>
 
-            {/* Row 2: F G A B */}
             <FlickKey className="col-start-1 row-start-2 h-16" noteBase="F" currentSelection={selected.find(s=>s.startsWith("F"))} isBass={bassHint?.startsWith("F")??false} isRoot={rootHint?.startsWith("F")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-2 row-start-2 h-16" noteBase="G" currentSelection={selected.find(s=>s.startsWith("G"))} isBass={bassHint?.startsWith("G")??false} isRoot={rootHint?.startsWith("G")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-3 row-start-2 h-16" noteBase="A" currentSelection={selected.find(s=>s.startsWith("A"))} isBass={bassHint?.startsWith("A")??false} isRoot={rootHint?.startsWith("A")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-4 row-start-2 h-16" noteBase="B" currentSelection={selected.find(s=>s.startsWith("B"))} isBass={bassHint?.startsWith("B")??false} isRoot={rootHint?.startsWith("B")??false} onInput={handleKeyInput} />
 
-            {/* Row 3 */}
-            {/* Col 1: Root/Bass (Split Vertical) */}
             <div className="col-start-1 row-start-3 h-16 flex flex-col gap-1">
-               <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`flex-1 rounded-t-xl rounded-b-sm text-[9px] font-bold transition-all border flex flex-col items-center justify-center leading-tight ${inputMode === "root" ? "bg-rose-500 text-white border-rose-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>根音指定</button>
-               <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`flex-1 rounded-b-xl rounded-t-sm text-[9px] font-bold transition-all border flex flex-col items-center justify-center leading-tight ${inputMode === "bass" ? "bg-amber-500 text-white border-amber-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>最低音指定</button>
+               <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`flex-1 rounded-t-xl rounded-b-sm text-[10px] font-bold transition-all border flex flex-col items-center justify-center leading-tight ${inputMode === "root" ? "bg-rose-500 text-white border-rose-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>根音指定</button>
+               <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`flex-1 rounded-b-xl rounded-t-sm text-[10px] font-bold transition-all border flex flex-col items-center justify-center leading-tight ${inputMode === "bass" ? "bg-amber-500 text-white border-amber-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>最低音指定</button>
             </div>
 
-            {/* Col 2-3: Key Selector (Integrated) */}
             <div className="col-start-2 col-span-2 row-start-3 h-16 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-sm flex items-center overflow-hidden">
                 <div className="flex-[0.8] flex items-center justify-center border-r border-dotted border-slate-400/30 h-full px-1"><span className="text-[10px] font-bold text-slate-500 whitespace-nowrap leading-tight text-center">調性は</span></div>
                 <div className="flex-1 relative h-full border-r border-dotted border-slate-400/30 group active:bg-black/5 transition-colors">
@@ -649,7 +718,6 @@ export default function CadenciaPage() {
                 </div>
             </div>
             
-            {/* Col 4: Analyze Button */}
             <button className={`col-start-4 row-start-3 h-16 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20 relative overflow-hidden group ${canAnalyze && !loading ? "bg-cyan-500 text-white" : "bg-slate-100 text-slate-300 cursor-not-allowed"}`} onClick={analyze} disabled={!canAnalyze || loading}>
                <div className="relative z-10 flex flex-col items-center gap-0.5">
                  {loading ? <IconRefresh className="animate-spin w-5 h-5" /> : <IconArrowRight className="w-5 h-5" />}
