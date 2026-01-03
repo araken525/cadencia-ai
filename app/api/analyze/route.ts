@@ -105,7 +105,7 @@ type AnalyzeResponse = {
 };
 
 // ============================================================
-// 共通の特殊和音ロジック（ここが抜けるとエラーになります！）
+// 共通の特殊和音ロジック
 // ============================================================
 const SPECIAL_CHORD_RULES = `
 【特殊和音の判定辞書（優先度：高）】
@@ -117,7 +117,7 @@ const SPECIAL_CHORD_RULES = `
 4. **ナポリの六:** 短調でIIの根音を半音下げた長三和音の第1転回形。正式には「ナポリのII」または「II¹（根音変位）」だが、通称「ナポリの六（N⁶）」にも言及する。
 5. **ピカルディのI:** 短調の曲が長主和音で終わる場合。「ピカルディ終止」とする。
 6. **Iの第2転回形 (I²):** バスが属音の場合。「終止四六（D機能）」を基本とし、文脈により経過・補助四六とする。
-7. **準固有和音 (Moll-Dur):** 長調設定(keyHint=Major)で、同主短調の和音（IVm, bVIなど）が使われた場合。解説では「準固有和音（モル・ドゥア）」と言及し、記号は左上に○を付した形（本システムでは **°VI** 等）で扱う。
+7. **準固有和音 (Moll-Dur):** 長調設定(keyHint=Major)で、同主短調の和音（IVm, bVIなど）が使われた場合。解説では「準固有和音（モル・ドゥア）」と言及し、記号は左上に○を付した形（本システムでは **°VI** 等）で扱う。長調の中に切ない響きをもたらす。
 8. **ドッペル・ドミナント:** 属和音(V)の完全5度上に位置するII（長三和音またはII7）。「VのV」としての推進力に言及する。
 9. **根音省略の属九:** 減七の和音は、機能的には「根音省略の属九（V₉）」としてD機能を持つとみなす。
 10. **Iの付加6:** ポピュラーではI6だが、芸大和声ではVIの七の第1転回形（VI₇¹）として扱うことが多い。
@@ -163,7 +163,7 @@ ${SPECIAL_CHORD_RULES}
   "status": "ok" | "ambiguous" | "insufficient",
   "engineChord": string,
   "chordType": string,
-  "confidence": number,
+  "confidence": number, // 0.0-1.0
   "analysis": string,
   "candidates": [
     {
@@ -172,8 +172,8 @@ ${SPECIAL_CHORD_RULES}
       "inversion": "root" | "1st" | "2nd" | "3rd" | "unknown",
       "tds": "T" | "D" | "S" | "?",
       "romanNumeral": string,
-      "score": number,
-      "confidence": number,
+      "score": number, // 0-100
+      "confidence": number, // 0.0-1.0
       "chordTones": string[],
       "extraTones": string[],
       "reason": string,
@@ -268,19 +268,40 @@ export async function POST(req: Request) {
 
     const json = parseJsonSafely(result.response.text());
     
-    let candidates: CandidateObj[] = (json.candidates || []).map((c: any) => ({
-      chord: safeStr(c.chord, "判定不能"),
-      chordType: safeStr(c.chordType, ""),
-      inversion: safeStr(c.inversion, "unknown"),
-      romanNumeral: safeStr(c.romanNumeral, ""),
-      tds: (["T", "D", "S"].includes(c.tds) ? c.tds : "?") as any,
-      score: clampScore(c.score, 0),
-      confidence: clamp01(c.confidence, 0),
-      chordTones: safeArrStr(c.chordTones),
-      extraTones: safeArrStr(c.extraTones),
-      reason: safeStr(c.reason, ""),
-      provisional: !!c.provisional,
-    })).filter((c: CandidateObj) => !!c.chord);
+    // ★ ここで「1%」問題を解決する自動補正を入れています
+    let candidates: CandidateObj[] = (json.candidates || []).map((c: any) => {
+      let rawScore = typeof c.score === "number" ? c.score : 0;
+      let rawConf = typeof c.confidence === "number" ? c.confidence : 0;
+
+      // 自動補正: スコアが0.95などの小数で来たら、95点(整数)に直す
+      if (rawScore <= 1 && rawScore > 0) {
+         rawScore = rawScore * 100;
+      }
+      
+      // 自動補正: 自信度が95などの整数で来たら、0.95(小数)に直す
+      if (rawConf > 1) {
+         rawConf = rawConf / 100;
+      }
+
+      // フォールバック: スコアが0だったら、自信度から作る
+      if (rawScore === 0 && rawConf > 0) {
+         rawScore = rawConf * 100;
+      }
+
+      return {
+        chord: safeStr(c.chord, "判定不能"),
+        chordType: safeStr(c.chordType, ""),
+        inversion: safeStr(c.inversion, "unknown"),
+        romanNumeral: safeStr(c.romanNumeral, ""),
+        tds: (["T", "D", "S"].includes(c.tds) ? c.tds : "?") as any,
+        score: clampScore(rawScore, 0), // 補正済みの値を使用
+        confidence: clamp01(rawConf, 0), // 補正済みの値を使用
+        chordTones: safeArrStr(c.chordTones),
+        extraTones: safeArrStr(c.extraTones),
+        reason: safeStr(c.reason, ""),
+        provisional: !!c.provisional,
+      };
+    }).filter((c: CandidateObj) => !!c.chord);
 
     // --------------------
     // 順位の保険
@@ -330,6 +351,7 @@ export async function POST(req: Request) {
         : "ambiguous";
 
     let confidence = clamp01((json as any).confidence, 0);
+    // 補正: トップ候補の自信度があればそれを採用
     if ((!confidence || confidence === 0) && top) confidence = clamp01(top.confidence, 0.3);
 
     if (top) {
@@ -354,7 +376,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(res);
   } catch (e: any) {
-    console.error(e); // サーバーログにエラーを出力
+    console.error(e);
     return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
   }
 }
