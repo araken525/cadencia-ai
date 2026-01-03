@@ -92,14 +92,14 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// 1. イントロダクション
+// 1. イントロダクション（キーボード操作削除・修正済み）
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   const [isClosing, setIsClosing] = useState(false);
   const handleClose = () => { setIsClosing(true); setTimeout(onClose, 300); };
 
   return (
     <div className={`fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-300 ${isClosing ? "opacity-0" : "opacity-100"}`}>
-      <div className={`w-full max-w-md h-[85vh] bg-white rounded-[40px] shadow-2xl overflow-hidden relative transform transition-all duration-300 flex flex-col ${isClosing ? "scale-95 translate-y-8 opacity-0" : "scale-100 translate-y-0 opacity-100"}`}>
+      <div className={`w-full max-w-md h-[80vh] bg-white rounded-[40px] shadow-2xl overflow-hidden relative transform transition-all duration-300 flex flex-col ${isClosing ? "scale-95 translate-y-8 opacity-0" : "scale-100 translate-y-0 opacity-100"}`}>
         <div className="absolute top-10 -left-10 text-[8rem] font-black text-slate-100 rotate-90 pointer-events-none select-none opacity-50">INTRODUCTION</div>
         <div className="flex-1 overflow-y-auto p-8 relative z-10 scrollbar-hide">
           <div className="text-center mb-10">
@@ -139,19 +139,6 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
                 <div className="bg-purple-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">💡</div><div className="font-bold text-purple-700">多義性</div><div className="text-[9px] text-purple-500">他の解釈</div></div>
               </div>
               <p className="text-center font-bold text-slate-400 mt-2">プロの音楽家の思考プロセスを、AIが可視化します。</p>
-            </div>
-          </div>
-          {/* Keyboard Guide Integrated */}
-          <div className="mb-4">
-            <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">🎹</span> キーボード操作</h2>
-            <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 rounded-3xl p-5 border border-slate-100">
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100">👆</span><span className="text-[10px] font-bold text-slate-600">タップ入力</span></div>
-                  <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-blue-500">↕️</span><span className="text-[10px] font-bold text-slate-600"># / ♭</span></div>
-                  <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-blue-500">↔️</span><span className="text-[10px] font-bold text-slate-600">𝄪 / 𝄫</span></div>
-                  <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-rose-500">R</span><span className="text-[10px] font-bold text-slate-600">根音指定</span></div>
-               </div>
-               <p className="mt-4 text-[9px] text-slate-400 text-center">直感的なフリック操作で、素早く音符を入力できます。</p>
             </div>
           </div>
         </div>
@@ -322,7 +309,6 @@ const InsightCard = ({ text, onAsk }: { text: string, onAsk: () => void }) => (
       </div>
       <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap font-medium mb-6">{text}</p>
       
-      {/* 2. 馴染ませた質問ボタン */}
       <button 
         onClick={onAsk}
         className="w-full py-3 rounded-2xl border border-slate-100 bg-white text-slate-600 text-xs font-bold shadow-sm hover:bg-slate-50 hover:text-slate-800 transition-all flex items-center justify-center gap-2 active:scale-95"
@@ -334,49 +320,48 @@ const InsightCard = ({ text, onAsk }: { text: string, onAsk: () => void }) => (
   </div>
 );
 
-// 1. 統合されたフッターカード（ベータ情報 + コーヒー支援）
-const FooterCard = () => (
-  <div className="bg-slate-900 rounded-[24px] p-6 shadow-xl relative overflow-hidden group border border-slate-800 mt-6">
-     {/* Background Decor */}
-     <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
-     <div className="absolute -right-4 top-4 text-[4rem] font-black text-white/5 pointer-events-none select-none tracking-tighter leading-none">BETA</div>
-
-     {/* 1. Beta Section */}
-     <div className="relative z-10 flex items-start gap-4 mb-8 border-b border-white/10 pb-6">
-        <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-xl shadow-inner border border-slate-700 shrink-0">
-          🧑‍💻
-        </div>
-        <div className="flex-1">
-          <h3 className="text-white font-bold text-sm mb-1">Waon AI Beta</h3>
-          <p className="text-slate-400 text-[10px] leading-relaxed mb-4">
-            このアプリは現在ベータ版です。機能の改善やバグの報告など、開発者までお気軽にご連絡ください。
+// 2. 統合フッターセクション（並列デザイン）
+const FooterSection = () => (
+  <div className="grid grid-cols-2 gap-3 mt-6">
+    {/* Beta Card */}
+    <div className="bg-slate-900 rounded-[24px] p-4 flex flex-col justify-between relative overflow-hidden group border border-slate-800 shadow-lg min-h-[140px]">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xl">🧑‍💻</span>
+            <h3 className="text-white font-bold text-xs">Waon AI Beta</h3>
+          </div>
+          <p className="text-slate-400 text-[9px] leading-relaxed mb-3">
+            機能改善やバグ報告など、お気軽にご連絡ください。
           </p>
-          <a href="https://x.com/araken525_toho?s=21" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-white text-slate-900 text-[10px] font-bold px-4 py-2 rounded-full hover:bg-slate-200 transition-all hover:scale-105 active:scale-95">
-            <IconTwitter className="w-3 h-3" />
-            <span>@araken525_toho にDMする</span>
-          </a>
         </div>
-     </div>
+        <a href="https://x.com/araken525_toho?s=21" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 text-white text-[9px] font-bold px-3 py-2 rounded-full transition-all flex items-center justify-center gap-1.5 active:scale-95">
+          <IconTwitter className="w-3 h-3" />
+          <span>DMを送る</span>
+        </a>
+    </div>
 
-     {/* 2. Coffee Section */}
-     <div className="relative z-10 text-center">
-       <div className="inline-block bg-slate-800 p-3 rounded-full shadow-inner border border-slate-700 mb-3 text-2xl">☕️</div>
-       <h3 className="text-sm font-bold text-slate-200 mb-2">開発者を支援する</h3>
-       <p className="text-[10px] text-slate-400 leading-relaxed mb-4 max-w-xs mx-auto">
-         アプリの運営・開発にはサーバー代などの費用がかかります。<br/>
-         もしWaon AIが役に立ったなら、コーヒー1杯分の応援をいただけると嬉しいです。今後の開発の励みになります！
-       </p>
-       <div className="flex justify-center">
-          <a 
-            href="https://www.paypal.com/ncp/payment/5H8K86M4JGHSU" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="bg-[#FFC439] text-amber-900 px-6 py-2.5 rounded-full font-bold text-xs shadow-md hover:brightness-105 active:scale-95 transition-all flex items-center gap-2"
-          >
-            <span className="text-lg">🙏</span> PayPalで支援する
-          </a>
-       </div>
-     </div>
+    {/* Support Card */}
+    <div className="bg-[#FFC439] rounded-[24px] p-4 flex flex-col justify-between relative overflow-hidden group shadow-lg min-h-[140px]">
+        <div className="absolute -right-2 -bottom-2 text-amber-900/10 text-5xl font-black">☕️</div>
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xl">☕️</span>
+            <h3 className="text-amber-900 font-bold text-xs">開発を支援</h3>
+          </div>
+          <p className="text-amber-800/80 text-[9px] leading-relaxed mb-3">
+            開発費のサポートをお願いします。励みになります！
+          </p>
+        </div>
+        <a 
+          href="https://www.paypal.com/ncp/payment/5H8K86M4JGHSU" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="bg-white/90 hover:bg-white text-amber-900 px-3 py-2 rounded-full font-bold text-[9px] shadow-sm transition-all flex items-center justify-center gap-1.5 active:scale-95"
+        >
+          <span>PayPalで応援</span>
+        </a>
+    </div>
   </div>
 );
 
@@ -423,7 +408,6 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
   );
 }
 
-// 3. 修正: 半透明の白バックグランド分析画面
 const LoadingOverlay = () => (
   <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/60 backdrop-blur-xl animate-in fade-in duration-500 px-6">
     <div className="relative w-16 h-16 mb-6">
@@ -606,7 +590,7 @@ export default function CadenciaPage() {
 
       <main className="pt-20 px-5 max-w-md mx-auto space-y-6 relative z-10">
         
-        {/* 4. 修正: ヒーロー（常時表示、アイコンなし） */}
+        {/* ヒーロー */}
         <section className="text-center py-2 relative h-[100px] flex flex-col items-center justify-center">
             <div className="absolute top-2 left-8 text-4xl text-cyan-200 animate-float-1 pointer-events-none select-none">♪</div>
             <div className="absolute bottom-2 right-8 text-3xl text-blue-200 animate-float-2 pointer-events-none select-none">♫</div>
@@ -621,7 +605,7 @@ export default function CadenciaPage() {
             </p>
         </section>
 
-        {/* 3. 修正: 入力カード (タグ削除・ピアノデザイン調整) */}
+        {/* 入力カード */}
         <section className={`${G.cardBase} bg-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
            <div className="absolute -right-4 top-4 text-[4rem] font-black text-slate-50 pointer-events-none select-none z-0 transform -rotate-3">ANALYZE</div>
            <div className="p-5 flex flex-col min-h-[240px] relative z-10">
@@ -635,7 +619,6 @@ export default function CadenciaPage() {
                  </div>
               </div>
 
-              {/* 2. 修正: キーボードガイド */}
               {showGuide && selected.length === 0 && <KeyboardGuide onClose={() => setShowGuide(false)} />}
 
               <div className="flex-1 flex flex-col items-center justify-center relative">
@@ -678,24 +661,25 @@ export default function CadenciaPage() {
               {candidates[0] && <ResultCard candidate={candidates[0]} isTop={true} isKeySet={isKeySet} rank={1} />}
               {infoText && <InsightCard text={infoText} onAsk={focusInput} />}
               
-              {/* 3. ベータカード (Results内へ移動) */}
-              <FooterCard />
-
               {candidates.length > 1 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-center py-4 gap-4"><div className="h-px bg-slate-200 flex-1"></div><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">その他の候補</span><div className="h-px bg-slate-200 flex-1"></div></div>
                   {candidates.slice(1).map((c, i) => (<ResultCard key={c.chord} candidate={c} isTop={false} isKeySet={isKeySet} rank={i + 2} />))}
                 </div>
               )}
-              <div className="pt-4 pb-8"><AskCard question={question} setQuestion={setQuestion} ask={ask} isThinking={isThinking} loading={loading} inputRefProp={inputRef} history={chatHistory} /></div>
+              
+              <div className="pt-4 pb-4"><AskCard question={question} setQuestion={setQuestion} ask={ask} isThinking={isThinking} loading={loading} inputRefProp={inputRef} history={chatHistory} /></div>
+
+              {/* 3. 分析結果時は最後に配置 */}
+              <FooterSection />
           </div>
         )}
       </main>
 
-      {/* 4. フッター (Support) - Only visible when NO result to fill space, otherwise inside result */}
+      {/* 4. 分析前はフッター最下部に配置 */}
       {!hasResult && (
          <footer className="relative z-10 px-5 pb-32 mt-12">
-            <FooterCard />
+            <FooterSection />
          </footer>
       )}
 
@@ -703,7 +687,7 @@ export default function CadenciaPage() {
       <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glassKeyContainer} rounded-t-[36px] transition-transform duration-300 ease-out touch-none ${isKeyboardOpen ? "translate-y-0" : "translate-y-[calc(100%-30px)]"}`} style={{ transform: isKeyboardOpen ? `translateY(${keyboardOffset}px)` : undefined }}>
         <div className="h-8 flex items-center justify-center cursor-grab active:cursor-grabbing active:opacity-50" onClick={() => setIsKeyboardOpen(!isKeyboardOpen)} onPointerDown={handleDragStart} onPointerMove={handleDragMove} onPointerUp={handleDragEnd} onPointerCancel={handleDragEnd}><div className="w-12 h-1 bg-slate-300/80 rounded-full"></div></div>
         <div className="max-w-md mx-auto px-4 pb-8 pt-2">
-          {/* 1. キーボード高さ調整 (h-16) */}
+          {/* キーボード本体 */}
           <div className="grid grid-cols-4 grid-rows-3 gap-2.5 h-full">
             <FlickKey className="col-start-1 row-start-1 h-16" noteBase="C" currentSelection={selected.find(s=>s.startsWith("C"))} isBass={bassHint?.startsWith("C")??false} isRoot={rootHint?.startsWith("C")??false} onInput={handleKeyInput} />
             <FlickKey className="col-start-2 row-start-1 h-16" noteBase="D" currentSelection={selected.find(s=>s.startsWith("D"))} isBass={bassHint?.startsWith("D")??false} isRoot={rootHint?.startsWith("D")??false} onInput={handleKeyInput} />
