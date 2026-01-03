@@ -96,7 +96,7 @@ const FeedbackLink = ({ className, children }: { className?: string, children: R
   </a>
 );
 
-// 1. イントロダクション（フリガナ削除済み）
+// 1. イントロダクション
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   const [isClosing, setIsClosing] = useState(false);
 
@@ -210,7 +210,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-// 2. 修正: キーボードガイド（絵文字を使用し、スマホで見やすく）
+// 2. キーボードガイド
 const KeyboardGuide = ({ onClose }: { onClose: () => void }) => {
   return (
     <div className="bg-gradient-to-r from-blue-50/50 to-white border border-blue-100 rounded-[24px] p-5 mb-4 relative animate-in fade-in zoom-in-95 duration-300">
@@ -246,7 +246,11 @@ const KeyboardGuide = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-// 3. 修正: 枠に完全に馴染ませたMiniPiano
+const GuideItem = ({ icon, text }: { icon: string, text: React.ReactNode }) => (
+  <li className="flex items-start gap-3 text-[11px] text-slate-600 leading-tight"><span className="text-sm shrink-0 relative top-[-1px]">{icon}</span><span>{text}</span></li>
+);
+
+// 3. MiniPiano
 const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassHint: string | null, rootHint: string | null }) => {
   const keys = [
     { idx: 0, type: "white", x: 0 }, { idx: 1, type: "black", x: 10 },
@@ -265,7 +269,7 @@ const MiniPiano = ({ selected, bassHint, rootHint }: { selected: string[], bassH
     <div className="h-full w-full relative select-none pointer-events-none opacity-90">
        <svg viewBox="0 0 100 50" className="w-full h-full" preserveAspectRatio="none">
          {keys.filter(k => k.type === "white").map((k) => (
-           <path key={k.idx} d={`M${k.x},0 h14.28 v50 h-14.28 z`} // 修正: 下部まで伸ばす
+           <path key={k.idx} d={`M${k.x},0 h14.28 v50 h-14.28 z`}
              className={`transition-all duration-300 ${
                isActive(k.idx) 
                  ? (isRoot(k.idx) ? "fill-rose-400" : isBass(k.idx) ? "fill-amber-400" : "fill-cyan-400") 
@@ -379,9 +383,15 @@ const InsightCard = ({ text }: { text: string }) => (
   </div>
 );
 
+// 修正: チャット
 const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp, history }: { question: string, setQuestion: (s:string)=>void, ask: ()=>void, isThinking: boolean, loading: boolean, inputRefProp: any, history: ChatMessage[] }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (scrollRef.current) setTimeout(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, 100); }, [history, isThinking]);
+  
+  useEffect(() => {
+    if (scrollRef.current) {
+      setTimeout(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, 100);
+    }
+  }, [history, isThinking]);
 
   return (
     <div className={G.chatContainer}>
@@ -703,40 +713,34 @@ export default function CadenciaPage() {
       <div className={`fixed bottom-0 inset-x-0 z-50 ${G.glassKeyContainer} rounded-t-[36px] transition-transform duration-300 ease-out touch-none ${isKeyboardOpen ? "translate-y-0" : "translate-y-[calc(100%-30px)]"}`} style={{ transform: isKeyboardOpen ? `translateY(${keyboardOffset}px)` : undefined }}>
         <div className="h-8 flex items-center justify-center cursor-grab active:cursor-grabbing active:opacity-50" onClick={() => setIsKeyboardOpen(!isKeyboardOpen)} onPointerDown={handleDragStart} onPointerMove={handleDragMove} onPointerUp={handleDragEnd} onPointerCancel={handleDragEnd}><div className="w-12 h-1 bg-slate-300/80 rounded-full"></div></div>
         <div className="max-w-md mx-auto px-4 pb-8 pt-2">
-          <div className="grid grid-cols-4 grid-rows-4 gap-2.5 h-full">
-            <FlickKey className="col-start-1 row-start-1" noteBase="C" currentSelection={selected.find(s=>s.startsWith("C"))} isBass={bassHint?.startsWith("C")??false} isRoot={rootHint?.startsWith("C")??false} onInput={handleKeyInput} />
-            <FlickKey className="col-start-2 row-start-1" noteBase="D" currentSelection={selected.find(s=>s.startsWith("D"))} isBass={bassHint?.startsWith("D")??false} isRoot={rootHint?.startsWith("D")??false} onInput={handleKeyInput} />
-            <FlickKey className="col-start-3 row-start-1" noteBase="E" currentSelection={selected.find(s=>s.startsWith("E"))} isBass={bassHint?.startsWith("E")??false} isRoot={rootHint?.startsWith("E")??false} onInput={handleKeyInput} />
-            <button className="col-start-4 row-start-1 h-14 rounded-2xl bg-white/40 border border-white/40 text-slate-400 active:text-rose-500 active:bg-rose-50 transition-all flex items-center justify-center shadow-sm active:scale-95 hover:bg-white/60" onClick={reset}><IconTrash /></button>
-            <FlickKey className="col-start-1 row-start-2" noteBase="F" currentSelection={selected.find(s=>s.startsWith("F"))} isBass={bassHint?.startsWith("F")??false} isRoot={rootHint?.startsWith("F")??false} onInput={handleKeyInput} />
-            <FlickKey className="col-start-2 row-start-2" noteBase="G" currentSelection={selected.find(s=>s.startsWith("G"))} isBass={bassHint?.startsWith("G")??false} isRoot={rootHint?.startsWith("G")??false} onInput={handleKeyInput} />
-            <FlickKey className="col-start-3 row-start-2" noteBase="A" currentSelection={selected.find(s=>s.startsWith("A"))} isBass={bassHint?.startsWith("A")??false} isRoot={rootHint?.startsWith("A")??false} onInput={handleKeyInput} />
-            <FlickKey className="col-start-4 row-start-2" noteBase="B" currentSelection={selected.find(s=>s.startsWith("B"))} isBass={bassHint?.startsWith("B")??false} isRoot={rootHint?.startsWith("B")??false} onInput={handleKeyInput} />
-            <div className="col-start-1 row-start-3 h-14 flex flex-col gap-1.5">
-               <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border ${inputMode === "root" ? "bg-rose-500 text-white border-rose-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>根音</button>
-               <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`flex-1 rounded-xl text-[10px] font-bold transition-all border ${inputMode === "bass" ? "bg-amber-500 text-white border-amber-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>最低音</button>
+          <div className="grid grid-cols-5 grid-rows-3 gap-2.5 h-full">
+            {/* Column 1: Functions */}
+            <button onClick={() => setInputMode(m => m === "root" ? "normal" : "root")} className={`col-start-1 row-start-1 rounded-xl text-[9px] font-bold transition-all border flex flex-col items-center justify-center leading-tight ${inputMode === "root" ? "bg-rose-500 text-white border-rose-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>Root<br/><span className="text-[7px] opacity-70">根音</span></button>
+            <button onClick={() => setInputMode(m => m === "bass" ? "normal" : "bass")} className={`col-start-1 row-start-2 rounded-xl text-[9px] font-bold transition-all border flex flex-col items-center justify-center leading-tight ${inputMode === "bass" ? "bg-amber-500 text-white border-amber-600 shadow-inner" : "bg-white/40 text-slate-500 border-white/40 shadow-sm"}`}>Bass<br/><span className="text-[7px] opacity-70">最低音</span></button>
+            <div className="col-start-1 row-start-3 rounded-xl bg-white/40 border border-white/40 shadow-sm relative overflow-hidden flex flex-col items-center justify-center">
+                <select className="absolute inset-0 w-full h-full opacity-0 z-10" value={keyRoot} onChange={(e) => setKeyRoot(e.target.value)}>{KEYS_ROOT.map(k => <option key={k} value={k}>{k === "none" ? "Key" : k}</option>)}</select>
+                <span className="text-[9px] font-bold text-slate-500">Key</span>
+                <span className={`text-[10px] font-black ${keyRoot === "none" ? "text-slate-300" : "text-indigo-600"}`}>{keyRoot === "none" ? "-" : keyRoot}</span>
             </div>
-            <div className="col-start-2 col-span-2 row-start-3 h-14 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-sm flex items-center overflow-hidden">
-                <div className="flex-[0.8] flex items-center justify-center border-r-2 border-dotted border-slate-400/30 h-full px-1"><span className="text-[10px] font-bold text-slate-500 whitespace-nowrap leading-tight text-center">調性は</span></div>
-                <div className="flex-1 relative h-full border-r-2 border-dotted border-slate-400/30 group active:bg-black/5 transition-colors">
-                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyRoot} onChange={(e) => setKeyRoot(e.target.value)}>{KEYS_ROOT.map(k => <option key={k} value={k}>{k === "none" ? "なし" : k}</option>)}</select>
-                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-400" : "text-cyan-600"}`}>{keyRoot === "none" ? "なし" : keyRoot}</span></div>
-                </div>
-                <div className={`flex-1 relative h-full active:bg-black/5 transition-colors ${keyRoot === "none" ? "opacity-50" : ""}`}>
-                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={keyRoot === "none"}>{KEYS_TYPE.map(k => <option key={k} value={k}>{k === "Major" ? "Major" : "Minor"}</option>)}</select>
-                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-300" : "text-purple-600"}`}>{keyType === "Major" ? "Major" : "Minor"}</span></div>
-                </div>
-            </div>
-            <button className={`col-start-4 row-start-3 row-span-2 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20 relative overflow-hidden group ${canAnalyze && !loading ? "bg-cyan-500 text-white" : "bg-slate-100 text-slate-300 cursor-not-allowed"}`} onClick={analyze} disabled={!canAnalyze || loading}>
-               <div className="relative z-10 flex flex-col items-center gap-1">
+
+            {/* Row 1: C D E Del */}
+            <FlickKey className="col-start-2 row-start-1" noteBase="C" currentSelection={selected.find(s=>s.startsWith("C"))} isBass={bassHint?.startsWith("C")??false} isRoot={rootHint?.startsWith("C")??false} onInput={handleKeyInput} />
+            <FlickKey className="col-start-3 row-start-1" noteBase="D" currentSelection={selected.find(s=>s.startsWith("D"))} isBass={bassHint?.startsWith("D")??false} isRoot={rootHint?.startsWith("D")??false} onInput={handleKeyInput} />
+            <FlickKey className="col-start-4 row-start-1" noteBase="E" currentSelection={selected.find(s=>s.startsWith("E"))} isBass={bassHint?.startsWith("E")??false} isRoot={rootHint?.startsWith("E")??false} onInput={handleKeyInput} />
+            <button className="col-start-5 row-start-1 rounded-2xl bg-white/40 border border-white/30 text-slate-400 active:text-rose-500 active:bg-rose-50 transition-all flex items-center justify-center shadow-sm active:scale-95 hover:bg-white/60" onClick={reset}><IconTrash /></button>
+
+            {/* Row 2: F G A B */}
+            <FlickKey className="col-start-2 row-start-2" noteBase="F" currentSelection={selected.find(s=>s.startsWith("F"))} isBass={bassHint?.startsWith("F")??false} isRoot={rootHint?.startsWith("F")??false} onInput={handleKeyInput} />
+            <FlickKey className="col-start-3 row-start-2" noteBase="G" currentSelection={selected.find(s=>s.startsWith("G"))} isBass={bassHint?.startsWith("G")??false} isRoot={rootHint?.startsWith("G")??false} onInput={handleKeyInput} />
+            <FlickKey className="col-start-4 row-start-2" noteBase="A" currentSelection={selected.find(s=>s.startsWith("A"))} isBass={bassHint?.startsWith("A")??false} isRoot={rootHint?.startsWith("A")??false} onInput={handleKeyInput} />
+            <FlickKey className="col-start-5 row-start-2" noteBase="B" currentSelection={selected.find(s=>s.startsWith("B"))} isBass={bassHint?.startsWith("B")??false} isRoot={rootHint?.startsWith("B")??false} onInput={handleKeyInput} />
+
+            {/* Row 3: Analyze Button */}
+            <button className={`col-start-2 col-span-4 row-start-3 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all active:scale-95 border border-white/20 relative overflow-hidden group ${canAnalyze && !loading ? "bg-cyan-500 text-white" : "bg-slate-100 text-slate-300 cursor-not-allowed"}`} onClick={analyze} disabled={!canAnalyze || loading}>
+               <div className="relative z-10 flex items-center gap-2">
                  {loading ? <IconRefresh className="animate-spin w-5 h-5" /> : <IconArrowRight className="w-5 h-5" />}
-                 <span className="text-[10px] font-bold leading-tight">分析</span>
+                 <span className="text-sm font-bold tracking-widest">判定</span>
                </div>
-            </button>
-            <button onClick={focusInput} disabled={!hasResult} className={`col-start-1 col-span-3 row-start-4 h-14 rounded-2xl border font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 relative overflow-hidden group ${!hasResult ? "bg-slate-100 border-slate-200 text-slate-300 shadow-none cursor-default" : "bg-white/60 border-white/40 shadow-cyan-500/10 text-cyan-600 hover:bg-white/80"}`}>
-               {hasResult && <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-cyan-400`}></div>}
-               <div className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-[10px] shadow-sm relative z-10 ${!hasResult ? "bg-slate-200 text-white" : "bg-cyan-500 text-white"}`}><IconBook className="w-3 h-3" /></div>
-               <span className={`text-xs font-bold relative z-10`}>Waon AI にきく</span>
             </button>
           </div>
         </div>
