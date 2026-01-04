@@ -5,10 +5,10 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /**
- * Waon AI Analyze API (Final Fixed Version)
+ * Waon AI Analyze API (Final Fixed Version 2.0)
  * - Model: gemini-2.5-flash
  * - Logic: 芸大和声準拠
- * - Terminology: 和音名称リストによる厳格な出力制限
+ * - Update: 重複候補の除外処理＆最大5件制限を追加
  */
 
 // -------------------- Gemini --------------------
@@ -205,7 +205,7 @@ Markdownや挨拶は禁止。以下のJSONのみ出力せよ。
     }
   ]
 }
-candidatesは最大10件。
+candidatesは最大5件。
 `;
 
 // ============================================================
@@ -216,7 +216,7 @@ function buildExpertSystemPrompt() {
 あなたは日本の音楽大学(芸大和声)に精通した専門家である。
 
 【重要ルール】
-1. **入力尊重**: スペルを厳守せよ。異名同音(F#/Gb)は区別して判定せよ。
+1. **入力尊重**: スペルを厳守せよ。異名同音(F#/Gb)は明確に区別して判定せよ。
 2. **順序**: 入力リスト順≠バス音である。BassHintが無い限り転回形を決めつけるな。
 3. **形式**: Markdown禁止。プレーンテキストのみ。
 4. **口調**: 断定的・簡潔に(「〜である」)。挨拶不要。
@@ -327,7 +327,9 @@ export async function POST(req: Request) {
       };
     }).filter((c: CandidateObj) => !!c.chord);
 
+    // ★ 重複排除処理 & ヒント優先ソート
     if (candidates.length > 0) {
+      // 1. まずヒントに基づいてソート（ユーザー指定を最優先）
       if (bassHint) {
         candidates.sort((a, b) => {
           const aMatch = getChordBass(a.chord) === bassHint;
@@ -353,6 +355,16 @@ export async function POST(req: Request) {
           return 0;
         });
       }
+
+      // 2. 重複を削除 (和音名が同じなら、リストの上位=スコアが高い方を残す)
+      const uniqueMap = new Map<string, CandidateObj>();
+      candidates.forEach((c) => {
+        if (!uniqueMap.has(c.chord)) {
+          uniqueMap.set(c.chord, c);
+        }
+      });
+      // 3. 最大5件に絞る
+      candidates = Array.from(uniqueMap.values()).slice(0, 5);
     }
 
     const top = candidates[0];

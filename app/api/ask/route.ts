@@ -7,6 +7,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // -------------------- Gemini --------------------
 const apiKey = process.env.GEMINI_API_KEY || "";
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+// ★指定: gemini-2.5-flash
 const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const model = genAI ? genAI.getGenerativeModel({ model: modelName }) : null;
 
@@ -187,6 +188,7 @@ function buildUserPrompt(params: {
   const rootLine = params.rootHint ? params.rootHint : "（指定なし）";
   
   const engineLine = params.engineChord ? params.engineChord : "（未提供）";
+  // チャット側は入力データとして受け取るだけなので、ここで数制限はかけない（表示側で制御済み）
   const candLine = params.candidates && params.candidates.length > 0 
     ? params.candidates.join(", ") 
     : "（なし）";
@@ -223,7 +225,8 @@ export async function POST(req: Request) {
     const candidatesIn = Array.isArray(body?.candidates) ? body.candidates : null;
     const candidates = candidatesIn?.map((x: any) => (typeof x === "string" ? x : x?.chord))
         .filter((x: any) => typeof x === "string" && x.trim())
-        .slice(0, 10) ?? null;
+        // チャットに渡す候補数も5つに合わせる
+        .slice(0, 5) ?? null;
 
     const normalized = selectedNotesRaw
       .map((x) => (typeof x === "string" ? normalizeAccidentals(x) : ""))
