@@ -597,8 +597,18 @@ export default function CadenciaPage() {
   };
 
   const reset = () => {
-    setSelected([]); setCandidates([]); setBassHint(null); setRootHint(null);
-    setInfoText(""); setQuestion(""); setChatHistory([]); setLoading(false); setInputMode("normal");
+    // 1. 状態をすべてリセット
+    setSelected([]); 
+    setCandidates([]); 
+    setBassHint(null); 
+    setRootHint(null);
+    setInfoText(""); 
+    setQuestion(""); 
+    setChatHistory([]); 
+    setLoading(false); 
+    setInputMode("normal");
+    
+    // 2. 画面の一番上へスムーズに戻る
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
