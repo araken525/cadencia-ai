@@ -291,8 +291,7 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
         </div>
         
         {/* 修正1: 結果の詳細エリアを黒く沈める (bg-black/20) + 内側の影で「彫り込み感」を出す */}
-        {/* 詳細データエリア：不透明な黒背景で凹みを表現 */}
-        <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 shadow-inner flex items-stretch justify-between divide-x divide-slate-800 h-24">
+        <div className="bg-black/20 rounded-2xl p-4 border border-slate-700/50 shadow-inner flex items-stretch justify-between divide-x divide-slate-700/50 h-24">
             <div className={`flex-1 flex flex-col items-center justify-center px-1`}>
                 <span className="text-[9px] font-bold text-slate-500 mb-1">機能</span>
                 <span className={`text-2xl font-black leading-none ${!isKeySet ? "text-slate-600" : candidate.tds === "T" ? "text-cyan-400" : candidate.tds === "D" ? "text-rose-400" : candidate.tds === "S" || candidate.tds === "SD" ? "text-emerald-400" : "text-slate-400"}`}>
@@ -767,17 +766,17 @@ export default function CadenciaPage() {
                  </div>
               </div>
 
-              {/* 入力エリア：不透明な黒背景で凹みを表現 */}
-              <div className="flex-1 bg-slate-950 rounded-2xl border border-slate-800 shadow-inner p-4 flex flex-col items-center justify-center min-h-[160px] relative transition-colors duration-300">
+              {/* 修正1: 入力エリアを黒く沈める (bg-black/20) + 内側の影で「彫り込み感」を出す */}
+              <div className="flex-1 bg-black/20 rounded-2xl border border-white/5 shadow-inner p-4 flex flex-col items-center justify-center min-h-[160px] relative transition-colors duration-300">
                  {selected.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-3 animate-in fade-in zoom-in duration-500 py-4 opacity-60">
-                         <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-slate-700 shadow-sm border border-slate-800"><IconKeyboard className="w-6 h-6" /></div>
-                         <p className="text-xs font-bold text-slate-600">下のキーボードから音を選んでください</p>
+                         <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-600 shadow-inner border border-slate-700"><IconKeyboard className="w-6 h-6" /></div>
+                         <p className="text-xs font-bold text-slate-500">下のキーボードから音を選んでください</p>
                     </div>
                  ) : (
                     <div className="w-full grid grid-cols-4 gap-2">
                        {sortedSelected.map((note) => (
-                          // 音符ボタン：LEDパッド風デザイン
+                          // 修正4: 音符ボタンをLEDパッド風に (Inner Glow追加、ボーダー調整)
                           <div key={note} className={`relative group animate-in zoom-in duration-300 aspect-square`}>
                             <div className={`w-full h-full rounded-2xl text-xl font-black shadow-lg flex items-center justify-center border transition-transform hover:scale-105 ${
                               rootHint === note 
