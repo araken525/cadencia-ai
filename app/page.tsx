@@ -421,31 +421,88 @@ const AskCard = ({ question, setQuestion, ask, isThinking, loading, inputRefProp
   );
 }
 
-// 修正: ロボットアイコンを使った洗練された分析中画面
-const LoadingOverlay = () => (
-  <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/80 backdrop-blur-3xl animate-in fade-in duration-500 transition-all">
-    {/* Animated Icon Container */}
-    <div className="relative mb-8">
-      <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-xl animate-pulse"></div>
-      <div className="relative w-24 h-24 bg-white rounded-[32px] shadow-2xl shadow-blue-500/10 flex items-center justify-center border border-white/60">
-        {/* Simple bouncing robot */}
-        <div className="animate-bounce duration-[2000ms]">
-           <IconRobot className="w-10 h-10 text-slate-700" />
+// --- 思考メッセージの定義 ---
+const LOADING_MESSAGES = [
+  "増六の和音か、あるいは異名同音の属七か…",
+  "ナポリの六、ドリアのIV… 特殊な機能和声を照合中。",
+  "借用和音の可能性をシミュレーションしています。",
+  "転回形と根音の複雑な関係を紐解いています。",
+  "異名同音の罠を回避し、正しい記譜を計算中…",
+  "和声機能の多義性を解析しています。",
+  "膨大な和声理論の辞書と照らし合わせています…",
+];
+
+// 修正: 「AIの思考」を可視化する新しいローディング画面
+const LoadingOverlay = () => {
+  const [msgIndex, setMsgIndex] = useState(0);
+  const [fade, setFade] = useState(true);
+
+  // メッセージを一定時間ごとに切り替えるロジック
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFade(false); // フェードアウト
+      setTimeout(() => {
+        setMsgIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+        setFade(true); // フェードイン
+      }, 300);
+    }, 2500); // 2.5秒ごとに切り替え
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/90 backdrop-blur-xl animate-in fade-in duration-500 transition-all">
+      {/* Animated Icon Container */}
+      <div className="relative mb-10">
+        {/* 波紋アニメーション (Ping) */}
+        <div className="absolute inset-0 bg-blue-500/30 rounded-full animate-ping opacity-20 duration-1000"></div>
+        <div className="absolute inset-[-12px] bg-gradient-to-tr from-cyan-200 to-blue-200 rounded-full blur-xl animate-pulse opacity-60"></div>
+        
+        <div className="relative w-28 h-28 bg-white rounded-[32px] shadow-[0_20px_50px_-12px_rgba(59,130,246,0.2)] flex items-center justify-center border border-white/60 ring-4 ring-blue-50/50">
+          {/* Bouncing Robot */}
+          <div className="animate-bounce duration-[2000ms]">
+             <IconRobot className="w-12 h-12 text-slate-700" />
+          </div>
+          {/* 右上のキラキラ装飾 */}
+          <div className="absolute top-4 right-4 text-yellow-400 animate-spin-slow duration-[3000ms]">
+            <IconSparkles className="w-4 h-4" />
+          </div>
         </div>
       </div>
-    </div>
 
-    {/* Text Content */}
-    <div className="text-center space-y-3 px-8 relative z-10">
-      <h2 className="text-lg font-black text-slate-800 tracking-tight animate-pulse">
-        Waon AIが分析しています
-      </h2>
-      <p className="text-xs font-bold text-slate-400 leading-relaxed">
-        複雑な和音構造を解析し、<br/>最適な音楽的解釈を生成しています。
-      </p>
+      {/* Text Content */}
+      <div className="text-center space-y-4 px-8 relative z-10 max-w-xs">
+        <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center justify-center gap-2">
+          <span>Analyzing</span>
+          <span className="flex gap-1">
+             <span className="w-1 h-1 bg-slate-800 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+             <span className="w-1 h-1 bg-slate-800 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+             <span className="w-1 h-1 bg-slate-800 rounded-full animate-bounce"></span>
+          </span>
+        </h2>
+        
+        {/* Dynamic Thinking Message */}
+        <div className="h-12 flex items-start justify-center">
+          <p 
+            className={`text-xs font-bold text-slate-500 leading-relaxed transition-opacity duration-300 ${fade ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}
+          >
+            {LOADING_MESSAGES[msgIndex]}
+          </p>
+        </div>
+        
+        {/* Progress Bar (Visual only) */}
+        <div className="w-48 h-1 bg-slate-100 rounded-full mx-auto overflow-hidden relative">
+           <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-400 w-1/2 animate-[shimmer_1.5s_infinite_linear] rounded-full"></div>
+        </div>
+        <style jsx>{`
+          @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+          }
+        `}</style>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // --- Main Page ---
 export default function CadenciaPage() {
@@ -590,7 +647,7 @@ export default function CadenciaPage() {
           history: recentHistory // ★ここを追加しました！
         }),
       });
-      
+
       const answerText = res.ok ? await res.text() : `エラー: ${await res.text()}`;
       setChatHistory(prev => [...prev, { role: 'ai', text: answerText }]);
     } catch (e: any) { setChatHistory(prev => [...prev, { role: 'ai', text: `通信エラー: ${e?.message}` }]); } finally { setIsThinking(false); }
