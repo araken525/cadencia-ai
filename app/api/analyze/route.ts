@@ -5,19 +5,15 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /**
- * Waon AI Analyze API (Final Complete Version)
- * * 構成:
- * - Model: gemini-2.5-flash (高速・高精度)
- * - Logic: 芸大和声準拠、特殊和音辞書完備
- * - Input: アルファベット順ソートによる順序バイアス排除
- * - Notation: 日本音名/独音名限定、F長調禁止
+ * Waon AI Analyze API (Final Fixed Version)
+ * - Model: gemini-2.5-flash
+ * - Logic: 芸大和声準拠
+ * - Terminology: 和音名称リストによる厳格な出力制限
  */
 
 // -------------------- Gemini --------------------
 const apiKey = process.env.GEMINI_API_KEY || "";
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-
-// ★指定: gemini-2.5-flash
 const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const model = genAI ? genAI.getGenerativeModel({ model: modelName }) : null;
 
@@ -116,59 +112,49 @@ type AnalyzeResponse = {
 };
 
 // ============================================================
-// 1. 特殊和音判定ロジック (最終確認済み・圧縮版)
+// 1. 特殊和音判定ロジック
 // ============================================================
 const SPECIAL_CHORD_RULES = `
 【特殊和音判定 (優先度:最高)】
-以下の条件に合致する場合は、必ず以下の定義に従って判定・解説せよ。
+以下の条件合致時は必ずこれに従え。
 
 1. [IVの付加6] (構成音:IV+6th)
    - 判定: II₇¹ (IIの七の第1転回形) または IV6
-   - 解説: 「機能的にはVへ進むII₇¹、あるいはIVの装飾とみなされる」と言及。
-
+   - 解説: 「機能的にはVへ進むII₇¹、あるいはIVの装飾」と言及。
 2. [ドリアのIV] (短調で旋律的短音階#6を含むIV)
    - 判定: IV または IV₇
    - 解説: 「ドリアのIV。独特の明るさを持つ準属的な響き」と言及。
-
 3. [増六の和音] (増6度を含む)
    - 判定: 増六の和音
-   - 解説: 国名(イタリア・フランス・ドイツ)を区別し、「主にVへ解決するD機能」と言及。
-
-4. [ナポリの六] (短調IIの根音を半音下げた長三和音の1転)
+   - 解説: 国名(伊・仏・独)を区別し、「主にVへ解決するD機能」と言及。
+4. [ナポリの六] (短調IIの根音を半音下げた1転)
    - 判定: ナポリのII または II¹(根音変位)
-   - 解説: 「ナポリの六(N⁶)。S機能として劇的な効果を持つ」と言及。
-
+   - 解説: 「ナポリの六(N⁶)。S機能として劇的な効果」と言及。
 5. [ピカルディのI] (短調終止が長主和音)
    - 判定: I (長三和音)
    - 解説: 「ピカルディ終止」と言及。
-
 6. [Iの第2転回形] (Bassが属音)
    - 判定: I² (機能:D)
    - 解説: 「終止四六・経過四六・補助四六」のいずれか文脈に合わせて言及。
-
 7. [準固有和音] (長調で同主短調の和音を使用)
    - 判定: °VI 等 (左上に○を付す)
-   - 解説: 「準固有和音(モル・ドゥア)。長調の中に切ない響きをもたらす」と言及。
-
+   - 解説: 「準固有和音(モル・ドゥア)。長調の中に切ない響き」と言及。
 8. [ドッペル・ドミナント] (Vの完全5度上に位置するII)
    - 判定: II または II₇
-   - 解説: 「VのV(ドッペル・ドミナント)。強い推進力を持つ」と言及。
-
+   - 解説: 「VのV(ドッペル・ドミナント)。強い推進力」と言及。
 9. [根音省略の属九] (減七の和音)
-   - 判定: VII₇ (記号は減七とする)
-   - 解説: 「機能的には根音を省略した属九の和音(V₉)としてD機能を持つ」と補足言及。
-
+   - 判定: VII₇ (記号は減七)
+   - 解説: 「機能的には根音を省略した属九の和音(V₉)としてD機能を持つ」と言及。
 10. [Iの付加6] (I+6th)
     - 判定: VI₇¹ (VIの七の第1転回形)
     - 解説: 「芸大和声ではVIの七の第1転回形として扱うことが多い」と言及。
-
 11. [導七の和音] (短調VII または 長調で減5短7を持つ和音)
     - 判定: VII₇ (導七)
     - 解説: 「減七とは区別される導七の和音。より穏やかなD機能」と言及。
 `;
 
 // ============================================================
-// 2. 表記ルール (厳格)
+// 2. 表記・用語ルール
 // ============================================================
 const NOTATION_RULES = `
 【用語・音名表記（絶対厳守）】
@@ -176,6 +162,13 @@ const NOTATION_RULES = `
 1. 独: C-dur, a-moll (ドイツ音名)
 2. 英: C Major, A Minor (英語音名)
 3. 日: ハ長調, イ短調 (日本音名)
+
+【和音種別名(厳守)】
+chordTypeには以下のみを使用せよ。カタカナ語(メジャーコード等)は禁止。
+- 長三和音, 短三和音, 減三和音, 増三和音
+- 属七の和音, 減七の和音, 長七の和音, 短七の和音
+- 減五短七の和音(導七の和音), 増七の和音
+- 属九の和音, 属短九の和音, 増六の和音
 
 【記号ルール】
 - 転回形: 右上 (I¹)
@@ -216,14 +209,14 @@ candidatesは最大10件。
 `;
 
 // ============================================================
-// Prompt: Expert (専門家)
+// Prompt: Expert
 // ============================================================
 function buildExpertSystemPrompt() {
   return `
 あなたは日本の音楽大学(芸大和声)に精通した専門家である。
 
 【重要ルール】
-1. **入力尊重**: スペルを厳守せよ。異名同音(F#/Gb)は明確に区別して判定せよ。
+1. **入力尊重**: スペルを厳守せよ。異名同音(F#/Gb)は区別して判定せよ。
 2. **順序**: 入力リスト順≠バス音である。BassHintが無い限り転回形を決めつけるな。
 3. **形式**: Markdown禁止。プレーンテキストのみ。
 4. **口調**: 断定的・簡潔に(「〜である」)。挨拶不要。
@@ -239,7 +232,7 @@ ${OUTPUT_FORMAT_JSON}
 }
 
 // ============================================================
-// Prompt: Beginner (初心者)
+// Prompt: Beginner
 // ============================================================
 function buildBeginnerSystemPrompt() {
   return `
@@ -254,7 +247,7 @@ function buildBeginnerSystemPrompt() {
 
 【解説の指針】
 - 調名は必ず「日本音名(ハ長調)」または「ドイツ音名(C-dur)」を使用せよ。「ファ長調」等は禁止。
-- 専門用語(準固有和音等)は使用しつつ、感覚的な補足を添えること。
+- 専門用語は使用しつつ、感覚的な補足を添えること。
 - 解決は「不安定なので、次に〇〇へ行きたがっている」等と表現せよ。
 
 ${SPECIAL_CHORD_RULES}
@@ -281,9 +274,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
 
-    // ★ モード判定
     const mode = (body?.mode === "beginner") ? "beginner" : "expert";
-
     const selectedNotesRaw: string[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
     const keyHintRaw = typeof body?.keyHint === "string" ? body.keyHint : "none";
     const rootHintRaw = typeof body?.rootHint === "string" ? body.rootHint : null;
@@ -291,8 +282,7 @@ export async function POST(req: Request) {
 
     const normalized = selectedNotesRaw.map(normalizeAccidentals).filter(Boolean);
     const onlyNotes = normalized.filter((n) => /^[A-G]((?:bb|b|##|#)?)$/.test(n));
-    
-    // ★重要: アルファベット順にソートして入力順序のバイアスを排除
+    // ★ アルファベット順にソートして順序バイアスを排除
     const notesSorted = uniq(onlyNotes).sort(sortSpelling);
 
     const keyHint = (keyHintRaw || "none").trim();
@@ -304,7 +294,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: "insufficient", engineChord: "判定不能", analysis: "音が不足しています。", candidates: [], notes: notesSorted });
     }
 
-    // ★ モードに応じてプロンプトを切り替え
     const systemInstruction = mode === "beginner" ? buildBeginnerSystemPrompt() : buildExpertSystemPrompt();
 
     const result = await model.generateContent({
@@ -315,12 +304,10 @@ export async function POST(req: Request) {
 
     const json = parseJsonSafely(result.response.text());
     
-    // ★ 1%問題を解決する自動補正ロジック
     let candidates: CandidateObj[] = (json.candidates || []).map((c: any) => {
       let rawScore = typeof c.score === "number" ? c.score : 0;
       let rawConf = typeof c.confidence === "number" ? c.confidence : 0;
 
-      // 自動補正
       if (rawScore <= 1 && rawScore > 0) rawScore = rawScore * 100;
       if (rawConf > 1) rawConf = rawConf / 100;
       if (rawScore === 0 && rawConf > 0) rawScore = rawConf * 100;
@@ -340,7 +327,6 @@ export async function POST(req: Request) {
       };
     }).filter((c: CandidateObj) => !!c.chord);
 
-    // 順位の保険 (Hints優先)
     if (candidates.length > 0) {
       if (bassHint) {
         candidates.sort((a, b) => {
