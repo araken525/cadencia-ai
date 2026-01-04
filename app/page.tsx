@@ -722,14 +722,35 @@ export default function CadenciaPage() {
         <section className={`${G.cardBase} bg-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
            <div className="absolute -right-4 top-4 text-[4rem] font-black text-slate-50 pointer-events-none select-none z-0 transform -rotate-3">ANALYZE</div>
            <div className="p-5 flex flex-col min-h-[240px] relative z-10">
-              <div className="flex justify-between items-end mb-4">
-                 <div className="space-y-0.5">
+              <div className="flex justify-between items-start mb-4">
+                 <div className="space-y-0.5 pt-1">
                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">Waon AIに分析させよう</h3>
                    <p className="text-[10px] text-slate-400">キーボードをタップして音を追加</p>
                  </div>
-                 <div className="flex items-center gap-1.5 bg-white border border-slate-100 shadow-sm px-3 py-1.5 rounded-xl">
-                    <span className={`text-lg font-black leading-none ${selected.length > 0 ? "text-cyan-500" : "text-slate-300"}`}>{selected.length}</span>
-                    <span className="text-[10px] font-bold text-slate-400">音</span>
+                 
+                 {/* ★ 修正: Keyと音数を表示する新しいステータスバッジ */}
+                 <div className="flex items-stretch bg-white border border-slate-100 shadow-sm rounded-xl overflow-hidden divide-x divide-slate-100">
+                    {/* Key表示エリア */}
+                    <div className="px-3 py-1.5 flex flex-col items-center justify-center min-w-[64px]">
+                       <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 tracking-wide">KEY</span>
+                       <span className={`text-xs font-black leading-none ${keyRoot !== "-" ? "text-purple-600" : "text-slate-300"}`}>
+                          {keyRoot !== "-" ? (
+                             <span className="flex items-baseline gap-0.5">
+                                <span className="text-sm">{keyRoot}</span>
+                                <span className="text-[9px] font-bold text-slate-500 uppercase">{keyType === "Major" ? "Maj" : "min"}</span>
+                             </span>
+                          ) : "―"}
+                       </span>
+                    </div>
+
+                    {/* 音数表示エリア */}
+                    <div className="px-3 py-1.5 flex flex-col items-center justify-center min-w-[56px] bg-slate-50/50">
+                       <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 tracking-wide">NOTES</span>
+                       <div className="flex items-baseline gap-0.5">
+                          <span className={`text-lg font-black leading-none ${selected.length > 0 ? "text-cyan-500" : "text-slate-300"}`}>{selected.length}</span>
+                          <span className="text-[9px] font-bold text-slate-400">音</span>
+                       </div>
+                    </div>
                  </div>
               </div>
 
