@@ -462,17 +462,15 @@ const LoadingOverlay = () => {
           <div className="animate-bounce duration-[2000ms]">
              <IconRobot className="w-12 h-12 text-slate-700" />
           </div>
-          {/* 右上のキラキラ装飾 */}
-          <div className="absolute top-4 right-4 text-yellow-400 animate-spin-slow duration-[3000ms]">
-            <IconSparkles className="w-4 h-4" />
-          </div>
+          {/* キラキラ装飾を削除しました */}
         </div>
       </div>
 
       {/* Text Content */}
       <div className="text-center space-y-4 px-8 relative z-10 max-w-xs">
+        {/* テキストを変更しました */}
         <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center justify-center gap-2">
-          <span>Analyzing</span>
+          <span>Waon AI が分析中…</span>
           <span className="flex gap-1">
              <span className="w-1 h-1 bg-slate-800 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
              <span className="w-1 h-1 bg-slate-800 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
