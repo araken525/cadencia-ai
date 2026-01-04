@@ -55,6 +55,14 @@ function asNoteOrNull(x: any): string | null {
   return n;
 }
 
+// ★ 追加: 履歴をGemini形式に変換する関数
+function formatHistoryToGemini(history: { role: string; text: string }[]) {
+  return history.map((msg) => ({
+    role: msg.role === "user" ? "user" : "model", // Geminiは "ai" ではなく "model"
+    parts: [{ text: msg.text }],
+  }));
+}
+
 // ============================================================
 // 共通の特殊和音ロジック
 // ============================================================
@@ -132,28 +140,6 @@ const SPECIAL_CHORD_RULES = `
     - 解説: 「ピカルディ終止」と言及。
 `;
 
-// 【難解な和音のためのカンニングペーパー】
-const COMPLEX_CHORD_EXAMPLES = `
-【判定サンプル（BassHintを最優先せよ）】
-// 増六の和音
-入力: [Ab, C, F#] → 正解: "It⁶" (イタリアの六)
-入力: [Ab, C, Eb, F#] → 正解: "Ger⁶" (ドイツの六)
-
-// IVの付加6 (構成音: F, A, C, D)
-入力: [F, A, C, D] (Bass: F)
-→ 正解: "II₇¹"
-→ 解説: "BassがF(IVの根音)なので、II₇の第1転回形。通称『IVの付加6』。"
-
-入力: [D, F, A, C] (Bass: D)
-→ 正解: "II₇"
-→ 解説: "BassがD(根音)なので、II₇の基本形。"
-
-// Iの付加6 (構成音: C, E, G, A)
-入力: [C, E, G, A] (Bass: C)
-→ 正解: "VI₇¹"
-→ 解説: "BassがC(Iの根音)なので、VI₇の第1転回形。通称『Iの付加6』。"
-`;
-
 // ============================================================
 // 共通の表記ルール
 // ============================================================
@@ -192,6 +178,10 @@ function buildExpertSystemPrompt() {
   return `
 あなたは日本の音楽大学(芸大和声)に精通した専門家である。
 
+【重要：回答の判断基準】
+1. **分析に関する質問**: 「なぜこの判定？」「機能は？」など、現在の「生徒の状況(音)」に関する質問には、提示された音・判定結果に基づいて厳密に解説せよ。
+2. **一般知識の質問**: 「ドッペルとは？」「借用和音って何？」など、現在の音と無関係な理論の質問には、**入力音の情報を無視し**、一般的な音楽理論の辞書として答えよ。無理に現在の音に結びつけるな。
+
 【回答スタイル】
 - Markdown禁止。プレーンテキストのみ。
 - 挨拶不要。結論から記述せよ。
@@ -199,11 +189,10 @@ function buildExpertSystemPrompt() {
 
 【重要ルール】
 1. **入力尊重**: スペルを厳守せよ。異名同音(F#/Gb)は区別せよ。
-2. **順序**: BassHintが "none" の場合、入力順序にかかわらず**原則として『基本形 (root)』**として判定せよ。勝手に転回形と決めつけることは禁止する。
+2. **順序**: BassHintが "none" の場合、原則として『基本形』として判定せよ。
 
 【用語・言語】
 - 解説文では "Key" を使わず「調」とせよ。
-- 上記「用語・音名表記」を厳守せよ。
 - 属和音(D)や第7音は「解決(進行方向)」に必ず言及せよ。
 
 ${SPECIAL_CHORD_RULES}
@@ -219,6 +208,10 @@ function buildBeginnerSystemPrompt() {
 あなたは中高生に教える親切な音楽の先生である。
 判定は「芸大和声」に基づき正確に、解説は優しく噛み砕くこと。
 
+【重要：回答の判断基準】
+1. **分析に関する質問**: 「これどういう意味？」「なんで？」など、現在の「生徒の状況(音)」に関する質問には、その音について優しく解説せよ。
+2. **一般知識の質問**: 「ドッペルって何？」「転回形って？」など、現在の音と無関係な質問には、**今の音の話はいったん忘れて**、音楽の先生として用語そのものを分かりやすく教えよ。
+
 【回答スタイル】
 - Markdown禁止。プレーンテキストのみ。
 - 挨拶不要。すぐに回答を始めよ。
@@ -229,8 +222,8 @@ function buildBeginnerSystemPrompt() {
 2. **順序**: 入力リスト順≠バス音である。
 
 【用語・言語】
-- 調名は必ず「日本音名(ハ長調)」または「ドイツ音名(C-dur)」を使用せよ。「ファ長調」等は禁止。
-- 専門用語は使用しつつ、補足を添えること。
+- 調名は必ず「日本音名(ハ長調)」または「ドイツ音名(C-dur)」を使用せよ。
+- 専門用語は使用しつつ、感覚的な補足を添えること。
 - 解決は「不安定なので、次に〇〇へ行きたがっている」等と表現せよ。
 
 ${SPECIAL_CHORD_RULES}
@@ -252,7 +245,6 @@ function buildUserPrompt(params: {
   const rootLine = params.rootHint ? params.rootHint : "（指定なし）";
   
   const engineLine = params.engineChord ? params.engineChord : "（未提供）";
-  // チャット側は入力データとして受け取るだけなので、ここで数制限はかけない（表示側で制御済み）
   const candLine = params.candidates && params.candidates.length > 0 
     ? params.candidates.join(", ") 
     : "（なし）";
@@ -283,13 +275,14 @@ export async function POST(req: Request) {
 
     const selectedNotesRaw: any[] = Array.isArray(body?.selectedNotes) ? body.selectedNotes : [];
     const question = typeof body?.question === "string" ? body.question.trim() : "";
+    // ★ 履歴を受け取る (New)
+    const historyRaw = Array.isArray(body?.history) ? body.history : [];
 
     const keyHint = typeof body?.keyHint === "string" && body.keyHint.trim() ? body.keyHint.trim() : null;
     const engineChord = typeof body?.engineChord === "string" && body.engineChord.trim() ? body.engineChord.trim() : null;
     const candidatesIn = Array.isArray(body?.candidates) ? body.candidates : null;
     const candidates = candidatesIn?.map((x: any) => (typeof x === "string" ? x : x?.chord))
         .filter((x: any) => typeof x === "string" && x.trim())
-        // チャットに渡す候補数も5つに合わせる
         .slice(0, 5) ?? null;
 
     const normalized = selectedNotesRaw
@@ -297,7 +290,6 @@ export async function POST(req: Request) {
       .filter(Boolean)
       .filter((n) => /^[A-G]((?:bb|b|##|#)?)$/.test(n));
 
-    // ★ アルファベット順にソートしてバイアス排除
     const notesSorted = uniq(normalized).sort(sortSpelling);
     
     const bassHintRaw = asNoteOrNull(body?.bassHint);
@@ -312,10 +304,11 @@ export async function POST(req: Request) {
       return new NextResponse("（AI未接続）GEMINI_API_KEY が未設定です。", { status: 500 });
     }
 
-    // ★ モードに応じてプロンプトを切り替え
+    // ★ モードに応じた修正版プロンプトを使用
     const system = mode === "beginner" ? buildBeginnerSystemPrompt() : buildExpertSystemPrompt();
     
-    const user = buildUserPrompt({
+    // ★ ユーザーの今回の入力を構築
+    const currentUserMessage = buildUserPrompt({
       notes: notesSorted,
       question,
       bassHint,
@@ -325,8 +318,18 @@ export async function POST(req: Request) {
       candidates,
     });
 
+    // ★ 履歴と今回の入力を結合してGeminiへ送る (New)
+    // 1. 過去の会話履歴をGemini形式に変換
+    const historyContents = formatHistoryToGemini(historyRaw);
+    
+    // 2. 今回のメッセージ (コンテキスト + 質問) を末尾に追加
+    const contents = [
+      ...historyContents,
+      { role: "user", parts: [{ text: currentUserMessage }] }
+    ];
+
     const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: user }] }],
+      contents: contents, // ★ 履歴込みのコンテンツを渡す
       systemInstruction: system,
       generationConfig: { temperature: 0.3 },
     });

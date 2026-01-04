@@ -575,14 +575,22 @@ export default function CadenciaPage() {
     // 修正: 判定ロジック変更
     const keyHint = keyRoot === "-" ? "none" : `${keyRoot} ${keyType}`;
     try {
-      // ★ Mode Added
+      // ★履歴の直近10件を取得（全部送ると長すぎるため）
+      const recentHistory = chatHistory.slice(-10);
+
       const res = await fetch("/api/ask", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          selectedNotes: selected, engineChord: topChord, question: q, 
-          bassHint, rootHint, keyHint, candidates: candidates.slice(0,5), mode
+          selectedNotes: selected, 
+          engineChord: topChord, 
+          question: q, 
+          bassHint, rootHint, keyHint, 
+          candidates: candidates.slice(0,5), 
+          mode,
+          history: recentHistory // ★ここを追加しました！
         }),
       });
+      
       const answerText = res.ok ? await res.text() : `エラー: ${await res.text()}`;
       setChatHistory(prev => [...prev, { role: 'ai', text: answerText }]);
     } catch (e: any) { setChatHistory(prev => [...prev, { role: 'ai', text: `通信エラー: ${e?.message}` }]); } finally { setIsThinking(false); }
