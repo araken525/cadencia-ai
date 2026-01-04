@@ -4,7 +4,8 @@ import { useMemo, useRef, useState, useEffect } from "react";
 
 // --- Design Constants ---
 const G = {
-  heroTextStatic: "text-slate-700 drop-shadow-sm tracking-tighter",
+  // 修正: 影(drop-shadow-sm)を削除してシンプルに
+  heroTextStatic: "text-slate-700 tracking-tighter",
   cardBase: "bg-white rounded-[32px] shadow-xl shadow-blue-900/5 border border-white overflow-hidden relative",
   glassKeyContainer: "bg-white/80 backdrop-blur-xl border-t border-white/40 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]",
   glassKey: "bg-white/50 border border-white/60 shadow-sm backdrop-blur-md active:bg-white/80 transition-all",
@@ -14,8 +15,10 @@ const G = {
 };
 
 const NOTE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
-const KEYS_ROOT = ["none", "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
-const KEYS_TYPE = ["Major", "Minor"];
+// 修正: none -> - に変更
+const KEYS_ROOT = ["-", "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
+// 修正: Minor -> minor に変更
+const KEYS_TYPE = ["Major", "minor"];
 const SORT_ORDER = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
 
 const SHORTCUT_QUESTIONS = [
@@ -433,7 +436,8 @@ export default function CadenciaPage() {
 
   // State
   const [selected, setSelected] = useState<string[]>([]);
-  const [keyRoot, setKeyRoot] = useState<string>("none"); 
+  // 修正: 初期値 none -> -
+  const [keyRoot, setKeyRoot] = useState<string>("-"); 
   const [keyType, setKeyType] = useState<string>("Major"); 
   const [bassHint, setBassHint] = useState<string | null>(null); 
   const [rootHint, setRootHint] = useState<string | null>(null);
@@ -453,7 +457,8 @@ export default function CadenciaPage() {
   const [justUpdated, setJustUpdated] = useState(false);
 
   const canAnalyze = selected.length >= 3;
-  const isKeySet = keyRoot !== "none";
+  // 修正: 判定ロジック変更
+  const isKeySet = keyRoot !== "-";
   const hasResult = candidates.length > 0;
 
   const [dragStartY, setDragStartY] = useState<number | null>(null);
@@ -525,7 +530,8 @@ export default function CadenciaPage() {
   async function analyze() {
     if (!canAnalyze || loading) return;
     setLoading(true); setChatHistory([]); setInfoText("");
-    const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
+    // 修正: 判定ロジック変更
+    const keyHint = keyRoot === "-" ? "none" : `${keyRoot} ${keyType}`;
     try {
       // ★ Mode Added
       const res = await fetch("/api/analyze", {
@@ -548,7 +554,8 @@ export default function CadenciaPage() {
     setQuestion("");
     setIsThinking(true);
     const topChord = candidates[0].chord;
-    const keyHint = keyRoot === "none" ? "none" : `${keyRoot} ${keyType}`;
+    // 修正: 判定ロジック変更
+    const keyHint = keyRoot === "-" ? "none" : `${keyRoot} ${keyType}`;
     try {
       // ★ Mode Added
       const res = await fetch("/api/ask", {
@@ -585,7 +592,8 @@ export default function CadenciaPage() {
       {/* Header */}
       <header className="fixed top-0 inset-x-0 z-40 h-16 bg-white/80 backdrop-blur-md border-b border-white/50 flex items-center justify-between px-5 transition-all">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 flex items-center justify-center text-slate-800"><IconBook className="w-6 h-6" /></div>
+          {/* 修正: アイコン変更 */}
+          <div className="w-8 h-8 flex items-center justify-center text-slate-800"><span className="text-xl">🎼</span></div>
           <div className="flex flex-col justify-center leading-none">
             <div className="flex items-center gap-2 mb-0.5"><span className="text-lg font-black tracking-tight text-slate-800">Waon AI</span></div>
             <span className="text-[10px] font-bold text-slate-400 tracking-wide">ポケットに、専属音楽理論家を。</span>
@@ -594,13 +602,17 @@ export default function CadenciaPage() {
 
         {/* ★ Mode Switch & Version */}
         <div className="flex items-center gap-3">
-          <div className="bg-slate-100/80 p-0.5 rounded-full flex border border-slate-200/60 shadow-inner gap-0.5">
-             <button onClick={() => setMode("beginner")} className={`relative px-3 py-1.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition-all duration-300 ${mode === "beginner" ? "bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-100" : "text-slate-400 hover:bg-white/50 hover:text-slate-600"}`}>
-               <span>🔰</span><span>初心者</span>
-             </button>
-             <button onClick={() => setMode("expert")} className={`relative px-3 py-1.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition-all duration-300 ${mode === "expert" ? "bg-white text-blue-600 shadow-sm ring-1 ring-blue-100" : "text-slate-400 hover:bg-white/50 hover:text-slate-600"}`}>
-               <span>🎓</span><span>専門家</span>
-             </button>
+          {/* 修正: モード選択ラベルと文言変更 */}
+          <div className="relative">
+             <span className="absolute -top-3 left-1 text-[8px] font-bold text-slate-400">モード選択</span>
+             <div className="bg-slate-100/80 p-0.5 rounded-full flex border border-slate-200/60 shadow-inner gap-0.5">
+               <button onClick={() => setMode("beginner")} className={`relative px-3 py-1.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition-all duration-300 ${mode === "beginner" ? "bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-100" : "text-slate-400 hover:bg-white/50 hover:text-slate-600"}`}>
+                 <span>🔰</span><span>初心者</span>
+               </button>
+               <button onClick={() => setMode("expert")} className={`relative px-3 py-1.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition-all duration-300 ${mode === "expert" ? "bg-white text-blue-600 shadow-sm ring-1 ring-blue-100" : "text-slate-400 hover:bg-white/50 hover:text-slate-600"}`}>
+                 <span>🎓</span><span>上級者</span>
+               </button>
+             </div>
           </div>
           <span className="hidden sm:inline-block font-mono text-[10px] font-bold text-black border-l-2 border-slate-200 pl-3">v0.1.0</span>
         </div>
@@ -614,6 +626,7 @@ export default function CadenciaPage() {
             <div className="absolute bottom-2 right-8 text-3xl text-blue-200 animate-float-2 pointer-events-none select-none">♫</div>
             <div className="absolute top-1/2 right-0 text-xl text-purple-200 animate-float-1 pointer-events-none select-none" style={{animationDelay: '1s'}}>♭</div>
             <div className="inline-block relative z-10">
+               {/* 修正: G.heroTextStaticの影削除適用 */}
                <h1 className="text-4xl font-black tracking-tighter leading-none flex flex-col items-center">
                   <span className={G.heroTextStatic}>Waon AI</span>
                </h1>
@@ -672,7 +685,7 @@ export default function CadenciaPage() {
         {/* --- Results Section --- */}
         {hasResult && (
           <div ref={resultRef} className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-              <div className="flex items-center gap-2 px-1 py-2"><IconBook className="text-slate-800 w-5 h-5" /><h2 className="text-lg font-bold text-slate-800">Waon AIの分析結果 📖</h2></div>
+              <div className="flex items-center gap-2 px-1 py-2"><IconBook className="text-slate-800 w-5 h-5" /><h2 className="text-lg font-bold text-slate-800">Waon AIの分析結果</h2></div>
               {candidates[0] && <ResultCard candidate={candidates[0]} isTop={true} isKeySet={isKeySet} rank={1} />}
               {infoText && <InsightCard text={infoText} onAsk={focusInput} />}
               
@@ -722,12 +735,15 @@ export default function CadenciaPage() {
             <div className="col-start-2 col-span-2 row-start-3 h-16 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-sm flex items-center overflow-hidden">
                 <div className="flex-[0.8] flex items-center justify-center border-r border-dotted border-slate-400/30 h-full px-1"><span className="text-[10px] font-bold text-slate-500 whitespace-nowrap leading-tight text-center">調性は</span></div>
                 <div className="flex-1 relative h-full border-r border-dotted border-slate-400/30 group active:bg-black/5 transition-colors">
-                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyRoot} onChange={(e) => setKeyRoot(e.target.value)}>{KEYS_ROOT.map(k => <option key={k} value={k}>{k === "none" ? "なし" : k}</option>)}</select>
-                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-400" : "text-cyan-600"}`}>{keyRoot === "none" ? "なし" : keyRoot}</span></div>
+                   {/* 修正: none -> - を反映 */}
+                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyRoot} onChange={(e) => setKeyRoot(e.target.value)}>{KEYS_ROOT.map(k => <option key={k} value={k}>{k}</option>)}</select>
+                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "-" ? "text-slate-400" : "text-cyan-600"}`}>{keyRoot === "-" ? "-" : keyRoot}</span></div>
                 </div>
-                <div className={`flex-1 relative h-full active:bg-black/5 transition-colors ${keyRoot === "none" ? "opacity-50" : ""}`}>
-                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={keyRoot === "none"}>{KEYS_TYPE.map(k => <option key={k} value={k}>{k === "Major" ? "Major" : "Minor"}</option>)}</select>
-                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "none" ? "text-slate-300" : "text-purple-600"}`}>{keyType === "Major" ? "Major" : "Minor"}</span></div>
+                {/* 修正: keyRoot判定を - に変更 */}
+                <div className={`flex-1 relative h-full active:bg-black/5 transition-colors ${keyRoot === "-" ? "opacity-50" : ""}`}>
+                   {/* 修正: Minor -> minor を反映 */}
+                   <select className="absolute inset-0 w-full h-full opacity-0 z-10 appearance-none cursor-pointer" value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={keyRoot === "-"}>{KEYS_TYPE.map(k => <option key={k} value={k}>{k === "Major" ? "Major" : "minor"}</option>)}</select>
+                   <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none"><span className={`text-xs font-bold ${keyRoot === "-" ? "text-slate-300" : "text-purple-600"}`}>{keyType === "Major" ? "Major" : "minor"}</span></div>
                 </div>
             </div>
             
