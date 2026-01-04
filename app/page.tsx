@@ -2,15 +2,17 @@
 
 import { useMemo, useRef, useState, useEffect } from "react";
 
-// --- Design Constants (Dark Mode) ---
+// --- Design Constants (Dark Mode refined) ---
 const G = {
-  heroTextStatic: "text-slate-100 tracking-tighter", // 白文字に変更
-  cardBase: "bg-slate-900 rounded-[32px] shadow-2xl shadow-black/50 border border-slate-800 overflow-hidden relative", // 背景を黒く、境界線を強調
-  glassKeyContainer: "bg-slate-900/90 backdrop-blur-xl border-t border-slate-700 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]",
-  glassKey: "bg-slate-800/50 border border-slate-700 shadow-sm backdrop-blur-md active:bg-slate-700 transition-all",
+  heroTextStatic: "text-slate-200 tracking-tighter",
+  // 修正1: カード背景をSlate-900にし、境界線を薄く設定
+  cardBase: "bg-slate-900 rounded-[32px] shadow-2xl shadow-black/40 border border-slate-800 overflow-hidden relative",
+  // 修正3: キーボード上端に white/10 のボーダーを追加して「ガラスの厚み・反射」を表現
+  glassKeyContainer: "bg-slate-900/90 backdrop-blur-xl border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]",
+  glassKey: "bg-slate-800/40 border border-white/5 shadow-sm backdrop-blur-md active:bg-slate-700 transition-all",
   chatBubbleUser: "bg-gradient-to-br from-blue-600 to-cyan-600 text-white rounded-[20px] rounded-tr-sm shadow-md",
   chatBubbleAI: "bg-slate-800 text-slate-200 border border-slate-700 rounded-[20px] rounded-tl-sm shadow-sm",
-  chatContainer: "bg-slate-900/50 backdrop-blur-3xl rounded-[40px] border border-slate-700 shadow-2xl shadow-black/50 overflow-hidden",
+  chatContainer: "bg-slate-950/50 backdrop-blur-3xl rounded-[40px] border border-slate-800 shadow-inner shadow-black/20 overflow-hidden",
 };
 
 const NOTE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
@@ -216,7 +218,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-// FlickKey (Dark Mode Updated)
+// FlickKey (Dark Mode Updated - Glowing Text)
 const FlickKey = ({ 
   noteBase, currentSelection, isBass, isRoot, onInput, className
 }: { 
@@ -287,7 +289,9 @@ const ResultCard = ({ candidate, isTop, isKeySet, rank }: { candidate: Candidate
              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">CONFIDENCE</span>
           </div>
         </div>
-        <div className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700/50 shadow-inner flex items-stretch justify-between divide-x divide-slate-700/50 h-24">
+        
+        {/* 修正1: 結果の詳細エリアを黒く沈める (bg-black/20) + 内側の影で「彫り込み感」を出す */}
+        <div className="bg-black/20 rounded-2xl p-4 border border-slate-700/50 shadow-inner flex items-stretch justify-between divide-x divide-slate-700/50 h-24">
             <div className={`flex-1 flex flex-col items-center justify-center px-1`}>
                 <span className="text-[9px] font-bold text-slate-500 mb-1">機能</span>
                 <span className={`text-2xl font-black leading-none ${!isKeySet ? "text-slate-600" : candidate.tds === "T" ? "text-cyan-400" : candidate.tds === "D" ? "text-rose-400" : candidate.tds === "S" || candidate.tds === "SD" ? "text-emerald-400" : "text-slate-400"}`}>
@@ -717,7 +721,7 @@ export default function CadenciaPage() {
         </section>
 
         {/* 入力カード */}
-        <section className={`${G.cardBase} bg-slate-900 shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-500/50" : ""}`}>
+        <section className={`${G.cardBase} bg-slate-900 shadow-xl transition-all duration-300`}>
            <div className="absolute -right-4 top-4 text-[4rem] font-black text-white/5 pointer-events-none select-none z-0 transform -rotate-3">ANALYZE</div>
            <div className="p-5 flex flex-col min-h-[240px] relative z-10">
               <div className="flex justify-between items-start mb-4">
@@ -752,7 +756,8 @@ export default function CadenciaPage() {
                  </div>
               </div>
 
-              <div className="flex-1 bg-slate-800/50 rounded-2xl border border-slate-700/50 shadow-inner p-4 flex flex-col items-center justify-center min-h-[160px] relative transition-colors duration-300 hover:bg-slate-800/80">
+              {/* 修正1: 入力エリアを黒く沈める (bg-black/20) + 内側の影で「彫り込み感」を出す */}
+              <div className="flex-1 bg-black/20 rounded-2xl border border-white/5 shadow-inner p-4 flex flex-col items-center justify-center min-h-[160px] relative transition-colors duration-300">
                  {selected.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-3 animate-in fade-in zoom-in duration-500 py-4 opacity-60">
                          <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-600 shadow-inner border border-slate-700"><IconKeyboard className="w-6 h-6" /></div>
@@ -761,13 +766,14 @@ export default function CadenciaPage() {
                  ) : (
                     <div className="w-full grid grid-cols-4 gap-2">
                        {sortedSelected.map((note) => (
+                          // 修正4: 音符ボタンをLEDパッド風に (Inner Glow追加、ボーダー調整)
                           <div key={note} className={`relative group animate-in zoom-in duration-300 aspect-square`}>
                             <div className={`w-full h-full rounded-2xl text-xl font-black shadow-lg flex items-center justify-center border transition-transform hover:scale-105 ${
                               rootHint === note 
-                                ? "bg-rose-900 border-rose-500 text-rose-100 shadow-rose-900/50" 
+                                ? "bg-rose-900 border-rose-500 text-rose-100 shadow-[inset_0_0_15px_rgba(244,63,94,0.4)]" 
                                 : bassHint === note 
-                                  ? "bg-amber-900 border-amber-500 text-amber-100 shadow-amber-900/50" 
-                                  : "bg-slate-700 border-slate-600 text-slate-100 shadow-black/30"
+                                  ? "bg-amber-900 border-amber-500 text-amber-100 shadow-[inset_0_0_15px_rgba(251,191,36,0.4)]" 
+                                  : "bg-gradient-to-br from-slate-800 to-slate-900 border-slate-600 text-cyan-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
                             }`}>
                               {formatNote(note)}
                             </div>
