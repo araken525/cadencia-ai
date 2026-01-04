@@ -294,7 +294,7 @@ bassHint: ${params.bassHint || "none"}
 
 依頼:
 - candidates[0] は現時点で最有力なものにせよ。
-- analysis は「結論 → 構成音の確認 → 響きの特徴や役割」の順で記述せよ。
+- analysis は「結論 → 響きの特徴」の順で**100文字以内で簡潔に**記述せよ。長文は禁止。
 `.trim();
 }
 
