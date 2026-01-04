@@ -470,7 +470,7 @@ const LoadingOverlay = () => {
       <div className="text-center space-y-4 px-8 relative z-10 max-w-xs">
         {/* テキストを変更しました */}
         <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center justify-center gap-2">
-          <span>Waon AI が分析中…</span>
+          <span>Waon AI が分析中</span>
           <span className="flex gap-1">
              <span className="w-1 h-1 bg-slate-800 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
              <span className="w-1 h-1 bg-slate-800 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
