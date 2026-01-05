@@ -546,7 +546,7 @@ export default function CadenciaPage() {
     setTimeout(() => {
         if (inputRef.current) {
             inputRef.current.focus();
-            inputRef.current.scrollIntoView({ , block: "center" });
+            inputRef.current.scrollIntoView({  block: "center" });
         }
     }, 300);
   };
@@ -594,10 +594,12 @@ export default function CadenciaPage() {
     }
   };
 
+  // 修正後（コピー用）
   const reset = () => {
     setSelected([]); setCandidates([]); setBassHint(null); setRootHint(null);
     setInfoText(""); setQuestion(""); setChatHistory([]); setLoading(false); setInputMode("normal");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // ↓ "auto" にすると一瞬でパッと戻ります
+    window.scrollTo({ top: 0, behavior: "auto" }); 
   };
 
   async function analyze() {
