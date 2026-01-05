@@ -1,44 +1,26 @@
+// src/app/layout.tsx
+
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// ... (他のimport)
 
 export const metadata: Metadata = {
   title: "Waon AI",
   description: "Chord analysis application",
 };
 
-// ここでブラウザのテーマカラーを設定します
+// ▼ここを修正
 export const viewport: Viewport = {
-  themeColor: "#020617", // slate-950のカラーコード
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false, // アプリのように操作させるため拡大縮小を無効化
-  viewportFit: "cover", // ノッチエリアまで色を浸透させる
+  userScalable: false,
+  viewportFit: "cover",
+  // ここを変更！配列にして「どんな時でも #020617」と指定します
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#020617" },
+    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+  ],
 };
 
 export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="ja">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-100`}
-      >
-        {children}
-      </body>
-    </html>
-  );
-}
+// ... (以下同じ)
