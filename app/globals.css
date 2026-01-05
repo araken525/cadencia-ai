@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ★ここを強制的に「漆黒 (Slate-950)」にします */
+  --background: #020617;
+  
+  /* ★文字色を「白 (Slate-100)」にします */
+  --foreground: #f1f5f9;
 }
 
 @theme inline {
@@ -12,12 +15,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ★ 元々あった「@media (prefers-color-scheme: dark)...」は削除します。
+     これを残すと、スマホの設定によっては色が戻ってしまうためです。
+     常に上の :root の設定（黒）を使わせます。
+*/
 
 body {
   background: var(--background);
