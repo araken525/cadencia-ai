@@ -102,4 +102,4 @@ export default function ScoreViewer({ notes, bassHint, rootHint }: ScoreViewerPr
       style={{ transform: "scale(0.85)", transformOrigin: "center top" }}
     />
   );
-}g
+}
