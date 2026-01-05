@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import { playChord } from "@/utils/audioPlayer";
+import ScoreViewer from "@/components/ScoreViewer"; // パスは環境に合わせて調整
 
 // --- Design Constants ---
 const G = {
@@ -777,6 +778,14 @@ export default function CadenciaPage() {
                     </div>
                 </div>
               </div>
+
+              {/* === ここに追加: 楽譜表示エリア === */}
+              {selected.length > 0 && (
+                <div className="mb-2 -mt-2 flex justify-center animate-in fade-in slide-in-from-top-2 duration-500 h-[90px]">
+                  <ScoreViewer notes={sortedSelected} bassHint={bassHint} rootHint={rootHint} />
+                </div>
+              )}
+              {/* ================================= */}
 
               {/* 3. 音符表示エリア (下段) - 既存のデザイン維持 */}
               <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner p-4 flex flex-col items-center justify-center min-h-[140px] relative transition-colors duration-300 hover:bg-slate-100/50">
