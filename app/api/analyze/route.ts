@@ -1,5 +1,5 @@
-export const runtime = "edge";
-export const maxDuration = 60;
+// export const runtime = "edge"; // 削除（またはコメントアウト）
+export const maxDuration = 60; // これは残してOK（Proプランならもっと伸ばせますがHobbyならこれくらい）
 
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
