@@ -731,7 +731,7 @@ export default function CadenciaPage() {
               {/* 1. タイトルセクション (上段) */}
               <div className="mb-4 pl-1">
                  <h3 className="text-lg font-black text-slate-700 tracking-tight flex items-center gap-2">
-                    <span className="text-xl">Waon AIに分析させよう
+                    どんな和音か調べてみよう
                  </h3>
                  <p className="text-[11px] font-bold text-slate-400 mt-0.5 leading-relaxed">
                     キーボードをタップして音を追加できます。
@@ -753,7 +753,7 @@ export default function CadenciaPage() {
                       : "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed"
                   }`}
                 >
-                
+
                   {/* アイコン: 有効時は少し色をつける */}
                   <IconVolume2 className={`w-4 h-4 transition-colors ${selected.length > 0 ? "text-indigo-500 group-active:scale-110" : "text-slate-300"}`} />
                   <span className="text-xs font-bold tracking-wide">響きを確認する</span>
