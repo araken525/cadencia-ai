@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useEffect } from "react";
+import { playChord } from "@/utils/audioPlayer";
 
 // --- Design Constants ---
 const G = {
@@ -730,30 +731,50 @@ export default function CadenciaPage() {
                    <p className="text-[10px] text-slate-400">キーボードをタップして音を追加</p>
                  </div>
                  
-                 {/* ★ 修正: Keyと音数を表示する新しいステータスバッジ */}
-                 <div className="flex items-stretch bg-white border border-slate-100 shadow-sm rounded-xl overflow-hidden divide-x divide-slate-100">
-                    {/* Key表示エリア */}
-                    <div className="px-3 py-1.5 flex flex-col items-center justify-center min-w-[64px]">
-                       <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 tracking-wide">KEY</span>
-                       <span className={`text-xs font-black leading-none ${keyRoot !== "-" ? "text-purple-600" : "text-slate-300"}`}>
-                          {keyRoot !== "-" ? (
-                             <span className="flex items-baseline gap-0.5">
-                                <span className="text-sm">{keyRoot}</span>
-                                <span className="text-[9px] font-bold text-slate-500 uppercase">{keyType === "Major" ? "Maj" : "min"}</span>
-                             </span>
-                          ) : "―"}
-                       </span>
-                    </div>
+                 {/* ★ 修正エリア: ボタンとステータスバッジを横並びにする */}
+                 <div className="flex items-center gap-2">
+                    
+                    {/* NEW: 再生ボタン */}
+                    <button
+                      onClick={() => playChord(sortedSelected)}
+                      disabled={selected.length === 0}
+                      className={`h-[42px] w-[42px] rounded-xl border flex items-center justify-center transition-all shadow-sm active:scale-95 ${
+                        selected.length > 0 
+                          ? "bg-white border-blue-100 text-blue-500 hover:bg-blue-50 hover:border-blue-200 shadow-blue-100" 
+                          : "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed"
+                      }`}
+                      aria-label="和音を再生"
+                    >
+                      <IconVolume2 className={selected.length > 0 ? "animate-in zoom-in duration-300" : ""} />
+                    </button>
 
-                    {/* 音数表示エリア */}
-                    <div className="px-3 py-1.5 flex flex-col items-center justify-center min-w-[56px] bg-slate-50/50">
-                       <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 tracking-wide">NOTES</span>
-                       <div className="flex items-baseline gap-0.5">
-                          <span className={`text-lg font-black leading-none ${selected.length > 0 ? "text-cyan-500" : "text-slate-300"}`}>{selected.length}</span>
-                          <span className="text-[9px] font-bold text-slate-400">音</span>
-                       </div>
+                    {/* 既存のステータスバッジ (Key/Notes) */}
+                    <div className="flex items-stretch bg-white border border-slate-100 shadow-sm rounded-xl overflow-hidden divide-x divide-slate-100 h-[42px]">
+                        {/* Key表示エリア */}
+                        <div className="px-3 flex flex-col items-center justify-center min-w-[64px]">
+                          <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 tracking-wide">KEY</span>
+                          <span className={`text-xs font-black leading-none ${keyRoot !== "-" ? "text-purple-600" : "text-slate-300"}`}>
+                              {keyRoot !== "-" ? (
+                                <span className="flex items-baseline gap-0.5">
+                                    <span className="text-sm">{keyRoot}</span>
+                                    <span className="text-[9px] font-bold text-slate-500 uppercase">{keyType === "Major" ? "Maj" : "min"}</span>
+                                </span>
+                              ) : "―"}
+                          </span>
+                        </div>
+
+                        {/* 音数表示エリア */}
+                        <div className="px-3 flex flex-col items-center justify-center min-w-[56px] bg-slate-50/50">
+                          <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 tracking-wide">NOTES</span>
+                          <div className="flex items-baseline gap-0.5">
+                              <span className={`text-lg font-black leading-none ${selected.length > 0 ? "text-cyan-500" : "text-slate-300"}`}>{selected.length}</span>
+                              <span className="text-[9px] font-bold text-slate-400">音</span>
+                          </div>
+                        </div>
                     </div>
                  </div>
+                 {/* ★ 修正エリア終了 */}
+
               </div>
 
               <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner p-4 flex flex-col items-center justify-center min-h-[160px] relative transition-colors duration-300 hover:bg-slate-100/50">
@@ -877,3 +898,4 @@ const IconArrowRight = ({className}: {className?: string}) => <svg className={cl
 const IconRobot = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="12" cy="5" r="2" /><path d="M12 7v4" /><line x1="8" y1="16" x2="8" y2="16" /><line x1="16" y1="16" x2="16" y2="16" /></svg>;
 const IconKeyboard = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="M6 8h.001"/><path d="M10 8h.001"/><path d="M14 8h.001"/><path d="M18 8h.001"/><path d="M6 12h.001"/><path d="M10 12h.001"/><path d="M14 12h.001"/><path d="M18 12h.001"/><path d="M7 16h10"/></svg>;
 const IconX = ({className}: {className?: string}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+const IconVolume2 = ({className}: {className?: string}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></svg>;
