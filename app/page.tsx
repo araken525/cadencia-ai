@@ -729,7 +729,7 @@ export default function CadenciaPage() {
            
            <div className="p-5 flex flex-col min-h-[260px] relative z-10">
               
-              {/* 1. タイトルセクション (文言変更済み・絵文字なし) */}
+              {/* 1. タイトルセクション */}
               <div className="mb-4 pl-1">
                  <h3 className="text-lg font-black text-slate-700 tracking-tight flex items-center gap-2">
                     どんな和音か調べてみよう
@@ -742,7 +742,7 @@ export default function CadenciaPage() {
               {/* 2. コントロール & ステータス */}
               <div className="flex items-stretch gap-3 mb-4 h-11">
                 
-                {/* A. 再生ボタン (白ベース・インディゴアクセント) */}
+                {/* A. 再生ボタン */}
                 <button
                   onClick={() => playChord(sortedSelected, bassHint, rootHint)}
                   disabled={selected.length === 0}
@@ -756,7 +756,7 @@ export default function CadenciaPage() {
                   <span className="text-xs font-bold tracking-wide">響きを確認する</span>
                 </button>
 
-                {/* B. ステータス表示 (右寄せ) */}
+                {/* B. ステータス表示 */}
                 <div className="flex items-stretch bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden divide-x divide-slate-100 shrink-0">
                     {/* KEY */}
                     <div className="px-3 flex flex-col items-center justify-center min-w-[50px]">
@@ -775,14 +775,9 @@ export default function CadenciaPage() {
                 </div>
               </div>
 
-              {/* 楽譜表示エリア (ScoreViewer) */}
-              {selected.length > 0 && (
-                <div className="mb-2 -mt-2 flex justify-center animate-in fade-in slide-in-from-top-2 duration-500 h-[90px]">
-                  <ScoreViewer notes={sortedSelected} bassHint={bassHint} rootHint={rootHint} />
-                </div>
-              )}
+              {/* （楽譜エリアを削除しました） */}
 
-              {/* 3. 音符グリッド表示エリア (下段) */}
+              {/* 3. 音符グリッド表示エリア */}
               <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner p-4 flex flex-col items-center justify-center min-h-[140px] relative transition-colors duration-300 hover:bg-slate-100/50">
                  {selected.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-3 animate-in fade-in zoom-in duration-500 py-4 opacity-60">
