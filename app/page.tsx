@@ -741,17 +741,21 @@ export default function CadenciaPage() {
               {/* 2. コントロール & ステータス (中段) - ここを新設 */}
               <div className="flex items-stretch gap-3 mb-4 h-11">
                 
-                {/* A. 再生ボタン (押しやすさ最優先) */}
+                {/* A. 再生ボタン (修正: エレガントな白ベースに変更) */}
                 <button
                   onClick={() => playChord(sortedSelected, bassHint, rootHint)}
                   disabled={selected.length === 0}
                   className={`flex-1 rounded-xl border flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 group ${
                     selected.length > 0 
-                      ? "bg-gradient-to-br from-blue-500 to-blue-600 border-blue-600 text-white shadow-blue-200" 
-                      : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                      // 有効時: 白ベース、淡いインディゴの枠線、ホバーで少し色づく
+                      ? "bg-white border-indigo-100 text-slate-700 shadow-indigo-50 hover:bg-indigo-50/50 hover:border-indigo-200 hover:shadow-md" 
+                      // 無効時
+                      : "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed"
                   }`}
                 >
-                  <IconVolume2 className={`w-4 h-4 ${selected.length > 0 ? "group-active:scale-110" : ""}`} />
+                
+                  {/* アイコン: 有効時は少し色をつける */}
+                  <IconVolume2 className={`w-4 h-4 transition-colors ${selected.length > 0 ? "text-indigo-500 group-active:scale-110" : "text-slate-300"}`} />
                   <span className="text-xs font-bold tracking-wide">響きを確認する</span>
                 </button>
 
