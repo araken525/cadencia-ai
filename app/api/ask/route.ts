@@ -8,7 +8,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const apiKey = process.env.GEMINI_API_KEY || "";
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 // ★指定: gemini-2.5-flash
-const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 const model = genAI ? genAI.getGenerativeModel({ model: modelName }) : null;
 
 // -------------------- Utils --------------------
@@ -239,6 +239,7 @@ function buildExpertSystemPrompt() {
 【回答スタイル】
 - Markdown禁止。プレーンテキストのみ。
 - 挨拶不要。結論から記述せよ。
+- 冗長さは排除し、核心のみを極めて簡潔に記述せよ（長文禁止）。 // ← ★ここを追加
 - 口調: 断定的(「〜である」)。
 
 【重要ルール】
@@ -269,6 +270,7 @@ function buildBeginnerSystemPrompt() {
 【回答スタイル】
 - Markdown禁止。プレーンテキストのみ。
 - 挨拶不要。すぐに回答を始めよ。
+- 冗長さは排除し、核心のみを極めて簡潔に記述せよ（長文禁止）。 // ← ★ここを追加
 - 口調: 丁寧語(「〜ですね」)。
 
 【重要ルール】
