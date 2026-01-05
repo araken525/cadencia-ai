@@ -611,7 +611,7 @@ export default function CadenciaPage() {
       // ★ Mode Added
       const res = await fetch("/api/analyze", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedNotes: selected, keyHint, bassHint, rootHint, mode }),
+        body: JSON.stringify({ selectedNotes: sortedSelected, keyHint, bassHint, rootHint, mode }),
       });
       const data = res.headers.get("content-type")?.includes("json") ? await res.json() : { error: await res.text() };
       if (!res.ok) { setCandidates([]); setInfoText(`システムエラー: ${data?.error}`); return; }
