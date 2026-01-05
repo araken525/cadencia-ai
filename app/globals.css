@@ -2,12 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ここで強制的に背景色を指定 */
+/* ここより下に追加の設定を書きます */
 :root {
-  background-color: #020617; /* Slate-950 */
-  color: #f1f5f9; /* Slate-100 */
+  background-color: #020617;
+  color: #f1f5f9;
 }
 
 body {
-  background-color: #020617; /* Slate-950 */
+  background-color: #020617;
+  min-height: 100vh;
 }
