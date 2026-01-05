@@ -480,13 +480,20 @@ export async function POST(req: Request) {
         });
       }
 
-      // 2. 重複を削除 (和音名が同じなら、リストの上位=スコアが高い方を残す)
+      // 2. 重複を削除 (和音名が同じなら、スコアが高い方を残す)
       const uniqueMap = new Map<string, CandidateObj>();
       candidates.forEach((c) => {
         if (!uniqueMap.has(c.chord)) {
           uniqueMap.set(c.chord, c);
+        } else {
+          const prev = uniqueMap.get(c.chord)!;
+          // 既存よりスコアが高ければ上書き保存
+          if (c.score > prev.score) {
+            uniqueMap.set(c.chord, c);
+          }
         }
       });
+      
       // 3. 最大5件に絞る
       candidates = Array.from(uniqueMap.values()).slice(0, 5);
     }
