@@ -287,7 +287,7 @@ const NOTATION_RULES = `
      - 例: ドイツの六(Ab, C, Eb, F#) → **Ab+6**
    - **bassHintが "none" の場合は、機能的に転回形であっても、スラッシュを含まない形を出力せよ。**
    - 転回指数（¹や²）はここには記述しない。
-   
+
 2. **和声記号 (romanNumeral)**:
    - **ここには「芸大和声の機能表記」を記述せよ。**
    - 増六やナポリはここで表現せよ（例: Ger⁶, It⁶, Fr⁶, N⁶）。
@@ -480,15 +480,15 @@ export async function POST(req: Request) {
         });
       }
 
-      // 2. 重複を削除 (和音名が同じなら、スコアが高い方を残す)
+      // 2. 重複を削除 (和音名が同じなら、スコアが高い方 or 同点なら信頼度が高い方を残す)
       const uniqueMap = new Map<string, CandidateObj>();
       candidates.forEach((c) => {
         if (!uniqueMap.has(c.chord)) {
           uniqueMap.set(c.chord, c);
         } else {
           const prev = uniqueMap.get(c.chord)!;
-          // 既存よりスコアが高ければ上書き保存
-          if (c.score > prev.score) {
+          // 新しい候補の方がスコアが高い、または同点で信頼度が高い場合は上書き
+          if (c.score > prev.score || (c.score === prev.score && c.confidence > prev.confidence)) {
             uniqueMap.set(c.chord, c);
           }
         }
