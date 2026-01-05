@@ -53,8 +53,9 @@ export default function ScoreViewer({ notes, bassHint, rootHint }: ScoreViewerPr
       if (bassHint && note === bassHint) octave = 3;
       else if (!bassHint && rootHint && note === rootHint) octave = 3;
 
+      // ★ここがエラーの原因でした（バックスラッシュを削除済み）
       return { 
-        keys: [\`\${key}/\${octave}\`], 
+        keys: [`${key}/${octave}`], 
         duration: "w", 
         acc: accVex 
       };
