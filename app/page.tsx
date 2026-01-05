@@ -594,20 +594,11 @@ export default function CadenciaPage() {
     }
   };
 
+  // 修正後（コピー用）
   const reset = () => {
-    // 1. 状態をすべてリセット
-    setSelected([]); 
-    setCandidates([]); 
-    setBassHint(null); 
-    setRootHint(null);
-    setInfoText(""); 
-    setQuestion(""); 
-    setChatHistory([]); 
-    setLoading(false); 
-    setInputMode("normal");
-    
-    // 2. 画面の一番上へ「一瞬で」戻る（ここを修正）
-    // "smooth" だとアニメーションしてしまうので "auto" に変更
+    setSelected([]); setCandidates([]); setBassHint(null); setRootHint(null);
+    setInfoText(""); setQuestion(""); setChatHistory([]); setLoading(false); setInputMode("normal");
+    // ↓ "auto" にすると一瞬でパッと戻ります
     window.scrollTo({ top: 0, behavior: "auto" }); 
   };
 
