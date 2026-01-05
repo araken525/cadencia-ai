@@ -64,12 +64,11 @@ export default function ScoreViewer({ notes, bassHint, rootHint }: ScoreViewerPr
 
     const chordKeys = vexNotes.map(n => n.keys[0]);
     
-    // ★修正: プロパティ名をキャメルケースに変更 (auto_stem -> autoStem)
     const staveNote = new StaveNote({
       keys: chordKeys,
       duration: "w",
-      autoStem: true,    // ここを修正
-      alignCenter: true, // ここも修正
+      autoStem: true,
+      alignCenter: true,
     });
 
     vexNotes.forEach((n, index) => {
@@ -78,7 +77,8 @@ export default function ScoreViewer({ notes, bassHint, rootHint }: ScoreViewerPr
       }
     });
 
-    const voice = new Voice({ num_beats: 4, beat_value: 4 });
+    // ★修正: num_beats -> numBeats, beat_value -> beatValue
+    const voice = new Voice({ numBeats: 4, beatValue: 4 });
     voice.addTickables([staveNote]);
 
     const formatter = new Formatter();
