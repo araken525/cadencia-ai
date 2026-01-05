@@ -1,26 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ここを slate-950 の色 (#020617) に合わせます */
+  --background: #020617;
+  --foreground: #ededed;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* もしライトモードを完全に廃止してダーク専用にするなら、
+   @media (prefers-color-scheme: dark) ブロックは削除して、
+   :root に直接ダーク色を定義する方が確実です。
+   今回は上記 :root で slate-950 を強制適用しています。 */
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+
+  /* ★重要: これを入れると、iOSでスクロールの端っこが
+     ビヨーンとなった時も背景色が維持され、
+     「ネイティブアプリ」っぽくなります */
+  overscroll-behavior-y: none; 
 }
