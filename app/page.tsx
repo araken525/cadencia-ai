@@ -731,7 +731,7 @@ export default function CadenciaPage() {
               {/* 1. タイトルセクション (上段) */}
               <div className="mb-4 pl-1">
                  <h3 className="text-lg font-black text-slate-700 tracking-tight flex items-center gap-2">
-                    どんな和音か調べてみよう
+                    Waon AIに分析させよう
                  </h3>
                  <p className="text-[11px] font-bold text-slate-400 mt-0.5 leading-relaxed">
                     キーボードをタップして音を追加できます。
