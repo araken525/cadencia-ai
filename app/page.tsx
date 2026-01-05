@@ -723,61 +723,59 @@ export default function CadenciaPage() {
 
         {/* 入力カード */}
         <section className={`${G.cardBase} bg-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
+           {/* 背景装飾 */}
            <div className="absolute -right-4 top-4 text-[4rem] font-black text-slate-50 pointer-events-none select-none z-0 transform -rotate-3">ANALYZE</div>
-           <div className="p-5 flex flex-col min-h-[240px] relative z-10">
-              <div className="flex justify-between items-start mb-4">
-                 <div className="space-y-0.5 pt-1">
-                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">Waon AIに分析させよう</h3>
-                   <p className="text-[10px] text-slate-400">キーボードをタップして音を追加</p>
-                 </div>
-                 
-                 {/* ★ 修正エリア: ボタンとステータスバッジを横並びにする */}
-                 <div className="flex items-center gap-2">
-                    
-                    {/* NEW: 再生ボタン */}
-                    <button
-                      onClick={() => playChord(sortedSelected, bassHint, rootHint)}
-                      disabled={selected.length === 0}
-                      className={`h-[42px] w-[42px] rounded-xl border flex items-center justify-center transition-all shadow-sm active:scale-95 ${
-                        selected.length > 0 
-                          ? "bg-white border-blue-100 text-blue-500 hover:bg-blue-50 hover:border-blue-200 shadow-blue-100" 
-                          : "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed"
-                      }`}
-                      aria-label="和音を再生"
-                    >
-                      <IconVolume2 className={selected.length > 0 ? "animate-in zoom-in duration-300" : ""} />
-                    </button>
+           
+           <div className="p-5 flex flex-col min-h-[260px] relative z-10">
+              
+              {/* 1. タイトルセクション (上段) */}
+              <div className="mb-4 pl-1">
+                 <h3 className="text-lg font-black text-slate-700 tracking-tight flex items-center gap-2">
+                    <span className="text-xl">🎹</span> Waon AIに分析させよう
+                 </h3>
+                 <p className="text-[11px] font-bold text-slate-400 mt-0.5 leading-relaxed">
+                    キーボードをタップして音を追加できます。
+                 </p>
+              </div>
+              
+              {/* 2. コントロール & ステータス (中段) - ここを新設 */}
+              <div className="flex items-stretch gap-3 mb-4 h-11">
+                
+                {/* A. 再生ボタン (押しやすさ最優先) */}
+                <button
+                  onClick={() => playChord(sortedSelected, bassHint, rootHint)}
+                  disabled={selected.length === 0}
+                  className={`flex-1 rounded-xl border flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 group ${
+                    selected.length > 0 
+                      ? "bg-gradient-to-br from-blue-500 to-blue-600 border-blue-600 text-white shadow-blue-200" 
+                      : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                  }`}
+                >
+                  <IconVolume2 className={`w-4 h-4 ${selected.length > 0 ? "group-active:scale-110" : ""}`} />
+                  <span className="text-xs font-bold tracking-wide">響きを確認する</span>
+                </button>
 
-                    {/* 既存のステータスバッジ (Key/Notes) */}
-                    <div className="flex items-stretch bg-white border border-slate-100 shadow-sm rounded-xl overflow-hidden divide-x divide-slate-100 h-[42px]">
-                        {/* Key表示エリア */}
-                        <div className="px-3 flex flex-col items-center justify-center min-w-[64px]">
-                          <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 tracking-wide">KEY</span>
-                          <span className={`text-xs font-black leading-none ${keyRoot !== "-" ? "text-purple-600" : "text-slate-300"}`}>
-                              {keyRoot !== "-" ? (
-                                <span className="flex items-baseline gap-0.5">
-                                    <span className="text-sm">{keyRoot}</span>
-                                    <span className="text-[9px] font-bold text-slate-500 uppercase">{keyType === "Major" ? "Maj" : "min"}</span>
-                                </span>
-                              ) : "―"}
-                          </span>
-                        </div>
-
-                        {/* 音数表示エリア */}
-                        <div className="px-3 flex flex-col items-center justify-center min-w-[56px] bg-slate-50/50">
-                          <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 tracking-wide">NOTES</span>
-                          <div className="flex items-baseline gap-0.5">
-                              <span className={`text-lg font-black leading-none ${selected.length > 0 ? "text-cyan-500" : "text-slate-300"}`}>{selected.length}</span>
-                              <span className="text-[9px] font-bold text-slate-400">音</span>
-                          </div>
-                        </div>
+                {/* B. ステータス表示 (コンパクトに右寄せ) */}
+                <div className="flex items-stretch bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden divide-x divide-slate-100 shrink-0">
+                    {/* KEY */}
+                    <div className="px-3 flex flex-col items-center justify-center min-w-[50px]">
+                      <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 tracking-wide">KEY</span>
+                      <span className={`text-xs font-black leading-none ${keyRoot !== "-" ? "text-purple-600" : "text-slate-300"}`}>
+                          {keyRoot !== "-" ? keyRoot : "―"}
+                      </span>
                     </div>
-                 </div>
-                 {/* ★ 修正エリア終了 */}
-
+                    {/* NOTES */}
+                    <div className="px-3 flex flex-col items-center justify-center min-w-[50px] bg-slate-50/50">
+                      <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 tracking-wide">NOTES</span>
+                      <span className={`text-sm font-black leading-none ${selected.length > 0 ? "text-cyan-600" : "text-slate-300"}`}>
+                         {selected.length}
+                      </span>
+                    </div>
+                </div>
               </div>
 
-              <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner p-4 flex flex-col items-center justify-center min-h-[160px] relative transition-colors duration-300 hover:bg-slate-100/50">
+              {/* 3. 音符表示エリア (下段) - 既存のデザイン維持 */}
+              <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner p-4 flex flex-col items-center justify-center min-h-[140px] relative transition-colors duration-300 hover:bg-slate-100/50">
                  {selected.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-3 animate-in fade-in zoom-in duration-500 py-4 opacity-60">
                          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-300 shadow-inner"><IconKeyboard className="w-6 h-6" /></div>
