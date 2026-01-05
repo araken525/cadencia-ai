@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 
 // --- Design Constants ---
 const G = {
-  heroTextStatic: "text-slate-700 tracking-tighter", // 修正: 影削除済み
+  heroTextStatic: "text-slate-700 tracking-tighter", // 修正: 影削除済みこれが今一番かな
   cardBase: "bg-white rounded-[32px] shadow-xl shadow-blue-900/5 border border-white overflow-hidden relative",
   glassKeyContainer: "bg-white/80 backdrop-blur-xl border-t border-white/40 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]",
   glassKey: "bg-white/50 border border-white/60 shadow-sm backdrop-blur-md active:bg-white/80 transition-all",
@@ -546,7 +546,7 @@ export default function CadenciaPage() {
     setTimeout(() => {
         if (inputRef.current) {
             inputRef.current.focus();
-            inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+            inputRef.current.scrollIntoView({ , block: "center" });
         }
     }, 300);
   };
@@ -595,9 +595,20 @@ export default function CadenciaPage() {
   };
 
   const reset = () => {
-    setSelected([]); setCandidates([]); setBassHint(null); setRootHint(null);
-    setInfoText(""); setQuestion(""); setChatHistory([]); setLoading(false); setInputMode("normal");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // 1. 状態をすべてリセット
+    setSelected([]); 
+    setCandidates([]); 
+    setBassHint(null); 
+    setRootHint(null);
+    setInfoText(""); 
+    setQuestion(""); 
+    setChatHistory([]); 
+    setLoading(false); 
+    setInputMode("normal");
+    
+    // 2. 画面の一番上へ「一瞬で」戻る（ここを修正）
+    // "smooth" だとアニメーションしてしまうので "auto" に変更
+    window.scrollTo({ top: 0, behavior: "auto" }); 
   };
 
   async function analyze() {
