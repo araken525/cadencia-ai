@@ -13,12 +13,14 @@ const model = genAI ? genAI.getGenerativeModel({ model: modelName }) : null;
 
 // -------------------- Utils --------------------
 function normalizeAccidentals(s: string) {
-  return (s ?? "")
+  const t = (s ?? "")
     .trim()
     .replaceAll("♭", "b")
     .replaceAll("♯", "#")
     .replaceAll("𝄫", "bb")
     .replaceAll("𝄪", "##");
+  // 先頭の音名だけ大文字化（accidentalはそのまま）
+  return t.replace(/^([a-g])/, (m) => m.toUpperCase());
 }
 
 type Acc = "" | "#" | "##" | "b" | "bb";
