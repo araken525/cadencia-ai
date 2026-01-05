@@ -1,23 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  /* ここを slate-950 の色 (#020617) に合わせます */
+  /* ▼ ここで強制的に slate-950 (#020617) を指定します */
   --background: #020617;
   --foreground: #ededed;
 }
 
-/* もしライトモードを完全に廃止してダーク専用にするなら、
-   @media (prefers-color-scheme: dark) ブロックは削除して、
-   :root に直接ダーク色を定義する方が確実です。
-   今回は上記 :root で slate-950 を強制適用しています。 */
+/* ★ @media (prefers-color-scheme: dark) ... のブロックは削除してください ★ */
+/* ライトモードのスマホでも、このアプリだけは常に黒にするためです */
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-
-  /* ★重要: これを入れると、iOSでスクロールの端っこが
-     ビヨーンとなった時も背景色が維持され、
-     「ネイティブアプリ」っぽくなります */
-  overscroll-behavior-y: none; 
+  
+  /* 上下のバウンス領域を黒く保つ設定 */
+  overscroll-behavior-y: none;
 }
