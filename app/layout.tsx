@@ -1,16 +1,23 @@
-import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next"; // Viewport を追加
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   title: "Waon AI",
   description: "ポケットに、専属の音楽理論家を。",
 };
 
-// ★ここが修正ポイント1
-// ブラウザのアドレスバーやステータスバーを「漆黒(#020617)」にする設定
+// ★ここを追加！Safariのバーを黒くする設定
 export const viewport: Viewport = {
   themeColor: "#020617",
   width: "device-width",
@@ -25,9 +32,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      {/* ★ここが修正ポイント2 */}
-      {/* bodyタグ自体に bg-slate-950 を追加。これでスクロールの端っこも黒くなる */}
-      <body className={`${inter.className} bg-slate-950`}>{children}</body>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+      >
+        {children}
+      </body>
     </html>
   );
 }
