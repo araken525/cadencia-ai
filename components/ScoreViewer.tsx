@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Vex from "vexflow";
+// ★修正: Vex.Flow 経由ではなく、直接部品をインポートする形に変更
+import { 
+  Renderer, 
+  Stave, 
+  StaveNote, 
+  Accidental, 
+  Voice, 
+  Formatter 
+} from "vexflow";
 
 type ScoreViewerProps = {
   notes: string[];
@@ -17,27 +25,26 @@ export default function ScoreViewer({ notes, bassHint, rootHint }: ScoreViewerPr
     if (!containerRef.current) return;
     const container = containerRef.current;
 
-    // 初期化（多重描画防止）
+    // 初期化
     container.innerHTML = "";
     
-    const renderer = new Vex.Flow.Renderer(container, Vex.Flow.Renderer.Backends.SVG);
+    // ★修正: new Vex.Flow.Renderer -> new Renderer
+    const renderer = new Renderer(container, Renderer.Backends.SVG);
     rendererRef.current = renderer;
 
-    // スマホ向けに少しコンパクトなサイズ
     const width = 280; 
-    const height = 110; // 高さを少し詰める
+    const height = 110;
     renderer.resize(width, height);
     
     const context = renderer.getContext();
 
-    // 五線譜 (Stave)
-    const stave = new Vex.Flow.Stave(0, 0, width - 5);
-    stave.addClef("treble"); // ト音記号
+    // ★修正: new Vex.Flow.Stave -> new Stave
+    const stave = new Stave(0, 0, width - 5);
+    stave.addClef("treble");
     stave.setContext(context).draw();
 
     if (notes.length === 0) return;
 
-    // 音符データ変換
     const vexNotes = notes.map((note) => {
       let key = note.charAt(0).toLowerCase();
       let accRaw = note.slice(1);
@@ -48,12 +55,10 @@ export default function ScoreViewer({ notes, bassHint, rootHint }: ScoreViewerPr
       else if (accRaw === "##" || accRaw === "x" || accRaw === "𝄪") accVex = "##";
       else if (accRaw === "bb" || accRaw === "𝄫") accVex = "bb";
 
-      // オクターブ決定 (バス優先ロジック)
       let octave = 4;
       if (bassHint && note === bassHint) octave = 3;
       else if (!bassHint && rootHint && note === rootHint) octave = 3;
 
-      // ★ここがエラーの原因でした（バックスラッシュを削除済み）
       return { 
         keys: [`${key}/${octave}`], 
         duration: "w", 
@@ -62,25 +67,28 @@ export default function ScoreViewer({ notes, bassHint, rootHint }: ScoreViewerPr
     });
 
     const chordKeys = vexNotes.map(n => n.keys[0]);
-    const staveNote = new Vex.Flow.StaveNote({
+    
+    // ★修正: new Vex.Flow.StaveNote -> new StaveNote
+    const staveNote = new StaveNote({
       keys: chordKeys,
       duration: "w",
       auto_stem: true,
       align_center: true,
     });
 
-    // 変化記号の付与
     vexNotes.forEach((n, index) => {
       if (n.acc) {
-        staveNote.addModifier(new Vex.Flow.Accidental(n.acc), index);
+        // ★修正: new Vex.Flow.Accidental -> new Accidental
+        staveNote.addModifier(new Accidental(n.acc), index);
       }
     });
 
-    // 描画
-    const voice = new Vex.Flow.Voice({ num_beats: 4, beat_value: 4 });
+    // ★修正: new Vex.Flow.Voice -> new Voice
+    const voice = new Voice({ num_beats: 4, beat_value: 4 });
     voice.addTickables([staveNote]);
 
-    const formatter = new Vex.Flow.Formatter();
+    // ★修正: new Vex.Flow.Formatter -> new Formatter
+    const formatter = new Formatter();
     formatter.joinVoices([voice]).format([voice], width - 60);
 
     voice.draw(context, stave);
@@ -91,7 +99,7 @@ export default function ScoreViewer({ notes, bassHint, rootHint }: ScoreViewerPr
     <div 
       ref={containerRef} 
       className="flex justify-center items-center overflow-hidden bg-white/60 rounded-xl border border-slate-100/50 shadow-inner"
-      style={{ transform: "scale(0.85)", transformOrigin: "center top" }} // 少し縮小して馴染ませる
+      style={{ transform: "scale(0.85)", transformOrigin: "center top" }}
     />
   );
-}
+}g
