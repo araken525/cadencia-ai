@@ -736,7 +736,7 @@ export default function CadenciaPage() {
                     
                     {/* NEW: 再生ボタン */}
                     <button
-                      onClick={() => playChord(sortedSelected)}
+                      onClick={() => playChord(sortedSelected, bassHint, rootHint)}
                       disabled={selected.length === 0}
                       className={`h-[42px] w-[42px] rounded-xl border flex items-center justify-center transition-all shadow-sm active:scale-95 ${
                         selected.length > 0 
