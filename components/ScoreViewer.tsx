@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-// ★修正: Vex.Flow 経由ではなく、直接部品をインポートする形に変更
 import { 
   Renderer, 
   Stave, 
@@ -25,10 +24,8 @@ export default function ScoreViewer({ notes, bassHint, rootHint }: ScoreViewerPr
     if (!containerRef.current) return;
     const container = containerRef.current;
 
-    // 初期化
     container.innerHTML = "";
     
-    // ★修正: new Vex.Flow.Renderer -> new Renderer
     const renderer = new Renderer(container, Renderer.Backends.SVG);
     rendererRef.current = renderer;
 
@@ -38,7 +35,6 @@ export default function ScoreViewer({ notes, bassHint, rootHint }: ScoreViewerPr
     
     const context = renderer.getContext();
 
-    // ★修正: new Vex.Flow.Stave -> new Stave
     const stave = new Stave(0, 0, width - 5);
     stave.addClef("treble");
     stave.setContext(context).draw();
@@ -68,26 +64,23 @@ export default function ScoreViewer({ notes, bassHint, rootHint }: ScoreViewerPr
 
     const chordKeys = vexNotes.map(n => n.keys[0]);
     
-    // ★修正: new Vex.Flow.StaveNote -> new StaveNote
+    // ★修正: プロパティ名をキャメルケースに変更 (auto_stem -> autoStem)
     const staveNote = new StaveNote({
       keys: chordKeys,
       duration: "w",
-      auto_stem: true,
-      align_center: true,
+      autoStem: true,    // ここを修正
+      alignCenter: true, // ここも修正
     });
 
     vexNotes.forEach((n, index) => {
       if (n.acc) {
-        // ★修正: new Vex.Flow.Accidental -> new Accidental
         staveNote.addModifier(new Accidental(n.acc), index);
       }
     });
 
-    // ★修正: new Vex.Flow.Voice -> new Voice
     const voice = new Voice({ num_beats: 4, beat_value: 4 });
     voice.addTickables([staveNote]);
 
-    // ★修正: new Vex.Flow.Formatter -> new Formatter
     const formatter = new Formatter();
     formatter.joinVoices([voice]).format([voice], width - 60);
 
