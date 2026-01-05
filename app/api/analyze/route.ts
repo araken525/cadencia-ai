@@ -505,7 +505,15 @@ export async function POST(req: Request) {
       candidates = Array.from(uniqueMap.values()).sort(sortFn).slice(0, 5);
     }
 
-    // ... (後略: const top = candidates[0]; へ続く)
+    // ▼▼▼ バス指定がない場合、強制的に基本形として上書きする処理 ▼▼▼
+    if (!bassHint && candidates.length > 0) {
+      candidates.forEach((c) => {
+        c.inversion = "root"; 
+        if (c.chord.includes("/")) {
+           c.chord = c.chord.split("/")[0];
+        }
+      });
+    }
 
     const top = candidates[0];
     let engineChord = safeStr((json as any).engineChord, "").trim();
