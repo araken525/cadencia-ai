@@ -19,10 +19,15 @@ const model = genAI ? genAI.getGenerativeModel({ model: modelName }) : null;
 
 // -------------------- Utils --------------------
 function normalizeAccidentals(s: string) {
-  return (s ?? "").trim().replaceAll("♭", "b").replaceAll("♯", "#").replaceAll("𝄫", "bb").replaceAll("𝄪", "##");
+  const t = (s ?? "").trim()
+    .replaceAll("♭", "b").replaceAll("♯", "#")
+    .replaceAll("𝄫", "bb").replaceAll("𝄪", "##");
+  // 先頭の音名だけ大文字化（accidentalはそのまま）
+  return t.replace(/^([a-g])/, (m) => m.toUpperCase());
 }
 
 type Acc = "" | "#" | "##" | "b" | "bb";
+// ... (以下変更なし)
 const LETTER_INDEX: Record<string, number> = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
 const ACC_INDEX: Record<Acc, number> = { bb: 0, b: 1, "": 2, "#": 3, "##": 4 };
 
@@ -147,7 +152,7 @@ const SPECIAL_CHORD_RULES = `
 - 判定:V₇/IV, vii°7/V 等、必ず「〇〇へ解決する副属七（副導七）」と記述すること。
 - 解説:解決先（〇〇）への推進力を持つことを明示し、「属和音へ向かう」という曖昧な表現は用いない。変化音は、解決先の調・和音に対する機能として説明する。
 
-. [減七・導七・根音省略V9の識別]
+4. [減七・導七・根音省略V9の識別]
    - 条件: 減三短七(viiø7) または 減七(dim7) の形を持つ和音。
    
    // ▼ 分岐A: 長調のVII上 (ø7)
