@@ -451,34 +451,43 @@ export async function POST(req: Request) {
       };
     }).filter((c: CandidateObj) => !!c.chord);
 
-    // ★ 重複排除処理 & ヒント優先ソート
+    // ... (前略: let candidates = ... の定義の直後)
+
+    // ★ 重複排除処理 & ヒント優先ソート (完全版)
     if (candidates.length > 0) {
-      // 1. まずヒントに基づいてソート（ユーザー指定を最優先）
-      if (bassHint) {
-        candidates.sort((a, b) => {
-          const aMatch = getChordBass(a.chord) === bassHint;
-          const bMatch = getChordBass(b.chord) === bassHint;
-          if (aMatch && !bMatch) return -1; 
-          if (!aMatch && bMatch) return 1;  
-          return 0; 
-        });
-      } else if (rootHint) {
-        candidates.sort((a, b) => {
-          const aMatch = getChordRoot(a.chord) === rootHint;
-          const bMatch = getChordRoot(b.chord) === rootHint;
-          if (aMatch && !bMatch) return -1;
-          if (!aMatch && bMatch) return 1;
-          return 0;
-        });
-      } else {
-        candidates.sort((a, b) => {
-          const aHasSlash = a.chord.includes("/");
-          const bHasSlash = b.chord.includes("/");
-          if (!aHasSlash && bHasSlash) return -1;
-          if (aHasSlash && !bHasSlash) return 1;
-          return 0;
-        });
-      }
+      // ソートロジック関数を定義 (再利用するため)
+      const sortFn = (a: CandidateObj, b: CandidateObj) => {
+         if (bassHint) {
+            const aMatch = getChordBass(a.chord) === bassHint;
+            const bMatch = getChordBass(b.chord) === bassHint;
+            // ヒント一致を最優先
+            if (aMatch && !bMatch) return -1; 
+            if (!aMatch && bMatch) return 1;  
+            // 条件が同じならスコアが高い順
+            return b.score - a.score; 
+         } else if (rootHint) {
+            const aMatch = getChordRoot(a.chord) === rootHint;
+            const bMatch = getChordRoot(b.chord) === rootHint;
+            // ヒント一致を最優先
+            if (aMatch && !bMatch) return -1;
+            if (!aMatch && bMatch) return 1;
+            // 条件が同じならスコアが高い順
+            return b.score - a.score;
+         } else {
+            // ヒントなし時は「基本形(スラッシュなし)」を優先
+            const aHasSlash = a.chord.includes("/");
+            const bHasSlash = b.chord.includes("/");
+            
+            if (!aHasSlash && bHasSlash) return -1;
+            if (aHasSlash && !bHasSlash) return 1;
+            
+            // 形式が同じならスコアが高い順
+            return b.score - a.score;
+         }
+      };
+
+      // 1. まず一回ソートして、有力な候補を上に持ってくる
+      candidates.sort(sortFn);
 
       // 2. 重複を削除 (和音名が同じなら、スコアが高い方 or 同点なら信頼度が高い方を残す)
       const uniqueMap = new Map<string, CandidateObj>();
@@ -494,9 +503,12 @@ export async function POST(req: Request) {
         }
       });
 
-      // 3. 最大5件に絞る
-      candidates = Array.from(uniqueMap.values()).slice(0, 5);
+      // 3. マップから戻して、最後に「もう一度」正しい順序に並べ直して5件に絞る
+      // (Mapの順序や上書きによる順序ブレを補正するため、最後にsortFnを通すのが最強)
+      candidates = Array.from(uniqueMap.values()).sort(sortFn).slice(0, 5);
     }
+
+    // ... (後略: const top = candidates[0]; へ続く)
 
     const top = candidates[0];
     let engineChord = safeStr((json as any).engineChord, "").trim();
