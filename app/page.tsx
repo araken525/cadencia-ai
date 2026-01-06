@@ -87,7 +87,7 @@ const getKeyIndex = (note: string): number => {
 
 // --- Components ---
 
-// 1. イントロダクション (Final Fix)
+// 1. イントロダクション (Final Fix v2)
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   const [isClosing, setIsClosing] = useState(false);
   const handleClose = () => { setIsClosing(true); setTimeout(onClose, 300); };
@@ -108,7 +108,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
             <div className="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-3xl shadow-xl mb-5 rotate-3 ring-4 ring-slate-50">🎹</div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tighter mb-2">Waon AI</h1>
             
-            {/* 1. キャッチコピー (修正: 元のシンプルスタイルに戻しました) */}
+            {/* キャッチコピー */}
             <p className="text-xs font-bold text-slate-500 mb-5">ポケットに、あなた専属の音楽理論家を。</p>
 
             <p className="text-[11px] leading-relaxed text-slate-600 font-medium bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left w-full">
@@ -151,12 +151,22 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
                   </div>
                </div>
                
-               {/* 2. モード切り替え (修正: 絵文字 🔰🎓 を使用) */}
-               <div className="bg-gradient-to-r from-slate-50 to-blue-50 p-4 rounded-2xl border border-blue-100 shadow-sm flex gap-4 items-start">
-                  <div className="flex flex-col gap-1.5 shrink-0 pt-0.5">
-                     <div className="w-10 h-6 rounded bg-white text-emerald-600 flex items-center justify-center text-sm border border-emerald-100 shadow-sm">🔰</div>
-                     <div className="w-10 h-6 rounded bg-slate-800 text-white flex items-center justify-center text-sm shadow-sm">🎓</div>
+               {/* 1. モード切り替え (修正: デザインし直し。絵文字とモード名を併記) */}
+               <div className="bg-gradient-to-r from-slate-50 to-blue-50 p-4 rounded-2xl border border-blue-100 shadow-sm flex gap-4 items-center">
+                  {/* 左側のモード表示パネル */}
+                  <div className="flex flex-col gap-2 shrink-0">
+                     {/* 初心者パネル */}
+                     <div className="flex flex-col items-center justify-center w-14 h-12 rounded-lg bg-emerald-50 border border-emerald-100 shadow-sm pt-1">
+                        <span className="text-lg leading-none">🔰</span>
+                        <span className="text-[8px] font-bold text-emerald-700 leading-tight mt-0.5">初心者</span>
+                     </div>
+                     {/* 上級者パネル */}
+                     <div className="flex flex-col items-center justify-center w-14 h-12 rounded-lg bg-slate-800 text-white shadow-sm pt-1">
+                        <span className="text-lg leading-none">🎓</span>
+                        <span className="text-[8px] font-bold text-slate-200 leading-tight mt-0.5">上級者</span>
+                     </div>
                   </div>
+                  {/* 右側の説明テキスト */}
                   <div>
                      <h3 className="font-bold text-slate-700 text-sm mb-1">選べる2つのモード</h3>
                      <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
@@ -225,7 +235,8 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
                {/* フリック操作グリッド */}
                <div className="bg-white/60 rounded-xl p-3 border border-indigo-100/50">
                   <div className="text-center mb-3">
-                     <span className="text-[10px] font-bold text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded-full">フリックで変化記号</span>
+                     {/* 2. テキスト変更 (変化記号 -> 臨時記号) */}
+                     <span className="text-[10px] font-bold text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded-full">フリックで臨時記号</span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                      <div className="flex items-center gap-2">
@@ -268,13 +279,14 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
            </div>
         </div>
 
-        {/* 3. 白いグラデーションぼかし (修正: 確実に表示されるよう高さと色を調整) */}
+        {/* 白いグラデーションぼかし */}
         <div className="absolute bottom-[72px] left-0 right-0 h-16 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-20"></div>
 
         {/* 固定フッターボタン */}
         <div className="absolute bottom-0 left-0 right-0 p-5 bg-white/90 backdrop-blur-md border-t border-slate-100 z-40">
           <button onClick={handleClose} className="w-full py-3.5 rounded-2xl bg-slate-900 text-white font-bold shadow-lg hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group text-sm">
-             <span>解析をはじめる</span>
+             {/* 3. ボタンテキスト変更 (解析をはじめる -> はじめる) */}
+             <span>はじめる</span>
              <span className="group-hover:translate-x-1 transition-transform">→</span>
           </button>
         </div>
