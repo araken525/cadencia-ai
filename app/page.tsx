@@ -513,6 +513,8 @@ export default function CadenciaPage() {
   const [selected, setSelected] = useState<string[]>([]);
   // 修正: 初期値 none -> -
   const [keyRoot, setKeyRoot] = useState<string>("-"); 
+  // これを追加！
+  const [keyScale, setKeyScale] = useState<string>("Major");
   const [keyType, setKeyType] = useState<string>("Major"); 
   const [bassHint, setBassHint] = useState<string | null>(null); 
   const [rootHint, setRootHint] = useState<string | null>(null);
