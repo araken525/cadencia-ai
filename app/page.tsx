@@ -724,23 +724,23 @@ export default function CadenciaPage() {
 
         {/* 入力カード */}
         <section className={`${G.cardBase} bg-white shadow-xl transition-all duration-300 ${justUpdated ? "ring-2 ring-cyan-200" : ""}`}>
-           {/* 背景装飾（少し控えめに） */}
+           {/* 背景装飾 */}
            <div className="absolute -right-2 top-2 text-[3.5rem] font-black text-slate-50 pointer-events-none select-none z-0 transform -rotate-3 opacity-80">ANALYZE</div>
            
            <div className="p-5 flex flex-col min-h-[220px] relative z-10">
               
-              {/* 1. ヘッダーエリア (タイトル & 再生ボタン) */}
+              {/* 1. ヘッダーエリア (修正: タイトル変更) */}
               <div className="flex items-start justify-between mb-4">
                  <div className="pt-1">
                     <h3 className="text-base font-black text-slate-700 tracking-tight flex items-center gap-2">
-                       どんな和音か調べてみよう
+                       Waon AIに分析させよう
                     </h3>
                     <p className="text-[10px] font-bold text-slate-400 mt-0.5 leading-relaxed">
                        音を選んで、その響きを確認できます。
                     </p>
                  </div>
 
-                 {/* 再生ボタン (コンパクトな円形ボタン) */}
+                 {/* 再生ボタン */}
                  <button
                     onClick={() => playChord(sortedSelected, bassHint, rootHint)}
                     disabled={selected.length === 0}
@@ -755,7 +755,7 @@ export default function CadenciaPage() {
                  </button>
               </div>
 
-              {/* 2. 音符グリッドエリア (メイン) */}
+              {/* 2. 音符グリッドエリア */}
               <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner p-3 flex flex-col items-center justify-center min-h-[120px] relative transition-colors duration-300 hover:bg-slate-100/50 mb-3">
                  {selected.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-2 animate-in fade-in zoom-in duration-500 py-2 opacity-60">
@@ -785,18 +785,22 @@ export default function CadenciaPage() {
                  )}
               </div>
 
-              {/* 3. ステータスフッター (シンプルに配置) */}
+              {/* 3. ステータスフッター (修正: 調性表示 & 音数) */}
               <div className="flex items-center gap-2 px-1">
+                 
+                 {/* 調性 (KEY -> C Major) */}
                  <div className="flex-1 flex items-center gap-2 bg-white border border-slate-100 rounded-lg px-2.5 py-1.5 shadow-sm">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">KEY</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">調性</span>
                     <div className={`h-3 w-px bg-slate-200`}></div>
-                    <span className={`text-[10px] font-black ${keyRoot !== "-" ? "text-purple-600" : "text-slate-300"}`}>
-                       {keyRoot !== "-" ? keyRoot : "―"}
+                    {/* capitalize クラスで Major/Minor の頭文字を大文字にします */}
+                    <span className={`text-[10px] font-black capitalize ${keyRoot !== "-" ? "text-purple-600" : "text-slate-300"}`}>
+                       {keyRoot !== "-" ? `${keyRoot} ${keyScale}` : "―"}
                     </span>
                  </div>
                  
+                 {/* 音数 (NOTES -> 音数) */}
                  <div className="flex-1 flex items-center gap-2 bg-white border border-slate-100 rounded-lg px-2.5 py-1.5 shadow-sm">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">NOTES</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">音数</span>
                     <div className={`h-3 w-px bg-slate-200`}></div>
                     <span className={`text-[10px] font-black ${selected.length > 0 ? "text-cyan-600" : "text-slate-300"}`}>
                        {selected.length}
