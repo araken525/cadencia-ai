@@ -87,131 +87,166 @@ const getKeyIndex = (note: string): number => {
 
 // --- Components ---
 
-// 1. イントロダクション (Updated)
+// 1. イントロダクション (Supreme Edition)
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   const [isClosing, setIsClosing] = useState(false);
   const handleClose = () => { setIsClosing(true); setTimeout(onClose, 300); };
 
   return (
-    <div className={`fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-300 ${isClosing ? "opacity-0" : "opacity-100"}`}>
-      <div className={`w-full max-w-md h-[85vh] bg-white rounded-[40px] shadow-2xl overflow-hidden relative transform transition-all duration-300 flex flex-col ${isClosing ? "scale-95 translate-y-8 opacity-0" : "scale-100 translate-y-0 opacity-100"}`}>
-        <div className="absolute top-10 -left-10 text-[8rem] font-black text-slate-100 rotate-90 pointer-events-none select-none opacity-50">INTRODUCTION</div>
-        <div className="flex-1 overflow-y-auto p-8 relative z-10 scrollbar-hide">
-          <div className="text-center mb-10">
-            <div className="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-3xl shadow-xl mx-auto mb-6 rotate-3">🎹</div>
-            <h1 className="text-4xl font-black text-slate-800 tracking-tighter mb-2">Waon AI</h1>
-            <p className="text-sm font-bold text-slate-500">ポケットに、専属の音楽理論家を。</p>
+    <div className={`fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity duration-300 ${isClosing ? "opacity-0" : "opacity-100"}`}>
+      {/* スマホでは下からせり上がるシート、PCでは中央モーダル */}
+      <div className={`w-full max-w-md h-[92vh] sm:h-[85vh] bg-white rounded-t-[32px] sm:rounded-[40px] shadow-2xl overflow-hidden relative transform transition-all duration-300 flex flex-col ${isClosing ? "translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}>
+        
+        {/* 背景装飾 */}
+        <div className="absolute top-10 -left-10 text-[6rem] font-black text-slate-50 rotate-90 pointer-events-none select-none opacity-60">PHILOSOPHY</div>
+
+        {/* スクロールエリア */}
+        <div className="flex-1 overflow-y-auto p-6 pb-32 relative z-10 scrollbar-hide">
+          
+          {/* ヘッダー */}
+          <div className="text-center mb-10 mt-4">
+            <div className="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-3xl shadow-xl mx-auto mb-5 rotate-3 ring-4 ring-slate-50">🎹</div>
+            <h1 className="text-3xl font-black text-slate-800 tracking-tighter mb-2">Waon AI</h1>
+            <p className="text-xs font-bold text-slate-500 mb-4">ポケットに、あなた専属の音楽理論家を。</p>
+            <p className="text-[11px] leading-relaxed text-slate-600 font-medium bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left">
+              プロの音楽家が楽譜を読むときの「思考プロセス」をAIが可視化。単なるコードネームだけでなく、その<span className="text-indigo-600 font-bold">根拠・機能・構造</span>までを言語化する、新しい解析パートナーです。
+            </p>
           </div>
           
+          {/* Section 1: Core Philosophy */}
           <div className="mb-10">
-            <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">🎯</span> 対象ユーザー</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100">
-                <h3 className="font-bold text-slate-700 mb-2 text-xs flex items-center gap-1.5"><span className="text-base">🎺</span> 奏者の方へ</h3>
-                <ul className="space-y-1.5 text-[10px] text-slate-500 font-medium leading-tight list-disc list-outside pl-3">
-                  <li>和音を言語化したい</li>
-                  <li>スコアの理解を深めたい</li>
-                  <li>音楽的意味を知りたい</li>
-                </ul>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100">
-                <h3 className="font-bold text-slate-700 mb-2 text-xs flex items-center gap-1.5"><span className="text-base">🎓</span> 学ぶ方へ</h3>
-                <ul className="space-y-1.5 text-[10px] text-slate-500 font-medium leading-tight list-disc list-outside pl-3">
-                  <li>和声用語で解説が欲しい</li>
-                  <li>転回形やバスを学びたい</li>
-                  <li>自習の答え合わせに</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-8">
-            <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">✨</span> Waon AIの特徴</h2>
-            <div className="text-xs text-slate-600 leading-relaxed font-medium space-y-4">
-              <p>入力された構成音から和音を判定し、その音楽的意味を<span className="bg-yellow-100 font-bold px-1">「和声学の言葉」</span>で解説する音楽理論特化型AI解析アプリです。</p>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-blue-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">🧐</div><div className="font-bold text-blue-700">根拠</div><div className="text-[9px] text-blue-500">なぜその和音か</div></div>
-                <div className="bg-rose-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">⚙️</div><div className="font-bold text-rose-700">機能</div><div className="text-[9px] text-rose-500">調性内の役割</div></div>
-                <div className="bg-emerald-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">🏗️</div><div className="font-bold text-emerald-700">構造</div><div className="text-[9px] text-emerald-500">転回形・バス</div></div>
-                <div className="bg-purple-50 p-3 rounded-2xl text-center"><div className="text-lg mb-1">💡</div><div className="font-bold text-purple-700">多義性</div><div className="text-[9px] text-purple-500">他の解釈</div></div>
-              </div>
-
-              {/* Added: モード切り替え説明 */}
-              <div className="mt-2 bg-slate-50 border border-slate-200/60 p-3 rounded-2xl flex items-center gap-3">
-                 <div className="flex -space-x-1 shrink-0">
-                    <div className="w-6 h-6 rounded-full bg-white border border-emerald-100 flex items-center justify-center text-xs shadow-sm z-10">🔰</div>
-                    <div className="w-6 h-6 rounded-full bg-white border border-blue-100 flex items-center justify-center text-xs shadow-sm">🎓</div>
-                 </div>
-                 <div>
-                    <h4 className="font-bold text-slate-700 text-[10px]">選べる2つのモード</h4>
-                    <p className="text-[9px] text-slate-500 leading-tight mt-0.5">
-                       優しく解説する「初心者」と、厳密な和声学用語で判定する「上級者」を切り替えられます。
-                    </p>
-                 </div>
-              </div>
-
-              <p className="text-center font-bold text-slate-400 mt-2">プロの音楽家の思考プロセスを、AIが可視化します。</p>
-            </div>
-          </div>
-
-          <div className="mb-8">
-            <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">🎹</span> キーボード操作</h2>
-            <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 rounded-3xl p-5 border border-slate-100">
-               {/* Updated: Grid to accommodate new flick actions */}
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100">👆</span><div className="text-[10px] font-bold text-slate-600 leading-tight">タップ<br/><span className="text-slate-400 font-normal">音を入力</span></div></div>
-                  
-                  {/* Root/Bass */}
-                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-rose-50 shadow-sm flex items-center justify-center text-xs border border-rose-100 text-rose-500">R</span><div className="text-[10px] font-bold text-slate-600 leading-tight">根音指定<br/><span className="text-rose-500 font-bold">Root</span></div></div>
-                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-amber-50 shadow-sm flex items-center justify-center text-xs border border-amber-100 text-amber-500">B</span><div className="text-[10px] font-bold text-slate-600 leading-tight">最低音指定<br/><span className="text-amber-500 font-bold">Bass</span></div></div>
-                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-purple-500">🗝</span><div className="text-[10px] font-bold text-slate-600 leading-tight">調性指定<br/><span className="text-purple-500 font-bold">Key</span></div></div>
-
-                  {/* Flicks */}
-                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-blue-500">⬆️</span><div className="text-[10px] font-bold text-slate-600 leading-tight">上フリック<br/><span className="text-blue-500 font-bold"># シャープ</span></div></div>
-                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-blue-500">⬇️</span><div className="text-[10px] font-bold text-slate-600 leading-tight">下フリック<br/><span className="text-blue-500 font-bold">b フラット</span></div></div>
-                  
-                  {/* Added: Double Accidentals */}
-                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-blue-500">➡️</span><div className="text-[10px] font-bold text-slate-600 leading-tight">右フリック<br/><span className="text-blue-500 font-bold">## ダブルシャープ</span></div></div>
-                  <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-xs border border-slate-100 text-blue-500">⬅️</span><div className="text-[10px] font-bold text-slate-600 leading-tight">左フリック<br/><span className="text-blue-500 font-bold">bb ダブルフラット</span></div></div>
+            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 pl-1 flex items-center gap-2">Core Philosophy</h2>
+            <div className="space-y-3">
+               {/* Card A */}
+               <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4 items-start">
+                  <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0 font-black text-xs border border-rose-100">A#≠Bb</div>
+                  <div>
+                     <h3 className="font-bold text-slate-700 text-sm mb-1">音名の絶対厳守</h3>
+                     <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                        「A♯」と「B♭」を安易に同一視しません。入力されたスペルを尊重し、文脈に応じた正しい解釈を行います。
+                     </p>
+                  </div>
                </div>
-               <p className="mt-4 text-[9px] text-slate-400 text-center">直感的なフリック操作で、素早く音符を入力できます。</p>
+               {/* Card B */}
+               <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4 items-start">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0 font-black text-xs border border-indigo-100">I-V-I</div>
+                  <div>
+                     <h3 className="font-bold text-slate-700 text-sm mb-1">機能和声の分離</h3>
+                     <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                        ポピュラー的な「コード名(C7)」と、クラシック和声的な「機能(V7)」を区別。ジャンルを超えた理解を提供します。
+                     </p>
+                  </div>
+               </div>
+               {/* Card C */}
+               <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4 items-start">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0 font-black text-lg border border-emerald-100">🤖</div>
+                  <div>
+                     <h3 className="font-bold text-slate-700 text-sm mb-1">ハイブリッド解析</h3>
+                     <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                        最新AI (Gemini 2.5) と厳格なルールベース判定を融合。ナポリや増六の和音など、高度な特殊和音も識別します。
+                     </p>
+                  </div>
+               </div>
             </div>
           </div>
 
-          <div className="mb-4">
-            <h2 className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2"><span className="text-xl">📚</span> 理論と表記の基準</h2>
-            {/* Updated: Content completely rewritten */}
-            <div className="bg-slate-50 rounded-3xl p-5 border border-slate-100 space-y-4">
-               <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
-                 Waon AIは、日本の標準的な<strong>「芸大和声（機能和声）」</strong>に基づき、厳密な判定を行います。
-               </p>
+          {/* Section 2: Targets */}
+          <div className="mb-10">
+            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 pl-1">For Musicians</h2>
+            <div className="bg-slate-50 rounded-3xl p-2 border border-slate-100">
+               <div className="grid divide-y divide-slate-100">
+                  <div className="p-3 flex items-center gap-3">
+                     <span className="text-lg">🎺</span>
+                     <div className="flex-1">
+                        <div className="text-xs font-bold text-slate-700">奏者の方へ</div>
+                        <div className="text-[10px] text-slate-500 font-medium">スコアの「和声的意味」を理解し、演奏表現の根拠に。</div>
+                     </div>
+                  </div>
+                  <div className="p-3 flex items-center gap-3">
+                     <span className="text-lg">🎓</span>
+                     <div className="flex-1">
+                        <div className="text-xs font-bold text-slate-700">学ぶ方へ</div>
+                        <div className="text-[10px] text-slate-500 font-medium">和声課題の答え合わせや、転回形・借用和音の自習に。</div>
+                     </div>
+                  </div>
+                  <div className="p-3 flex items-center gap-3">
+                     <span className="text-lg">🎼</span>
+                     <div className="flex-1">
+                        <div className="text-xs font-bold text-slate-700">作曲・DTMの方へ</div>
+                        <div className="text-[10px] text-slate-500 font-medium">響きの理論的な裏付けや、多義的な解釈の探求に。</div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          </div>
+
+          {/* Section 3: Controls */}
+          <div className="mb-8">
+            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 pl-1">How to Use</h2>
+            <div className="bg-gradient-to-br from-white to-indigo-50/30 rounded-3xl p-5 border border-slate-100 shadow-sm">
                
-               <div className="flex gap-3 items-start">
-                  <div className="w-6 h-6 rounded-lg bg-white border border-slate-100 shadow-sm flex items-center justify-center shrink-0 text-xs">📖</div>
-                  <div>
-                     <h4 className="text-[10px] font-bold text-slate-700 mb-0.5">特殊和音の判定辞書</h4>
-                     <p className="text-[9px] text-slate-500 leading-relaxed">
-                        ナポリの六(II¹)、ドリアのIV、増六の和音、準固有和音(°VI)、ピカルディ終止など、文脈に依存する特殊な機能和音も正確に識別します。
-                     </p>
+               {/* 基本操作 */}
+               <div className="flex justify-between mb-6 gap-2">
+                  <div className="flex flex-col items-center gap-1">
+                     <div className="h-8 px-3 rounded bg-white border border-slate-200 text-slate-600 text-xs font-bold flex items-center shadow-sm">Tap</div>
+                     <span className="text-[9px] font-bold text-slate-400">音入力</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                     <div className="h-8 px-3 rounded bg-rose-50 border border-rose-100 text-rose-500 text-xs font-bold flex items-center shadow-sm">R</div>
+                     <span className="text-[9px] font-bold text-slate-400">根音</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                     <div className="h-8 px-3 rounded bg-amber-50 border border-amber-100 text-amber-500 text-xs font-bold flex items-center shadow-sm">B</div>
+                     <span className="text-[9px] font-bold text-slate-400">最低音</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                     <div className="h-8 px-3 rounded bg-white border border-slate-200 text-purple-500 text-xs font-bold flex items-center shadow-sm">Key</div>
+                     <span className="text-[9px] font-bold text-slate-400">調性</span>
                   </div>
                </div>
 
-               <div className="flex gap-3 items-start">
-                  <div className="w-6 h-6 rounded-lg bg-white border border-slate-100 shadow-sm flex items-center justify-center shrink-0 text-xs">🏛</div>
-                  <div>
-                     <h4 className="text-[10px] font-bold text-slate-700 mb-0.5">記号表記について</h4>
-                     <p className="text-[9px] text-slate-500 leading-relaxed">
-                        数字付き低音ではなく、日本の教育で標準的な<strong>転回指数（I¹、V⁷など）</strong>を採用。調性は日本音名（ハ長調）またはドイツ音名（C-dur）で統一しています。
-                     </p>
+               {/* フリック操作グリッド */}
+               <div className="bg-white/60 rounded-xl p-3 border border-indigo-100/50">
+                  <div className="text-center mb-3">
+                     <span className="text-[10px] font-bold text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded-full">フリックで変化記号</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                     <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center shadow-sm text-[10px] text-blue-500">⬆️</div>
+                        <div className="text-[10px] font-bold text-slate-600">シャープ <span className="text-slate-400 font-normal">(#)</span></div>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center shadow-sm text-[10px] text-blue-500">⬇️</div>
+                        <div className="text-[10px] font-bold text-slate-600">フラット <span className="text-slate-400 font-normal">(b)</span></div>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center shadow-sm text-[10px] text-blue-500">➡️</div>
+                        <div className="text-[10px] font-bold text-slate-600">Wシャープ <span className="text-slate-400 font-normal">(x)</span></div>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center shadow-sm text-[10px] text-blue-500">⬅️</div>
+                        <div className="text-[10px] font-bold text-slate-600">Wフラット <span className="text-slate-400 font-normal">(bb)</span></div>
+                     </div>
                   </div>
                </div>
             </div>
+          </div>
+
+          {/* Footer Text */}
+          <div className="text-center px-4 mb-4">
+             <p className="text-[9px] text-slate-400 leading-relaxed">
+                本アプリは日本の標準的な<strong>「芸大和声」</strong>および国際基準に準拠しています。文脈が不足している場合は断定を避け、可能性を提示します。
+             </p>
           </div>
 
         </div>
-        <div className="p-6 bg-white border-t border-slate-100 relative z-20">
-          <button onClick={handleClose} className="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold shadow-lg hover:bg-slate-800 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 group"><span>はじめる</span><span className="group-hover:translate-x-1 transition-transform">→</span></button>
+
+        {/* 固定フッターボタン */}
+        <div className="absolute bottom-0 left-0 right-0 p-5 bg-white/80 backdrop-blur-md border-t border-slate-100 z-20">
+          <button onClick={handleClose} className="w-full py-3.5 rounded-2xl bg-slate-900 text-white font-bold shadow-lg hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group text-sm">
+             <span>解析をはじめる</span>
+             <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </button>
         </div>
       </div>
     </div>
