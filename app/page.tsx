@@ -87,7 +87,7 @@ const getKeyIndex = (note: string): number => {
 
 // --- Components ---
 
-// 1. イントロダクション (Final Edition)
+// 1. イントロダクション (Final Fix)
 const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
   const [isClosing, setIsClosing] = useState(false);
   const handleClose = () => { setIsClosing(true); setTimeout(onClose, 300); };
@@ -97,7 +97,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
       {/* スマホでは下からせり上がるシート、PCでは中央モーダル */}
       <div className={`w-full max-w-md h-[92vh] sm:h-[85vh] bg-white rounded-t-[32px] sm:rounded-[40px] shadow-2xl overflow-hidden relative transform transition-all duration-300 flex flex-col ${isClosing ? "translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}>
         
-        {/* 1. 背景装飾 (修正: 少し濃くして視認性アップ) */}
+        {/* 背景装飾 */}
         <div className="absolute top-10 -left-10 text-[6rem] font-black text-slate-100 rotate-90 pointer-events-none select-none opacity-100">PHILOSOPHY</div>
 
         {/* スクロールエリア */}
@@ -106,19 +106,17 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
           {/* ヘッダー */}
           <div className="text-center mb-10 mt-4 flex flex-col items-center">
             <div className="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-3xl shadow-xl mb-5 rotate-3 ring-4 ring-slate-50">🎹</div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tighter mb-3">Waon AI</h1>
+            <h1 className="text-3xl font-black text-slate-800 tracking-tighter mb-2">Waon AI</h1>
             
-            {/* 2. キャッチコピー (修正: マーカー風で強調) */}
-            <span className="inline-block bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md mb-5 transform -rotate-1">
-               ✨ ポケットに、あなた専属の音楽理論家を。
-            </span>
+            {/* 1. キャッチコピー (修正: 元のシンプルスタイルに戻しました) */}
+            <p className="text-xs font-bold text-slate-500 mb-5">ポケットに、あなた専属の音楽理論家を。</p>
 
             <p className="text-[11px] leading-relaxed text-slate-600 font-medium bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left w-full">
               プロの音楽家が楽譜を読むときの「思考プロセス」をAIが可視化。単なるコードネームだけでなく、その<span className="text-indigo-600 font-bold">根拠・機能・構造</span>までを言語化する、新しい解析パートナーです。
             </p>
           </div>
           
-          {/* 4. 見出し日本語化: 技術とこだわり */}
+          {/* 技術とこだわり */}
           <div className="mb-10">
             <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 pl-1 flex items-center gap-2">技術とこだわり</h2>
             <div className="space-y-3">
@@ -153,11 +151,11 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
                   </div>
                </div>
                
-               {/* 5. 新機能カード: モード切り替え */}
+               {/* 2. モード切り替え (修正: 絵文字 🔰🎓 を使用) */}
                <div className="bg-gradient-to-r from-slate-50 to-blue-50 p-4 rounded-2xl border border-blue-100 shadow-sm flex gap-4 items-start">
-                  <div className="flex flex-col gap-1 shrink-0">
-                     <div className="w-10 h-5 rounded bg-white text-emerald-600 flex items-center justify-center font-bold text-[10px] border border-emerald-100 shadow-sm">初心者</div>
-                     <div className="w-10 h-5 rounded bg-slate-800 text-white flex items-center justify-center font-bold text-[10px] shadow-sm">上級者</div>
+                  <div className="flex flex-col gap-1.5 shrink-0 pt-0.5">
+                     <div className="w-10 h-6 rounded bg-white text-emerald-600 flex items-center justify-center text-sm border border-emerald-100 shadow-sm">🔰</div>
+                     <div className="w-10 h-6 rounded bg-slate-800 text-white flex items-center justify-center text-sm shadow-sm">🎓</div>
                   </div>
                   <div>
                      <h3 className="font-bold text-slate-700 text-sm mb-1">選べる2つのモード</h3>
@@ -169,7 +167,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
             </div>
           </div>
 
-          {/* 4. 見出し日本語化: 対象ユーザー */}
+          {/* 対象ユーザー */}
           <div className="mb-10">
             <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 pl-1">対象ユーザー</h2>
             <div className="bg-slate-50 rounded-3xl p-2 border border-slate-100">
@@ -199,7 +197,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
             </div>
           </div>
 
-          {/* 4. 見出し日本語化: キーボード操作ガイド */}
+          {/* キーボード操作ガイド */}
           <div className="mb-8">
             <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 pl-1">キーボード操作ガイド</h2>
             <div className="bg-gradient-to-br from-white to-indigo-50/30 rounded-3xl p-5 border border-slate-100 shadow-sm">
@@ -260,7 +258,7 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
 
         </div>
 
-        {/* 3. スクロール誘導 (修正: 直感的なアニメーション矢印) */}
+        {/* スクロール誘導 (矢印) */}
         <div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none z-30">
            <div className="flex flex-col items-center animate-bounce opacity-50">
               <span className="text-[9px] font-bold text-slate-400 mb-1">SCROLL</span>
@@ -269,8 +267,9 @@ const WelcomeModal = ({ onClose }: { onClose: () => void }) => {
               </div>
            </div>
         </div>
-        {/* 下部のグラデーションで続きがある感を出す */}
-        <div className="absolute bottom-[72px] left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none z-20"></div>
+
+        {/* 3. 白いグラデーションぼかし (修正: 確実に表示されるよう高さと色を調整) */}
+        <div className="absolute bottom-[72px] left-0 right-0 h-16 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-20"></div>
 
         {/* 固定フッターボタン */}
         <div className="absolute bottom-0 left-0 right-0 p-5 bg-white/90 backdrop-blur-md border-t border-slate-100 z-40">
